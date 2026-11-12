@@ -16,6 +16,8 @@ VERSION_NAME="${VERSION_NAME:-1.0.$VERSION_CODE}"
 KEYSTORE="${KEYSTORE:-woogles-tv.keystore}"
 KS_PASS="${KS_PASS:-wooglestv}"
 KS_ALIAS="${KS_ALIAS:-wooglestv}"
+# Server the app opens on first launch (changeable later in the app: hold OK → Change server URL).
+WT_SERVER_URL="${WT_SERVER_URL:-https://woogles-tv.exe.xyz/tv?app=1}"
 
 BT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VER"
 JAR="$ANDROID_HOME/platforms/$PLATFORM/android.jar"
@@ -47,7 +49,12 @@ if [[ ! -f "$KEYSTORE" ]]; then
 fi
 
 B=build
-rm -rf "$B"; mkdir -p "$B/res" "$B/gen" "$B/classes" "$B/dex" out
+rm -rf "$B"; mkdir -p "$B/res" "$B/gen" "$B/classes" "$B/dex" "$B/src" out
+cp -r src/. "$B/src/"
+# bake the default server URL into the build copy of the source
+sed -i "s|static final String DEFAULT_URL = \".*\";|static final String DEFAULT_URL = \"${WT_SERVER_URL//&/\\&}\";|" \
+  "$B/src/io/woogles/tv/MainActivity.java"
+grep -q "DEFAULT_URL = \"$WT_SERVER_URL\"" "$B/src/io/woogles/tv/MainActivity.java" || { echo "could not set WT_SERVER_URL" >&2; exit 1; }
 
 echo "== aapt2 (version $VERSION_NAME / code $VERSION_CODE)"
 "$BT/aapt2" compile --dir res -o "$B/res.zip"
@@ -58,7 +65,7 @@ echo "== aapt2 (version $VERSION_NAME / code $VERSION_CODE)"
 
 echo "== javac"
 javac --release 11 -encoding UTF-8 -Xlint:-options -nowarn -classpath "$JAR" -d "$B/classes" \
-  $(find src "$B/gen" -name '*.java')
+  $(find "$B/src" "$B/gen" -name '*.java')
 
 echo "== d8"
 "$BT/d8" --release --min-api $MIN_SDK --lib "$JAR" --output "$B/dex" $(find "$B/classes" -name '*.class')
@@ -70,4 +77,4 @@ echo "== zipalign + sign"
   --min-sdk-version $MIN_SDK --out out/woogles-tv.apk "$B/aligned.apk"
 "$BT/apksigner" verify out/woogles-tv.apk
 rm -f out/woogles-tv.apk.idsig
-echo "== built android/out/woogles-tv.apk ($(du -h out/woogles-tv.apk | cut -f1), $VERSION_NAME)"
+echo "== built android/out/woogles-tv.apk ($(du -h out/woogles-tv.apk | cut -f1), $VERSION_NAME, opens $WT_SERVER_URL)"

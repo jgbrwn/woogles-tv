@@ -1,0 +1,17 @@
+# docker compose up -d   →  http://<host>:8420/
+services:
+  woogles-tv:
+    build: .
+    image: woogles-tv
+    restart: unless-stopped
+    ports:
+      - "8420:8420"
+    environment:
+      # The URL phones use to reach this server; it is what the QR code on the TV encodes.
+      # Leave unset to derive it from each request (fine behind a proxy that sets X-Forwarded-Host/Proto).
+      # PUBLIC_URL: https://woogles-tv.example.com
+      # CAST_APP_ID: ABCD1234   # optional, see docs/CAST.md
+    volumes:
+      - rooms:/app/data/rooms     # saved rooms/games (survive upgrades)
+volumes:
+  rooms:

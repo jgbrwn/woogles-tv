@@ -1,8 +1,12 @@
 # Woogles-TV Android TV app
 
-A tiny launcher for Android TV / Google TV (e.g. the Onn 4K stick). It's a single
-full-screen `WebView` that opens `https://woogles-tv.exe.xyz/tv?app=1`. Phones then join
-by scanning the QR code on the TV screen.
+A tiny launcher for Android TV / Google TV (e.g. the Onn 4K box, Chromecast with Google TV, Nvidia Shield). It's a
+single full-screen `WebView` that opens your Woogles-TV server's `/tv?app=1` page. Phones then join by scanning the
+QR code on the TV screen.
+
+**Ready-made APK:** the [GitHub releases](https://github.com/jgbrwn/woogles-tv/releases) have one that opens the
+author's server (`https://woogles-tv.exe.xyz`). You can point it at any server from the TV: **hold OK → Change
+server URL**. Or build your own with your server baked in (below).
 
 - Package: `io.woogles.tv`, label "Woogles-TV", minSdk 21, targetSdk 34
 - No Gradle, no AndroidX, no third-party code: `MainActivity.java` + manifest + PNGs.
@@ -10,8 +14,13 @@ by scanning the QR code on the TV screen.
 ## Build
 
 ```sh
-android/build.sh          # -> android/out/woogles-tv.apk
+WT_SERVER_URL='https://games.example.com/tv?app=1' android/build.sh   # -> android/out/woogles-tv.apk
+WT_SERVER_URL='http://192.168.1.20:8420/tv?app=1'  android/build.sh   # home server over plain HTTP
 ```
+
+`WT_SERVER_URL` is the page the app opens on first launch (the default is the author's server). To offer the APK
+from your server's `/app` page, leave it at `android/out/woogles-tv.apk` (the server's default `-apk` path) or copy
+it wherever `-apk` points.
 
 What you need: a JDK 17+ (`javac`, `keytool`), plus `zip`, `unzip` and `curl`
 (`sudo apt install openjdk-21-jdk-headless zip unzip curl`). If they're missing, the script
@@ -25,12 +34,11 @@ You can override `VERSION_CODE` (defaults to the git commit count) and `VERSION_
 
 ### Signing key
 
-`woogles-tv.keystore` is a self-signed key (password `wooglestv`, alias `wooglestv`).
-`build.sh` creates it if it's missing. **It is committed on purpose.** Android only
-installs an update over an existing app if both are signed with the same key. A new key
-means you have to uninstall first, and that wipes the app's localStorage (the saved
-room id). This key protects nothing valuable, since anyone can sideload anything they want
-onto their own TV anyway.
+`build.sh` signs with `android/woogles-tv.keystore` and **creates it on the first build** if it's missing
+(RSA 2048, valid for 100 years). Set `KEYSTORE`, `KS_PASS` and `KS_ALIAS` to use your own; the defaults are a
+placeholder password, so set `KS_PASS` for a key you'll keep. The keystore is **git-ignored: keep it private and
+back it up.** Android only installs an update over an existing app if both are signed with the same key. A new key
+means uninstalling first, which wipes the app's saved settings and the TV's list of games.
 
 ### Art
 
@@ -46,8 +54,8 @@ the art.
 3. **Allow it to install apps:** Settings → Apps → Security & restrictions →
    *Unknown sources* → turn on **Downloader**. (On some builds the path is Settings →
    Privacy → Security & restrictions.)
-4. Open Downloader and enter
-   `https://woogles-tv.exe.xyz/app/woogles-tv.apk`.
+4. Open Downloader and enter your server's APK link, e.g. `https://your-server/app/woogles-tv.apk`, or the
+   release link from GitHub (`https://github.com/jgbrwn/woogles-tv/releases/latest/download/woogles-tv.apk`).
    Press *Install* when prompted. You can delete the downloaded file afterwards.
 5. Woogles-TV now shows up in Apps (with the banner), and you can pin it to the home
    screen. To update, repeat step 4. Your data is kept.
@@ -67,7 +75,7 @@ Notes:
 - **OK is delivered when you release it.** The app holds the key-down until it knows the
   press is short, so a long press never reaches the page. The page gets `keydown` and
   `keyup` back to back.
-- The server URL is stored in SharedPreferences. If you enter a bare host (`foo.exe.xyz`
+- The server URL is stored in SharedPreferences. If you enter a bare host (`games.example.com`
   or `192.168.1.5:8080`), it becomes `https://<host>/tv?app=1`. Type an explicit
   `http://…` URL for a LAN server without TLS (cleartext is allowed).
 - Links to the same host stay inside the app. Links to other hosts open in another app if

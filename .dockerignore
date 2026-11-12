@@ -1,0 +1,10 @@
+.git
+woogles-tv
+/woogles-tv-bin
+data/lexica
+data/rooms
+android/build
+android/out
+android/*.keystore
+deploy/*.env
+docs

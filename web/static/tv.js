@@ -12,6 +12,12 @@ sfx.enabled = localStorage.getItem('wt_sound') !== 'off';
 // ---- room bootstrap: reuse the room saved on this TV, else create one ----
 async function getRoom() {
   let saved = null;
+  // /tv#room=CODE&tv=TVKEY pins this screen to a room (links printed by -demo)
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('room') && h.get('tv')) {
+    localStorage.setItem('wt_tv', JSON.stringify({ code: h.get('room').toUpperCase(), tvKey: h.get('tv') }));
+    history.replaceState(null, '', location.pathname + location.search);
+  }
   try { saved = JSON.parse(localStorage.getItem('wt_tv') || 'null'); } catch {}
   if (saved && !params.has('new')) {
     try {

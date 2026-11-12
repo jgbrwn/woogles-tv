@@ -1,7 +1,15 @@
-woogles-tv
+# binaries
+/woogles-tv
 /woogles-tv-bin
+# runtime data: word lists are downloaded on first start, rooms are saved games
 data/lexica/
 data/rooms/
 data/strategy/*/
 !data/strategy/default/
-deploy/woogles-tv.env
+data/temp-*
+# local configuration / secrets
+deploy/*.env
+# Android: build output and YOUR signing key (keep it private and backed up; see android/README.md)
+android/build/
+android/out/
+android/*.keystore

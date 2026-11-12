@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -38,6 +40,10 @@ func initEngine(dataPath string) error {
 	botCfg = &bot.BotConfig{}
 	botCfg.Config = *config.DefaultConfig() //nolint:govet // copied once at startup
 	botCfg.Config.Set(config.ConfigDataPath, dataPath)
+	// word lists are downloaded here on first start (Macondo expects the directory to exist)
+	if err := os.MkdirAll(filepath.Join(dataPath, "lexica", "gaddag"), 0o755); err != nil {
+		return err
+	}
 	for _, l := range Lexicons {
 		if err := lexicon.EnsureLexiconFile(l, ".kwg", macCfg.WGLConfig()); err != nil {
 			return fmt.Errorf("lexicon %s: %w", l, err)
@@ -45,6 +51,19 @@ func initEngine(dataPath string) error {
 	}
 	_, err := getRules(Lexicons[0])
 	return err
+}
+
+// FetchAll downloads every data file the server can use (word graphs + bot leave files),
+// so a machine can run offline afterwards.
+func FetchAll() error {
+	for _, l := range Lexicons {
+		for _, ext := range []string{".kwg", ".klv2"} {
+			if err := lexicon.EnsureLexiconFile(l, ext, macCfg.WGLConfig()); err != nil && !errors.Is(err, lexicon.ErrNotPublished) {
+				return fmt.Errorf("%s%s: %w", l, ext, err)
+			}
+		}
+	}
+	return nil
 }
 
 func getRules(lex string) (*game.GameRules, error) {

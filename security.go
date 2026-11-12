@@ -76,7 +76,7 @@ func (l *ipLimiter) allow(ip string) bool {
 	return b.allow()
 }
 
-// clientIP: the exe.dev proxy appends the real client IP as the LAST X-Forwarded-For entry
+// clientIP: a reverse proxy (exe.dev, Caddy, nginx) appends the real client IP as the LAST X-Forwarded-For entry
 // (earlier entries are client-supplied and can be spoofed).
 func clientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {

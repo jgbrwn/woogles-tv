@@ -1,0 +1,50 @@
+Woogles-TV
+Copyright (C) 2026 jgbrwn and Woogles-TV contributors
+https://github.com/jgbrwn/woogles-tv
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License as published by the Free Software Foundation, version 3 of the
+License, or (at your option) any later version. See LICENSE.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+-------------------------------------------------------------------------------------------------
+Third-party components
+-------------------------------------------------------------------------------------------------
+
+Macondo (github.com/domino14/macondo), GPL-3.0, Copyright César Del Solar and contributors.
+  Game rules, move validation, scoring, game history and the computer opponents. Linked as a Go
+  module. The files in data/letterdistributions and data/strategy are copied from Macondo.
+
+word-golib (github.com/domino14/word-golib), GPL-3.0, Copyright César Del Solar and contributors.
+  Word graph (KWG) and tile mapping support.
+
+Woogles.io / liwords (github.com/woogles-io/liwords), AGPL-3.0, Copyright Woogles.io contributors.
+  The visual design (color palettes, board and tile styles, theme names such as Balsa, Forest and
+  Pastel) is modelled on liwords' stylesheets. The word lists are downloaded at runtime from the
+  liwords repository; they are not included here.
+
+Word lists
+  NWL23 (NASPA Word List 2023) is copyright NASPA. CSW24 (Collins Scrabble Words 2024) is copyright
+  HarperCollins Publishers. They are fetched from the Woogles.io repository for personal use. If
+  you redistribute them (for example in a published Docker image), make sure you are allowed to.
+
+coder/websocket (github.com/coder/websocket), ISC License.
+skip2/go-qrcode (github.com/skip2/go-qrcode), MIT License.
+rs/zerolog (github.com/rs/zerolog), MIT License.
+Other Go module dependencies are listed in go.mod/go.sum under their respective licenses.
+
+Fonts (self-hosted in web/static/fonts)
+  Mulish, Copyright The Mulish Project Authors, SIL Open Font License 1.1.
+  Fjalla One, Copyright Sorkin Type Co, SIL Open Font License 1.1.
+  Roboto Mono, Copyright Google LLC, open font license (Apache 2.0 / SIL OFL 1.1, see Google Fonts).
+
+Google Cast
+  The Cast sender and receiver SDKs are loaded from Google at runtime (only when CAST_APP_ID is set)
+  and are subject to Google's terms.
+
+Trademarks
+  Woogles-TV is an independent project and is not affiliated with or endorsed by Woogles.io, NASPA,
+  HarperCollins, Hasbro or Mattel. SCRABBLE is a trademark of Hasbro, Inc. in the USA and Canada
+  and of Mattel, Inc. elsewhere.

@@ -7,7 +7,9 @@ const code = location.pathname.split('/').pop().toUpperCase();
 const tokKey = 'wt_tok_' + code, keyKey = 'wt_key_' + code;
 // The join key arrives in the URL fragment (never sent to the server in HTTP requests or logs). Keep it, then hide it.
 const frag = new URLSearchParams(location.hash.slice(1));
-if (frag.get('k')) { localStorage.setItem(keyKey, frag.get('k')); history.replaceState(null, '', location.pathname); }
+if (frag.get('t')) localStorage.setItem(tokKey, frag.get('t')); // seat token (e.g. links printed by -demo)
+if (frag.get('k')) { localStorage.setItem(keyKey, frag.get('k')); }
+if (frag.get('k') || frag.get('t')) history.replaceState(null, '', location.pathname);
 let recvAt = 0;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 let s = null;                 // latest server state
@@ -82,6 +84,7 @@ function render(st) {
   renderPending();
   $('#backBtn').disabled = $('#recallBtn').disabled = !pending.size;
   show('game');
+  if (s.you >= 0 && !localStorage.getItem('wt_tip_rack')) { localStorage.setItem('wt_tip_rack', '1'); setTimeout(() => toast('Tip: drag tiles along your rack to rearrange them'), 1200); }
   const mine = myTurn();
   if (prev && prev.gameNo === s.gameNo && prev.log && s.log.length > prev.log.length) {
     const b = s.log.slice(prev.log.length).find((m) => m.type === 'play' && m.bingo);
@@ -283,7 +286,7 @@ function tilesPayload() { return [...pending].map(([k, p]) => { const [r, c] = k
 function sendPreview() { if (myTurn()) ws.send({ t: 'preview', tiles: tilesPayload() }); else showPreview(null); }
 function showPreview(p) {
   const n = $('#preview');
-  if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tap tiles' : ''; n.className = 'err'; return; }
+  if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tiles' : 'Drag tiles to rearrange'; n.className = 'err'; return; }
   if (p.score != null) { n.innerHTML = `<b>${p.score}</b> points`; n.className = 'score'; }
   else { n.textContent = p.err || ''; n.className = 'err'; }
 }
@@ -336,6 +339,42 @@ function swapRack(a, b) {
   if (i >= 0 && j >= 0) [rack[i], rack[j]] = [rack[j], rack[i]];
 }
 
+// ---- rearranging the rack: drag a tile along the rack, the others slide aside ----
+function overRack(x, y) {
+  const b = $('#rack').getBoundingClientRect();
+  return y > b.top - 24 && y < b.bottom + 40 && x > b.left - 20 && x < b.right + 20;
+}
+function rackIndexAt(x) {
+  const slots = [...document.querySelectorAll('#rack .rslot')];
+  let best = 0, bd = Infinity;
+  slots.forEach((sl, i) => { const b = sl.getBoundingClientRect(); const d = Math.abs(x - (b.left + b.width / 2)); if (d < bd) { bd = d; best = i; } });
+  return Math.min(best, Math.max(0, rack.length - 1));
+}
+function previewRackOrder(d) {
+  const slots = [...document.querySelectorAll('#rack .rslot')];
+  const id = d.src.from === 'rack' ? d.src.id : pending.get(d.src.key)?.id;
+  const si = rack.findIndex((t) => t.id === id), ti = d.rackIdx;
+  if (ti == null || si < 0 || slots.length < 2) { clearRackPreview(); return; }
+  const w = slots[1].getBoundingClientRect().left - slots[0].getBoundingClientRect().left;
+  slots.forEach((sl, i) => {
+    let dx = 0;
+    if (i === si) dx = (ti - si) * w;
+    else if (si < ti && i > si && i <= ti) dx = -w;
+    else if (ti < si && i >= ti && i < si) dx = w;
+    sl.style.transform = dx ? `translateX(${dx}px)` : '';
+    sl.classList.toggle('gap', i === si);
+  });
+}
+function clearRackPreview() {
+  document.querySelectorAll('#rack .rslot').forEach((sl) => { sl.style.transform = ''; sl.classList.remove('gap'); });
+}
+function moveInRack(id, to) {
+  const i = rack.findIndex((t) => t.id === id);
+  if (i < 0 || to == null || i === to) return;
+  const [t] = rack.splice(i, 1);
+  rack.splice(to, 0, t);
+}
+
 // ---- drag & drop (pointer events) ----
 let drag = null, dragJustEnded = false;
 function attachDrag(tile, src) {
@@ -354,7 +393,9 @@ function attachDrag(tile, src) {
     }
     drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
     document.querySelectorAll('.drop-target').forEach((n) => n.classList.remove('drop-target'));
-    const cell = cellAt(e.clientX, e.clientY - 40);
+    drag.rackIdx = overRack(e.clientX, e.clientY) ? rackIndexAt(e.clientX) : null;
+    previewRackOrder(drag);
+    const cell = drag.rackIdx == null && cellAt(e.clientX, e.clientY - 40);
     if (cell) cell.classList.add('drop-target');
   });
   const end = async (e) => {
@@ -368,7 +409,13 @@ function attachDrag(tile, src) {
       return;
     }
     dragJustEnded = true; setTimeout(() => (dragJustEnded = false), 50);
+    clearRackPreview();
     if (e.type === 'pointercancel') return;
+    if (d.rackIdx != null) { // dropped on the rack: move the tile to that spot (back from the board too)
+      const id = d.src.from === 'rack' ? d.src.id : pending.get(d.src.key)?.id;
+      if (d.src.from === 'board') pending.delete(d.src.key);
+      moveInRack(id, d.rackIdx); selected = null; onTilesChanged(); return;
+    }
     const cell = cellAt(e.clientX, e.clientY - 40);
     const slot = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('rslot'));
     const id = d.src.from === 'rack' ? d.src.id : pending.get(d.src.key)?.id;

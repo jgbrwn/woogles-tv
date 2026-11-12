@@ -1,60 +1,120 @@
 # Woogles-TV
 
-Living-room crossword board game: the **TV** shows the board, each **phone** is a private rack and controller.
-Rules, scoring, dictionaries (NWL23, CSW24) and the computer opponent come from
-[Macondo](https://github.com/domino14/macondo), the engine behind [Woogles.io](https://woogles.io).
-The look follows Woogles.io (Mulish / Fjalla One / Roboto Mono, its board and tile palettes) with six themes.
+**A living-room crossword board game: the board is on your TV, your tiles are on your phone.**
 
-Live: **https://woogles-tv.exe.xyz/**
+Woogles-TV puts a full-size, tournament-rules crossword board on any TV (an Android TV / Google TV app, Chromecast,
+or just a browser) while each player holds a private rack on their phone. Play a friend on the couch, or take on
+the computer. Rules, scoring, the NWL23 and CSW24 dictionaries and the computer opponents all come from
+[Macondo](https://github.com/domino14/macondo), the engine behind [Woogles.io](https://woogles.io), and the look
+follows Woogles.io too.
 
-## Getting the board on the TV (pick one)
-1. **Android TV / Google TV app** (Onn 4K etc.): sideload `android/out/woogles-tv.apk`, see `/app` or `android/README.md`.
-2. **Cast from a phone** (Chrome on Android → Chromecast built-in): needs a one-time Cast receiver registration, see `CAST.md`.
-3. **Any browser** on the TV or a laptop plugged into it: open `/tv` full-screen.
+It's a single Go binary with the web app built in. Run it on a $5 VPS, in Docker, or on a Raspberry Pi in the
+closet.
 
-**TV-first:** the TV shows a QR code and a 6-letter code; phones scan it (or open `/` and type the code).
-**Phone-first:** tap *Start a new game* on a phone, then *Show on TV* and type the code the TV app/browser is
-showing (the TV switches to your game; if it is mid-game it asks first). Invite the other player with the room QR.
-**Several games:** the code in the TV's corner is always the code of the game on screen. To start another game
-press OK → *New game*; earlier games stay listed under OK → *Games on this TV* (switch back with the remote), and
-each phone lists its games on the home page (*Your games*), where *Show on TV* can bring one back. Unfinished games
-are kept 7 days. Anyone with the room link who isn't seated can watch (board and scores only, never racks).
-*Your games* has Active / Finished tabs (finished, left, or idle 3+ days counts as finished); ✕ removes a game from
-that phone, ◀ ▶ + OK removes one from the TV list, and games the server has expired disappear from both on their own.
-The home screen has its own Appearance (Auto follows the phone's light/dark mode); games keep their chosen theme.
-Installable as a PWA (Chrome menu → Install app, or the *Install* button on the home page).
+![The TV during a game](docs/screenshots/tv-game.png)
 
-## Game options (chosen on a phone before the game)
-- Dictionary: NWL23 (default) or CSW24. Invalid words are rejected with no penalty (void challenge).
-- Computer: BeginnerBot, BasicBot, BetterBot (default), STEEBot or HastyBot (Woogles' bot ladder).
-- Clock: off (default) or 15 min to 2 h in 15-minute steps per player for the whole game, NASPA overtime rules:
-  10 points per minute (or part) over; going more than 10 minutes over ends the game as a loss with −100,
-  and the opponent is raised to win by 1 if needed. Any player can pause/resume from the ☰ menu.
-- Theme: Woogles, Woogles Dark, Balsa, Forest, Pastel, Midnight (TV remote: OK → Theme).
-- Tentative tiles stay on the placing phone (with the live score); the TV only shows submitted moves.
+<p align="center">
+  <img src="docs/screenshots/phone-game.png" width="250" alt="A phone with tiles placed and a live score">
+  <img src="docs/screenshots/phone-scorecard.png" width="250" alt="The phone's scorecard overlay">
+  <img src="docs/screenshots/phone-lobby.png" width="250" alt="Choosing the dictionary, clock and computer strength">
+</p>
 
-## Run / deploy
-    go build -o woogles-tv . && sudo systemctl restart woogles-tv
-- Systemd unit: `deploy/woogles-tv.service` (copy to `/etc/systemd/system/`). Optional env file
-  `deploy/woogles-tv.env` (gitignored) for `CAST_APP_ID=...`.
-- `PUBLIC_URL` sets the URL encoded in QR codes. `WT_DEV=1` serves `web/` from disk for live editing.
-- Lexicon files download automatically into `data/lexica` on first start. Rooms and games are saved
-  in `data/rooms/` and survive restarts.
-- `go test ./...`; `go run ./tools/sim -code CODE -key JOINKEY` plays a dummy player vs the bot for visual testing.
+## Features
 
-## Security model
-- Each room has a short **code** (6 letters, for typing), a 128-bit **join key** (in the QR link's `#fragment`,
-  so it never appears in server logs or referrers) and a separate 128-bit **TV key** held only by the TV.
-- WebSockets require the join key (players), a seat token (reconnect), or the TV key (TV role).
-- *Show on TV* sends the TV this room's TV key; the phone learns nothing about the TV's own room. It is
-  rate limited per room and globally, needs a seated player, and a TV in a game asks before switching.
-- Typing a code (`/api/join`) is rate limited per IP and globally; room creation is rate limited; rooms are capped.
-- Strict CSP, no framing, no-referrer, nosniff, HSTS; WS origin check; message size/rate limits; idle rooms expire
-  after 72 h; the service runs sandboxed by systemd.
+**At the TV**
+- A big, readable 15×15 board with coordinates, the last move highlighted, tiles that drop in, and score pop-ups.
+- Player cards with scores, the player on turn, an optional chess clock, tiles left in the bag, and a running scorecard.
+- Full-screen **BINGO!** celebration with confetti and a fanfare.
+- Driven entirely by the TV remote (D-pad + OK): theme, sound, **Games on this TV** (switch between games in progress), new game.
+- Your tiles never appear on the TV; only submitted moves do.
 
-## Phone controls
-Tap a square (tap again to flip →/↓), then tap rack tiles to type them in, or drag tiles onto the board.
-Tap a placed tile to take it back; tap two rack tiles to swap them. ☰ has unseen tiles, clock pause, theme,
-cast, resign and end game.
+**On your phone** (any modern browser; installable as an app/PWA)
+- Tap a square (tap again to flip → / ↓), then tap tiles to type them in, or drag tiles onto the board.
+- **⌫ Back** takes back the last tile; **Recall** clears the board and returns the cursor to where you started.
+- **Drag tiles along your rack to rearrange them** (the others slide aside), or **Shuffle**.
+- A live score of your tentative move, visible only to you. Invalid words are rejected before they're played.
+- 📋 scorecard overlay, 🔍 board zoom, unseen tiles (bag + opponent), swap, pass, blanks, pause, resign, rematch.
+- *Your games*: every game on this phone with live status (Your turn / In progress / Finished), a filter, and removal.
+- Join as a spectator: anyone with the link who isn't seated sees the board and scores, never the racks.
 
-License: GPL-3.0 (derived from Macondo). Fonts: SIL OFL. See PLAN.md for the roadmap.
+**Game rules & options**
+- Dictionaries: **NWL23** (NASPA Word List 2023, default) or **CSW24** (Collins Scrabble Words 2024).
+- **Void challenge**: phony words are refused with no penalty, so you just try again.
+- Computer opponents from the Woogles ladder: BeginnerBot, BasicBot, **BetterBot** (default), STEEBot, HastyBot.
+- Optional per-player clock for the whole game (15 min to 2 h, in 15-minute steps) with **NASPA overtime**:
+  −10 points per minute or part of a minute over, and more than 10 minutes over loses the game.
+- Six themes (Woogles, Woogles Dark, Balsa, Forest, Pastel, Midnight), shared by the TV and the phones.
+
+**Getting the board on a TV: pick any**
+1. **Android TV / Google TV app** (e.g. Onn 4K, Chromecast with Google TV, Shield): a tiny WebView launcher, [android/](android/README.md).
+2. **Cast from Chrome on Android** to any Chromecast device. Needs a one-time Cast app ID, see [docs/CAST.md](docs/CAST.md).
+3. **Any browser** on a smart TV, a laptop plugged into the TV, or a Fire TV browser: open `/tv` full-screen.
+
+Then either scan the TV's QR code with your phones (*TV-first*), or start a game on a phone and type the TV's code
+under **Show on TV** (*phone-first*).
+
+<p align="center">
+  <img src="docs/screenshots/tv-lobby.png" width="49%" alt="The TV lobby with its QR code and TV code">
+  <img src="docs/screenshots/tv-bingo.png" width="49%" alt="A bingo celebration on the TV">
+  <img src="docs/screenshots/tv-game-midnight.png" width="49%" alt="The Midnight theme">
+  <img src="docs/screenshots/tv-games-list.png" width="49%" alt="Switching between games with the TV remote">
+</p>
+
+## Quick start
+
+```sh
+git clone https://github.com/jgbrwn/woogles-tv && cd woogles-tv
+go build -o woogles-tv .          # Go 1.27+
+./woogles-tv                      # http://localhost:8420/  (word lists download on first start, ~15 MB)
+```
+
+Open `http://<your-computer's-IP>:8420/tv` on the TV (or a second browser window), then scan the QR code with a
+phone on the same network. To look around without a second person, run `./woogles-tv -demo 14`: it seeds a game
+in progress against STEEBot and prints a TV link and a phone link.
+
+**Docker:**
+
+```sh
+docker compose up -d              # builds the image (word lists included) and serves :8420
+```
+
+## Documentation
+
+| | |
+|---|---|
+| [User guide](docs/USER-GUIDE.md) | How to play: starting games, phone controls, TV remote, clocks, bots, several games per TV |
+| [Deployment](docs/DEPLOY.md) | Any server: binary, systemd, Docker, reverse proxies (Caddy/nginx), TLS, configuration, upgrades, backups |
+| [Home network / Raspberry Pi](docs/LOCAL-NETWORK.md) | Running it on your LAN: Pi setup, addresses, local DNS, HTTPS options and caveats |
+| [Android TV app](android/README.md) | Building the launcher for your own server, signing, sideloading, remote keys |
+| [Google Cast](docs/CAST.md) | Registering a Cast receiver so phones can cast the board |
+| [Architecture](docs/ARCHITECTURE.md) | How it works: rooms, credentials, WebSocket protocol, persistence, security model |
+| [Development](docs/DEVELOPMENT.md) | Hacking on it: dev mode, demo games, tests, code tour, adding themes |
+| [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | Ideas, how to help, reporting vulnerabilities |
+
+## Tech stack
+
+- **Server:** Go (standard library `net/http`), [coder/websocket](https://github.com/coder/websocket),
+  [Macondo](https://github.com/domino14/macondo) + [word-golib](https://github.com/domino14/word-golib) for rules,
+  move validation, scoring and bots, [go-qrcode](https://github.com/skip2/go-qrcode). Rooms are kept in memory and
+  saved as JSON files. No database, no external services at runtime.
+- **Web:** plain HTML, CSS and ES modules, with no framework and no build step, embedded into the binary. Sounds are
+  synthesized with Web Audio. The PWA has a service worker and a manifest. Fonts: Mulish, Fjalla One, Roboto Mono (self-hosted).
+- **TV:** an Android WebView launcher (Java, no Gradle; `android/build.sh`), plus a Google Cast Web Receiver page.
+
+## Live instance
+
+The author's instance runs at **https://woogles-tv.exe.xyz/** (on [exe.dev](https://exe.dev)). Feel free to try it;
+for regular use, please host your own. It's easy and cheap, see [docs/DEPLOY.md](docs/DEPLOY.md).
+
+## Credits & license
+
+Woogles-TV is free software under the **GNU Affero General Public License v3.0**, see [LICENSE](LICENSE). If you run a
+modified version for others over a network, you must offer them its source. The links in the app footer to this
+repository are one easy way to do that.
+
+It builds on [Macondo](https://github.com/domino14/macondo) and [word-golib](https://github.com/domino14/word-golib)
+(GPL-3.0) by César Del Solar and contributors, and its look is modelled on
+[Woogles.io / liwords](https://github.com/woogles-io/liwords) (AGPL-3.0). Word lists are downloaded from the Woogles
+repository at runtime and are not part of this repository. NWL23 is © NASPA and CSW24 is © HarperCollins; please respect
+their terms. Woogles-TV is an independent project, not affiliated with or endorsed by Woogles.io, NASPA, Collins,
+Hasbro or Mattel. "Scrabble" is a trademark of its owners. See [NOTICE](NOTICE) for details.

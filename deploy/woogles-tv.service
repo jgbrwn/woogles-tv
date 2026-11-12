@@ -1,3 +1,10 @@
+# Generic systemd unit. Assumes the binary and data live in /opt/woogles-tv and run as user "woogles":
+#   sudo useradd --system --home /opt/woogles-tv --shell /usr/sbin/nologin woogles
+#   sudo install -d -o woogles -g woogles /opt/woogles-tv /opt/woogles-tv/data
+#   sudo cp woogles-tv /opt/woogles-tv/ && sudo cp -r data/letterdistributions data/strategy /opt/woogles-tv/data/
+#   sudo chown -R woogles:woogles /opt/woogles-tv/data
+#   sudo cp deploy/woogles-tv.service /etc/systemd/system/ && sudo systemctl enable --now woogles-tv
+# Adjust paths, PUBLIC_URL and the port to taste. See docs/DEPLOY.md.
 [Unit]
 Description=Woogles-TV living-room crossword game server
 After=network-online.target
@@ -5,20 +12,22 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=exedev
-WorkingDirectory=/home/exedev/woogles-tv
-ExecStart=/home/exedev/woogles-tv/woogles-tv -addr :8420 -data /home/exedev/woogles-tv/data
-Environment=PUBLIC_URL=https://woogles-tv.exe.xyz
-# Set CAST_APP_ID to the Google Cast receiver App ID to enable "Cast to TV" (see CAST.md):
-EnvironmentFile=-/home/exedev/woogles-tv/deploy/woogles-tv.env
+User=woogles
+Group=woogles
+WorkingDirectory=/opt/woogles-tv
+ExecStart=/opt/woogles-tv/woogles-tv -addr :8420 -data /opt/woogles-tv/data
+# The URL phones use to reach the server (encoded in the TV's QR code). Omit to derive it from requests.
+#Environment=PUBLIC_URL=https://woogles-tv.example.com
+# Optional settings such as CAST_APP_ID=... (see docs/CAST.md):
+EnvironmentFile=-/opt/woogles-tv/woogles-tv.env
 Restart=always
 RestartSec=2
 
 # Hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/home/exedev/woogles-tv/data
+ProtectHome=true
+ReadWritePaths=/opt/woogles-tv/data
 PrivateTmp=true
 PrivateDevices=true
 ProtectKernelTunables=true

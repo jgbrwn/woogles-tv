@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
         box.addView(input);
         final AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Server URL")
-                .setMessage("e.g. https://woogles-tv.exe.xyz/tv?app=1 (a bare host name also works)")
+                .setMessage("e.g. https://games.example.com or http://192.168.1.20:8420 (a bare host name means https)")
                 .setView(box)
                 .setPositiveButton("Save", new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface di, int which) {

@@ -58,15 +58,38 @@ func main() {
 	addr := flag.String("addr", ":8420", "listen address")
 	data := flag.String("data", "./data", "macondo data path (lexica etc.); rooms are saved in DATA/rooms")
 	apk := flag.String("apk", "./android/out/woogles-tv.apk", "Android TV APK to serve at /app/woogles-tv.apk")
+	demo := flag.Int("demo", 0, "seed a demo game with this many moves played and print TV/phone links (for trying the UI)")
+	fetchOnly := flag.Bool("fetch-only", false, "download the word lists into DATA/lexica and exit (for offline installs and Docker builds)")
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	if err := initEngine(*data); err != nil {
 		slog.Error("engine init", "err", err)
 		os.Exit(1)
 	}
+	if *fetchOnly {
+		if err := FetchAll(); err != nil {
+			slog.Error("fetch", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("word lists ready", "dir", filepath.Join(*data, "lexica"))
+		return
+	}
 	if err := loadRooms(filepath.Join(*data, "rooms")); err != nil {
 		slog.Error("load rooms", "err", err)
 		os.Exit(1)
+	}
+	if *demo > 0 {
+		base := os.Getenv("PUBLIC_URL")
+		if base == "" {
+			base = "http://localhost" + *addr
+			if !strings.HasPrefix(*addr, ":") {
+				base = "http://" + *addr
+			}
+		}
+		if err := seedDemo(strings.TrimRight(base, "/"), *demo); err != nil {
+			slog.Error("demo", "err", err)
+			os.Exit(1)
+		}
 	}
 	go reapRooms()
 	go clockWatch()
