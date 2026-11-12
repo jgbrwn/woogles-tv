@@ -1,7 +1,10 @@
 package main
 
 import (
+	"strings"
 	"testing"
+
+	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"time"
 )
 
@@ -53,7 +56,7 @@ func TestTimeLoss(t *testing.T) {
 	r.seats = [2]*Seat{{Name: "A"}, {Name: "B"}}
 	eng, _ := NewEngine("NWL23", [2]string{"A", "B"})
 	for i := 0; i < 4; i++ {
-		eng.BotMove()
+		eng.BotMove(pb.BotRequest_HASTY_BOT)
 	}
 	r.m = &Match{eng: eng, Clock: &Clock{InitialMs: 60000, Remaining: [2]int64{-610000, 30000}, Running: 0, since: time.Now()}}
 	before0, before1 := r.score(0), r.score(1)
@@ -75,11 +78,37 @@ func TestNormalEndPenalties(t *testing.T) {
 	eng, _ := NewEngine("NWL23", [2]string{"A", "B"})
 	r.m = &Match{eng: eng, Clock: &Clock{InitialMs: 60000, Remaining: [2]int64{-61000, 5000}, Running: 0, since: time.Now()}}
 	for i := 0; i < 100 && !eng.Over(); i++ {
-		eng.BotMove()
+		eng.BotMove(pb.BotRequest_HASTY_BOT)
 	}
 	raw0 := eng.Score(r.engIdx(0))
 	r.afterMoveLocked("bot", 0)
 	if r.score(0) != raw0-20 || r.m.Adj[1] != 0 {
 		t.Fatalf("expected -20 for 61s overtime, got adj %v", r.m.Adj)
+	}
+}
+
+func TestLinkTV(t *testing.T) {
+	tvRoom := newTestRoom(t)
+	phoneRoom := newTestRoom(t)
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 4)}
+	tvRoom.clients[tv] = true
+	if err := linkTV(phoneRoom.Code, phoneRoom, "Pat"); err == nil {
+		t.Fatal("linking to its own room should fail")
+	}
+	if err := linkTV("ZZZZZZ", phoneRoom, "Pat"); err == nil {
+		t.Fatal("unknown TV code should fail")
+	}
+	if err := linkTV(tvRoom.Code, phoneRoom, "Pat"); err != nil {
+		t.Fatal(err)
+	}
+	msg := string(<-tv.send)
+	if !strings.Contains(msg, phoneRoom.TVKey) || !strings.Contains(msg, `"ask":false`) {
+		t.Fatalf("unexpected switch message %s", msg)
+	}
+	eng, _ := NewEngine("NWL23", [2]string{"A", "B"})
+	tvRoom.m = &Match{eng: eng}
+	linkTV(tvRoom.Code, phoneRoom, "Pat")
+	if msg := string(<-tv.send); !strings.Contains(msg, `"ask":true`) {
+		t.Fatalf("TV mid-game should be asked first: %s", msg)
 	}
 }

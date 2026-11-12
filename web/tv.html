@@ -44,7 +44,8 @@
     </div>
     <div class="lobbyRight">
       <div class="qrBox"><img id="qr" alt="QR code to join"></div>
-      <p class="manual">No camera? Go to <b class="host"></b><br>and enter code <b class="code"></b></p>
+      <div class="manual"><div>TV code</div><b class="code big"></b>
+        <div class="small">No camera? Enter it at <b class="host"></b><br>Game started on a phone? Enter it there under <b>Show on TV</b></div></div>
     </div>
   </div>
   <div class="lobbyFoot muted">Press <b>OK</b> on the remote for options · Rules &amp; dictionary by Macondo, the Woogles.io engine</div>
@@ -74,6 +75,11 @@
   <div class="logo big"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
   <p class="hint" style="font-size:3vh;margin-top:4vh">Connecting to your phone<span class="thinking"><i></i><i></i><i></i></span></p>
 </div>
+<div id="switchAsk" class="overlay hidden"><div class="menuCard" style="text-align:center">
+  <div class="cardTitle">Switch games?</div><p style="font-size:3vh;margin:1vh 0 3vh"><b id="switchFrom"></b> wants to show their game on this TV.</p>
+  <button class="mitem focus" id="switchYes">Switch to their game</button><button class="mitem" id="switchNo">Keep this game</button>
+</div></div>
+<div id="bingo" class="hidden"></div>
 <div id="soundHint" class="hidden">🔊 Click or press any key to enable sound</div>
 <div id="conn" class="hidden">Reconnecting…</div>
 <script type="module" src="/static/tv.js"></script>

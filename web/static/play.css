@@ -99,3 +99,15 @@ body.phone { overflow: hidden; height: 100dvh; user-select: none; -webkit-user-s
 #conn { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); background: var(--bad); color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 800; z-index: 70; }
 body.phone #toasts { top: auto; bottom: 34%; }
 body.phone .toast { max-width: 90vw; text-align: center; }
+.seg.wrap { flex-wrap: wrap; }
+#timeSeg { display: grid; grid-template-columns: repeat(5, 1fr); }
+#timeSeg button { padding: .55em .1em; font-size: 13px; }
+#botSeg button { font-size: 13px; padding: .55em .2em; }
+.tvState { font-size: 16px; text-align: left; }
+.linkRow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.linkRow input { font: inherit; font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 20px; letter-spacing: .2em; text-align: center; text-transform: uppercase;
+  padding: 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--card2); color: var(--ink); min-width: 0; }
+.linkRow input:focus { outline: none; border-color: var(--primary); }
+#tvBox small { text-align: left; }
+.inviteQR { width: min(70vw, 260px); aspect-ratio: 1; margin: 0 auto; background: #fff; border-radius: 12px; padding: 6px; }
+#bingo { font-size: 16px; }

@@ -1,4 +1,5 @@
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES } from './common.js';
+import { confetti } from './confetti.js';
 import { castAvailable, castRoom, castSession, NS } from './cast.js';
 
 const $ = (s) => document.querySelector(s);
@@ -8,6 +9,7 @@ const tokKey = 'wt_tok_' + code, keyKey = 'wt_key_' + code;
 const frag = new URLSearchParams(location.hash.slice(1));
 if (frag.get('k')) { localStorage.setItem(keyKey, frag.get('k')); history.replaceState(null, '', location.pathname); }
 let recvAt = 0;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 let s = null;                 // latest server state
 let cells = null, gameNo = -1, logLen = -1;
 let rack = [];                // [{id, ch}] in display order; ch is 'A'..'Z' or '?'
@@ -36,6 +38,7 @@ function onMsg(m) {
   else if (m.t === 'joined') { localStorage.setItem(tokKey, m.token); ws.params.token = m.token; }
   else if (m.t === 'error') { toast(m.msg, 'bad'); navigator.vibrate?.(80); }
   else if (m.t === 'preview') showPreview(m.preview);
+  else if (m.t === 'notice') toast(m.msg, 'good');
   else if (m.t === 'event' && s) {
     const nm = s.seats?.[m.seat]?.name || '';
     if (m.kind === 'pause' && m.seat !== s.you) toast(`${nm} paused the clock`);
@@ -72,15 +75,22 @@ function render(st) {
   renderPending();
   show('game');
   const mine = myTurn();
+  if (prev && prev.gameNo === s.gameNo && prev.log && s.log.length > prev.log.length) {
+    const b = s.log.slice(prev.log.length).find((m) => m.type === 'play' && m.bingo);
+    if (b) celebrateBingo(b, names()[b.player], b.player === s.you);
+  }
   if (mine && !wasMyTurn && prev) { navigator.vibrate?.([60, 60, 60]); sfx.turn(); }
   wasMyTurn = mine;
 }
 
-const TIME_LABEL = (m) => m ? (m % 60 ? `${m}m` : `${m / 60}h`) : 'Off';
+const TIME_LABEL = (m) => !m ? 'Off' : m < 60 ? `${m}m` : m % 60 ? `${Math.floor(m / 60)}h${m % 60}` : `${m / 60}h`;
 function renderLobby() {
   const seated = s.you >= 0;
   $('#seatedBox').classList.toggle('hidden', !seated);
+  $('#tvBox').classList.toggle('hidden', !seated);
+  $('#leaveBtn').classList.toggle('hidden', !seated);
   $('#joinBox').classList.toggle('hidden', seated);
+  localStorage.setItem('wt_last', JSON.stringify({ code, at: Date.now() }));
   if (!seated) {
     const box = $('#seatBtns'); box.innerHTML = '';
     s.seats.forEach((seat, i) => {
@@ -104,6 +114,14 @@ function renderLobby() {
   seg($('#timeSeg'), s.timeOptions.map((t) => [t, TIME_LABEL(t)]), st.timeMin, (v) => ws.send({ t: 'settings', timeMin: +v }));
   $('#timeHelp').textContent = st.timeMin ? `${st.timeMin} minutes each. Overtime costs 10 points per minute; more than 10 minutes over loses.` : 'No clock — take as long as you like.';
   renderThemes($('#themeRow'));
+  const showBots = !other.taken || other.bot;
+  $('#botField').classList.toggle('hidden', !showBots);
+  if (showBots) {
+    seg($('#botSeg'), s.bots.map((b) => [b.id, b.name.replace('Bot', '')]), st.bot, (v) => ws.send({ t: 'settings', bot: v }));
+    const lv = s.bots.find((b) => b.id === st.bot);
+    $('#botHelp').textContent = lv ? `${lv.name}: ${lv.desc}` : '';
+  }
+  renderTV();
   $('#startBtn').disabled = !other.taken;
   $('#startBtn').textContent = other.taken ? 'Start game' : 'Waiting for an opponent…';
   $('#botBtn').textContent = other.bot ? 'Remove computer' : '🤖 Play vs computer';
@@ -142,6 +160,30 @@ async function doCast() {
   try { toast(`Casting to ${await castRoom(code, tvKey)}`, 'good'); } catch (e) { toast(e?.message || 'Casting was cancelled', 'bad'); }
 }
 $('#castBtn').onclick = doCast;
+
+// ---- TV linking (phone-first games) & invites ----
+function renderTV() {
+  const on = s.tvs > 0;
+  $('#tvState').innerHTML = on ? '<span class="dot on"></span> <b>On the TV</b> — the board is showing' : '<b>📺 Show this game on a TV</b>';
+  $('#linkForm').classList.toggle('hidden', on);
+  $('#linkHelp').classList.toggle('hidden', on);
+}
+$('#tvCode').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+$('#linkForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const c = $('#tvCode').value.trim();
+  if (c.length !== 6) { toast('Type the 6-letter code from the TV screen', 'bad'); return; }
+  ws.send({ t: 'linktv', code: c });
+});
+$('#inviteBtn').onclick = () => {
+  const url = s.joinUrl;
+  openModal(`<h3>Invite the other player</h3><p class="muted" style="margin:0">Have them scan this with their phone camera</p>
+    <img class="inviteQR" src="/qr?d=${encodeURIComponent(url)}" alt="QR code">
+    <p class="muted" style="margin:0">or go to <b>${esc(location.host)}</b> and enter <b class="code">${esc(code)}</b></p>
+    ${navigator.share ? '<button class="btn primary" id="shareBtn">Share link…</button>' : '<button class="btn primary" id="copyBtn">Copy link</button>'}`);
+  $('#shareBtn')?.addEventListener('click', () => navigator.share({ title: 'Woogles-TV', text: 'Join my Woogles-TV game', url }).catch(() => {}));
+  $('#copyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(url).then(() => toast('Link copied', 'good')));
+};
 $('#botBtn').onclick = () => ws.send({ t: s.seats[1 - s.you].bot ? 'removebot' : 'addbot' });
 $('#startBtn').onclick = () => { sfx.ctx(); ws.send({ t: 'start' }); };
 $('#leaveBtn').onclick = () => { ws.send({ t: 'leave' }); localStorage.removeItem(tokKey); ws.params.token = ''; };
@@ -384,13 +426,25 @@ $('#rematchBtn').onclick = () => ws.send({ t: 'start' });
 $('#lobbyBtn').onclick = () => ws.send({ t: 'end' });
 $('#ovBoardBtn').onclick = () => { overDismissed = s.gameNo; $('#over').classList.add('hidden'); toast('Tap ☰ for rematch', '', 2000); };
 
+function celebrateBingo(m, who, mine) {
+  const box = $('#bingo');
+  const word = (m.words?.[0] || '').toUpperCase();
+  box.innerHTML = `<div class="bcard"><div class="btitle">BINGO!</div><div class="bword">${[...word].map((ch) => tileEl(ch).outerHTML).join('')}</div>
+    <div class="bscore">+${m.score}</div><div class="bwho">${mine ? 'You played all 7 tiles!' : esc(who) + ' played all 7 tiles'}</div></div>` + confetti(40);
+  box.classList.remove('hidden'); sfx.bingo(); navigator.vibrate?.([80, 40, 80, 40, 160]);
+  clearTimeout(celebrateBingo.t); celebrateBingo.t = setTimeout(() => box.classList.add('hidden'), 3400);
+}
+$('#bingo').onclick = () => $('#bingo').classList.add('hidden');
+
 // ---- menu ----
 $('#menuBtn').onclick = () => {
   const playing = s.phase === 'playing', timed = !!s.clock;
   openModal(`<h3>Menu</h3><div class="menuList">
     <button class="btn" data-a="unseen">🔤 Unseen tiles</button>
     ${playing && timed ? `<button class="btn" data-a="pause">${s.clock.paused ? '▶ Resume clock' : '⏸ Pause clock'}</button>` : ''}
-    ${canCast ? '<button class="btn" data-a="cast">📺 Cast board to TV</button>' : ''}
+    ${s.tvs ? '' : '<button class="btn" data-a="tv">📺 Show on a TV</button>'}
+    ${canCast ? '<button class="btn" data-a="cast">📡 Cast board to TV</button>' : ''}
+    <button class="btn" data-a="invite">📨 Invite / room QR</button>
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
     ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
@@ -399,6 +453,8 @@ $('#menuBtn').onclick = () => {
     const a = b.dataset.a; closeModal(null);
     if (a === 'unseen') showUnseen();
     else if (a === 'cast') doCast();
+    else if (a === 'invite') $('#inviteBtn').click();
+    else if (a === 'tv') linkPrompt();
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }
@@ -406,6 +462,13 @@ $('#menuBtn').onclick = () => {
     else if (a === 'end' && confirm('End this game and go back to the lobby?')) ws.send({ t: 'end' });
   });
 };
+function linkPrompt() {
+  openModal(`<h3>Show on a TV</h3><p class="muted" style="margin:0">Type the 6-letter code shown on the TV</p>
+    <form id="mLink" class="linkRow"><input id="mTvCode" maxlength="6" placeholder="TV CODE" autocomplete="off" autocapitalize="characters"><button class="btn primary">Show</button></form>`);
+  const inp = $('#mTvCode'); inp.focus();
+  inp.addEventListener('input', () => { inp.value = inp.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+  $('#mLink').addEventListener('submit', (e) => { e.preventDefault(); ws.send({ t: 'linktv', code: inp.value.trim() }); closeModal(null); });
+}
 function showUnseen() {
   const u = s.unseen || {}; const keys = Object.keys(u).sort((a, b) => (a === '?') - (b === '?') || a.localeCompare(b));
   const total = Object.values(u).reduce((a, b) => a + b, 0);

@@ -1,5 +1,6 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
-  applyTheme, paintTimer, sfx, THEME_NAMES } from './common.js';
+  applyTheme, paintTimer, sfx, THEME_NAMES, tileEl } from './common.js';
+import { confetti } from './confetti.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -104,8 +105,8 @@ function render(s) {
     for (const m of s.log.slice(prev.log.length)) {
       if (m.type === 'play') {
         sfx.play(fresh.size || 1);
-        if (m.bingo) sfx.bingo();
-        showScorePop(m, last);
+        if (m.bingo) setTimeout(() => celebrateBingo(m, names[m.player]), 700);
+        else showScorePop(m, last);
       } else if (m.type === 'pass') { sfx.pass(); toast(`${names[m.player]} passed`); }
       else if (m.type === 'exchange') { sfx.pass(); toast(`${names[m.player]} exchanged ${m.count}`); }
     }
@@ -156,6 +157,15 @@ function showScorePop(m, squares) {
   clearTimeout(showScorePop.t); showScorePop.t = setTimeout(() => pop.classList.add('hidden'), 2500);
 }
 
+function celebrateBingo(m, who) {
+  const box = $('#bingo');
+  const word = (m.words?.[0] || '').toUpperCase();
+  box.innerHTML = `<div class="bcard"><div class="btitle">BINGO!</div><div class="bword">${[...word].map((ch) => tileEl(ch).outerHTML).join('')}</div>
+    <div class="bscore">+${m.score}</div><div class="bwho">${esc(who)} played all 7 tiles</div></div>` + confetti(90);
+  box.classList.remove('hidden'); sfx.bingo();
+  clearTimeout(celebrateBingo.t); celebrateBingo.t = setTimeout(() => box.classList.add('hidden'), 3400);
+}
+
 function tickClocks() {
   const s = state;
   if (!s.seats || s.phase === 'lobby') return;
@@ -192,6 +202,13 @@ function menuAct(act) {
 document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('click', () => menuAct(b.dataset.act)));
 document.addEventListener('keydown', (e) => {
   sfx.ctx(); $('#soundHint').classList.add('hidden');
+  if (pendingSwitch) {
+    const yes = $('#switchYes'), no = $('#switchNo');
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const t = document.activeElement === yes ? no : yes; t.focus(); yes.classList.toggle('focus', t === yes); no.classList.toggle('focus', t === no); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (document.activeElement === no ? no : yes).click(); }
+    else if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); no.click(); }
+    return;
+  }
   const open = !$('#menu').classList.contains('hidden');
   if (!open) {
     if (['Enter', ' ', 'm', 'M', 'ContextMenu'].includes(e.key)) { e.preventDefault(); openMenu(); }
@@ -220,6 +237,7 @@ function startRoom(room) {
   $('#castWait')?.classList.add('hidden');
   ws = connect({ room: room.code, role: 'tv', key: room.tvKey }, (m) => {
     if (m.t === 'state') render(m);
+    else if (m.t === 'switch') onSwitch(m);
     else if (m.t === 'event') {
       const nm = state.seats?.[m.seat]?.name || '';
       if (m.kind === 'rejected') { toast(`${nm}: ${m.msg}`, 'bad'); sfx.bad(); }
@@ -232,6 +250,25 @@ function startRoom(room) {
     if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });
 }
+
+// A phone that started its own game asked to be shown on this TV (it typed our TV code).
+let pendingSwitch = null;
+function onSwitch(m) {
+  const go = () => {
+    const room = { code: m.code, tvKey: m.tvKey };
+    if (!CAST) localStorage.setItem('wt_tv', JSON.stringify(room));
+    $('#switchAsk').classList.add('hidden'); pendingSwitch = null;
+    toast(`Showing ${m.from}'s game`, 'good');
+    startRoom(room);
+  };
+  if (!m.ask) return go();
+  pendingSwitch = go;
+  $('#switchFrom').textContent = m.from;
+  $('#switchAsk').classList.remove('hidden'); $('#switchYes').focus();
+  clearTimeout(onSwitch.t); onSwitch.t = setTimeout(() => { $('#switchAsk').classList.add('hidden'); pendingSwitch = null; }, 60000);
+}
+$('#switchYes').addEventListener('click', () => pendingSwitch?.());
+$('#switchNo').addEventListener('click', () => { $('#switchAsk').classList.add('hidden'); pendingSwitch = null; });
 
 // Chromecast / Google TV receiver: the phone that cast us sends {t:'room', code, tvKey}.
 function startCastReceiver() {

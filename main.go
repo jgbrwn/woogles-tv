@@ -87,7 +87,6 @@ func main() {
 
 	createLimit := newIPLimiter(20.0/60, 10) // 20 rooms/hour per IP, burst 10
 	joinLimit := newIPLimiter(10, 10)        // 10 code lookups/minute per IP
-	globalJoin := newTokenBucket(5, 100)     // 300/minute across everyone
 	qrLimit := newIPLimiter(60, 30)
 
 	mux := http.NewServeMux()
@@ -108,6 +107,18 @@ func main() {
 	})
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"castAppId": os.Getenv("CAST_APP_ID")})
+	})
+	mux.HandleFunc("GET /manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := fs.ReadFile(sub, "manifest.webmanifest")
+		w.Header().Set("Content-Type", "application/manifest+json")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write(b)
+	})
+	mux.HandleFunc("GET /sw.js", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := fs.ReadFile(sub, "sw.js")
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write(b)
 	})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /app/woogles-tv.apk", func(w http.ResponseWriter, r *http.Request) {

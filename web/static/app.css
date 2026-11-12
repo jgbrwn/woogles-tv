@@ -158,3 +158,25 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; background: 
 .timer.out { background: var(--timer-out-bg); color: var(--timer-out-ink); }
 .timer.idle { opacity: .65; }
 .timer.paused::after { content: " ❚❚"; font-size: .7em; }
+
+/* ---------- bingo celebration ---------- */
+#bingo { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.35); overflow: hidden; animation: bfade 3.4s ease forwards; }
+@keyframes bfade { 0% { opacity: 0; } 6% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; } }
+#bingo .bcard { position: relative; z-index: 2; background: var(--card); color: var(--ink); border-radius: 1.2em; padding: 1em 1.4em; text-align: center; box-shadow: 0 1em 3em rgba(0,0,0,.4);
+  border: .2em solid var(--warn); animation: bpop .7s cubic-bezier(.2,1.5,.4,1); max-width: 94vw; }
+@keyframes bpop { from { transform: scale(.2) rotate(-8deg); opacity: 0; } }
+#bingo .btitle { font-family: "Fjalla One", sans-serif; font-size: 3.2em; line-height: 1; letter-spacing: .04em;
+  background: linear-gradient(90deg, var(--secondary), var(--primary), var(--warn), var(--secondary)); background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 1.6s linear infinite; }
+@keyframes shine { to { background-position: 300% 0; } }
+#bingo .bword { display: flex; justify-content: center; gap: .18em; margin: .5em 0; flex-wrap: wrap; }
+#bingo .bword .tile { position: relative; inset: auto; width: 1.9em; height: 1.9em; animation: bt .5s cubic-bezier(.2,1.5,.4,1) backwards; }
+#bingo .bword .tile:nth-child(2) { animation-delay: .08s; } #bingo .bword .tile:nth-child(3) { animation-delay: .16s; } #bingo .bword .tile:nth-child(4) { animation-delay: .24s; }
+#bingo .bword .tile:nth-child(5) { animation-delay: .32s; } #bingo .bword .tile:nth-child(6) { animation-delay: .4s; } #bingo .bword .tile:nth-child(7) { animation-delay: .48s; }
+#bingo .bword .tile:nth-child(n+8) { animation-delay: .56s; }
+@keyframes bt { from { transform: translateY(-1.5em) scale(1.5); opacity: 0; } }
+#bingo .bscore { font-size: 2.4em; font-weight: 900; color: var(--good); line-height: 1; }
+#bingo .bwho { color: var(--muted); font-weight: 800; margin-top: .3em; }
+.confetti { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.confetti i { position: absolute; top: -5%; border-radius: 2px; animation-name: fall; animation-timing-function: cubic-bezier(.3,.6,.6,1); animation-fill-mode: both; }
+@keyframes fall { from { transform: translate(0, 0) rotate(0); } to { transform: translate(var(--drift), 115vh) rotate(var(--rot)); } }

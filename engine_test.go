@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+)
 
 func TestEnginePlays(t *testing.T) {
 	if err := initEngine("./data"); err != nil {
@@ -44,7 +48,7 @@ func TestBotGame(t *testing.T) {
 	}
 	e, _ := NewEngine("NWL23", [2]string{"A", "B"})
 	for i := 0; i < 60 && !e.Over(); i++ {
-		if err := e.BotMove(); err != nil {
+		if err := e.BotMove(pb.BotRequest_HASTY_BOT); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -60,7 +64,7 @@ func TestRestore(t *testing.T) {
 	}
 	e, _ := NewEngine("NWL23", [2]string{"A", "B"})
 	for i := 0; i < 6; i++ {
-		if err := e.BotMove(); err != nil {
+		if err := e.BotMove(pb.BotRequest_HASTY_BOT); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -86,7 +90,7 @@ func TestRestore(t *testing.T) {
 		}
 	}
 	for i := 0; i < 80 && !r.Over(); i++ {
-		if err := r.BotMove(); err != nil {
+		if err := r.BotMove(pb.BotRequest_HASTY_BOT); err != nil {
 			t.Fatal(err)
 		}
 	}

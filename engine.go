@@ -72,6 +72,7 @@ type Tile struct {
 type Engine struct {
 	tp      *turnplayer.BaseTurnPlayer
 	bot     *bot.BotTurnPlayer
+	botCode pb.BotRequest_BotCode
 	Lexicon string
 }
 
@@ -394,14 +395,37 @@ func RestoreEngine(lex string, hist []byte) (*Engine, error) {
 	return &Engine{tp: &turnplayer.BaseTurnPlayer{Game: g}, Lexicon: lex}, nil
 }
 
-// BotMove lets Macondo's HastyBot pick and play the best static move for the player on turn.
-func (e *Engine) BotMove() error {
-	if e.bot == nil {
-		b, err := bot.NewBotTurnPlayerFromGame(e.tp.Game, botCfg, pb.BotRequest_HASTY_BOT)
+// BotLevel is a computer opponent, named and calibrated like Woogles.io's bots.
+type BotLevel struct {
+	ID, Name, Desc string
+	Code           pb.BotRequest_BotCode
+}
+
+var BotLevels = []BotLevel{
+	{"beginner", "BeginnerBot", "Easy · sticks to lower-scoring plays", pb.BotRequest_LEVEL1_PROBABILISTIC},
+	{"basic", "BasicBot", "Casual · scores a bit more", pb.BotRequest_LEVEL2_PROBABILISTIC},
+	{"better", "BetterBot", "Medium · a step up from BasicBot", pb.BotRequest_LEVEL3_PROBABILISTIC},
+	{"stee", "STEEBot", "Hard · strong club player", pb.BotRequest_LEVEL4_PROBABILISTIC},
+	{"hasty", "HastyBot", "Expert · always the top static play", pb.BotRequest_HASTY_BOT},
+}
+
+func botLevel(id string) BotLevel {
+	for _, b := range BotLevels {
+		if b.ID == id {
+			return b
+		}
+	}
+	return BotLevels[2]
+}
+
+// BotMove lets a Macondo bot of the given strength pick and play a move for the player on turn.
+func (e *Engine) BotMove(code pb.BotRequest_BotCode) error {
+	if e.bot == nil || e.botCode != code {
+		b, err := bot.NewBotTurnPlayerFromGame(e.tp.Game, botCfg, code)
 		if err != nil {
 			return err
 		}
-		e.bot = b
+		e.bot, e.botCode = b, code
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

@@ -12,11 +12,15 @@ Live: **https://woogles-tv.exe.xyz/**
 2. **Cast from a phone** (Chrome on Android → Chromecast built-in): needs a one-time Cast receiver registration, see `CAST.md`.
 3. **Any browser** on the TV or a laptop plugged into it: open `/tv` full-screen.
 
-Phones scan the QR code on the TV (or open `/` and type the 6-letter code).
+**TV-first:** the TV shows a QR code and a 6-letter code; phones scan it (or open `/` and type the code).
+**Phone-first:** tap *Start a new game* on a phone, then *Show on TV* and type the code the TV app/browser is
+showing (the TV switches to your game; if it is mid-game it asks first). Invite the other player with the room QR.
+Installable as a PWA (Chrome menu → Install app, or the *Install* button on the home page).
 
 ## Game options (chosen on a phone before the game)
 - Dictionary: NWL23 (default) or CSW24. Invalid words are rejected with no penalty (void challenge).
-- Clock: off (default) or 30/60/90/120 minutes per player for the whole game, NASPA overtime rules:
+- Computer: BeginnerBot, BasicBot, BetterBot (default), STEEBot or HastyBot (Woogles' bot ladder).
+- Clock: off (default) or 15 min to 2 h in 15-minute steps per player for the whole game, NASPA overtime rules:
   10 points per minute (or part) over; going more than 10 minutes over ends the game as a loss with −100,
   and the opponent is raised to win by 1 if needed. Any player can pause/resume from the ☰ menu.
 - Theme: Woogles, Woogles Dark, Balsa, Forest, Pastel, Midnight (TV remote: OK → Theme).
@@ -35,6 +39,8 @@ Phones scan the QR code on the TV (or open `/` and type the 6-letter code).
 - Each room has a short **code** (6 letters, for typing), a 128-bit **join key** (in the QR link's `#fragment`,
   so it never appears in server logs or referrers) and a separate 128-bit **TV key** held only by the TV.
 - WebSockets require the join key (players), a seat token (reconnect), or the TV key (TV role).
+- *Show on TV* sends the TV this room's TV key; the phone learns nothing about the TV's own room. It is
+  rate limited per room and globally, needs a seated player, and a TV in a game asks before switching.
 - Typing a code (`/api/join`) is rate limited per IP and globally; room creation is rate limited; rooms are capped.
 - Strict CSP, no framing, no-referrer, nosniff, HSTS; WS origin check; message size/rate limits; idle rooms expire
   after 72 h; the service runs sandboxed by systemd.

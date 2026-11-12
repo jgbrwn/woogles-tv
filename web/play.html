@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#eeeeee"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="referrer" content="no-referrer">
 <title>Woogles-TV — your rack</title>
-<link rel="icon" href="/static/icon.svg">
+<link rel="icon" href="/static/icon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/static/icon-192.png">
 <link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/play.css">
 </head><body class="phone">
 <div id="lobby" class="screen">
@@ -15,16 +15,26 @@
     <label class="field">Your name <input id="name" maxlength="16" autocomplete="nickname" placeholder="Name" enterkeyhint="done"></label>
     <div id="seatBtns"></div>
   </div>
+  <div id="tvBox" class="panel hidden">
+    <div class="tvState" id="tvState"></div>
+    <form id="linkForm" class="linkRow">
+      <input id="tvCode" maxlength="6" placeholder="TV CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code shown on the TV">
+      <button class="btn primary">Show on TV</button>
+    </form>
+    <small class="muted" id="linkHelp">Open Woogles-TV on the TV (app or browser) and type the code it shows.</small>
+    <button id="castBtn" class="btn hidden">📡 Cast to a Chromecast / Google TV</button>
+    <button id="inviteBtn" class="btn">📨 Invite the other player</button>
+  </div>
   <div id="seatedBox" class="panel hidden">
     <div id="matchup"></div>
     <div class="field">Dictionary <div class="seg" id="lexSeg"></div><small class="muted" id="lexHelp"></small></div>
     <div class="field">Clock (per player, whole game) <div class="seg" id="timeSeg"></div><small class="muted" id="timeHelp"></small></div>
+    <div class="field" id="botField">Computer strength <div class="seg wrap" id="botSeg"></div><small class="muted" id="botHelp"></small></div>
     <div class="field">Theme <div id="themeRow" class="themes"></div></div>
-    <button id="castBtn" class="btn big hidden">📺 Cast board to TV</button>
     <button id="startBtn" class="btn primary big">Start game</button>
     <button id="botBtn" class="btn big">🤖 Play vs computer</button>
-    <button id="leaveBtn" class="btn ghost">Leave seat</button>
   </div>
+  <button id="leaveBtn" class="btn ghost hidden">Leave seat</button>
 </div>
 
 <div id="game" class="screen hidden">
@@ -59,6 +69,7 @@
   <p>This link is missing its join key.</p><p class="muted">Scan the QR code on the TV again, or enter the room code.</p>
   <a class="btn primary big" id="noauthLink" href="/">Enter a room code</a>
 </div>
+<div id="bingo" class="hidden"></div>
 <div id="conn" class="hidden">Reconnecting…</div>
 <script type="module" src="/static/play.js"></script>
 </body></html>

@@ -3,11 +3,11 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#eeeeee"><meta name="referrer" content="no-referrer">
 <title>Woogles-TV — living-room word game</title>
-<link rel="icon" href="/static/icon.svg">
+<link rel="icon" href="/static/icon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/static/icon-192.png">
 <link rel="stylesheet" href="/static/app.css">
 <style>
- body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px 16px; text-align: center; }
- main { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 18px; }
+ body { display: flex; min-height: 100vh; padding: 24px 16px; text-align: center; }
+ main { margin: auto; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 18px; }
  .logo { font-size: 52px; }
  .tag { color: var(--muted); font-weight: 600; margin: 0; line-height: 1.5; }
  .panel { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -16,7 +16,7 @@
    padding: 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card2); color: var(--ink); width: 100%; }
  #code:focus { outline: none; border-color: var(--primary); }
  .btn { padding: 15px; font-size: 17px; }
- #err { color: var(--bad); font-weight: 700; min-height: 1.2em; margin: 0; }
+ #err { color: var(--bad); font-weight: 700; margin: 0; } #err:empty { display: none; }
  .tiles { display: flex; justify-content: center; gap: 6px; }
  .tiles span { position: relative; width: 40px; height: 40px; }
  .tiles .tile { inset: 0; }
@@ -24,7 +24,14 @@
 </style></head><body>
 <main>
   <div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
-  <p class="tag">A living-room crossword game. The board lives on your TV,<br>your tiles live on your phone.</p>
+  <p class="tag">A living-room crossword game. The board lives on your TV, your tiles live on your phone.</p>
+  <div class="panel">
+    <h2>Play</h2>
+    <button class="btn primary" id="newBtn" type="button">✨ Start a new game</button>
+    <a class="btn hidden" id="rejoinBtn" href="#">↩ Back to room <b class="code" id="rejoinCode"></b></a>
+    <button class="btn hidden" id="castBtn" type="button">📡 Start a game &amp; cast it to a TV</button>
+    <small class="muted">Start on your phone, then put it on the TV by typing the TV's code — or just play the computer.</small>
+  </div>
   <form class="panel" id="joinForm">
     <h2>Join a game</h2>
     <input id="code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Room code">
@@ -32,11 +39,11 @@
     <p id="err"></p>
   </form>
   <div class="panel">
-    <h2>Set up the TV</h2>
-    <button class="btn primary hidden" id="castBtn" type="button">📲 Cast a new game to your TV</button>
+    <h2>The TV</h2>
     <a class="btn" href="/tv">📺 Open the TV board here</a>
     <a class="btn ghost" href="/app">Android TV / Google TV app</a>
   </div>
+  <button class="btn hidden" id="installBtn" type="button">📲 Install Woogles-TV on this phone</button>
   <small class="muted">Rules, scoring &amp; dictionaries by <a href="https://github.com/domino14/macondo" rel="noopener">Macondo</a>, the engine behind <a href="https://woogles.io" rel="noopener">Woogles.io</a>. NWL23 &amp; CSW24.</small>
 </main>
 <script type="module" src="/static/index.js"></script>

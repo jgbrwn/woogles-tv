@@ -25,7 +25,7 @@ const (
 	maxOvertime       = 10 * time.Minute // NASPA: exceeding 10 min of overtime loses the game
 )
 
-var TimeOptions = []int{0, 30, 60, 90, 120} // minutes per player for the whole game; 0 = untimed
+var TimeOptions = []int{0, 15, 30, 45, 60, 75, 90, 105, 120} // minutes per player for the whole game; 0 = untimed
 
 var Themes = []string{"woogles", "woogles-dark", "balsa", "forest", "pastel", "midnight"}
 
@@ -40,6 +40,7 @@ type Seat struct {
 	Name  string `json:"name"`
 	Token string `json:"token,omitempty"`
 	Bot   bool   `json:"bot,omitempty"`
+	Level string `json:"level,omitempty"` // bot strength id
 }
 
 type PreviewState struct {
@@ -53,6 +54,7 @@ type Settings struct {
 	Lexicon string `json:"lexicon"`
 	TimeMin int    `json:"timeMin"`
 	Theme   string `json:"theme"`
+	Bot     string `json:"bot"` // computer opponent strength
 }
 
 // Clock is a NASPA-style chess clock: each player has a total time bank for the whole game.
@@ -108,13 +110,45 @@ type Room struct {
 	clients map[*Client]bool
 	m       *Match
 	// order[engineIdx] = seat. Swapped on rematch so the other seat starts.
-	order    [2]int
-	settings Settings
-	preview  *PreviewState
-	gameNo   int
-	lastUsed time.Time
-	baseURL  string
-	deleted  bool
+	order     [2]int
+	settings  Settings
+	preview   *PreviewState
+	gameNo    int
+	lastUsed  time.Time
+	baseURL   string
+	deleted   bool
+	linkLimit *tokenBucket
+}
+
+var globalJoin = newTokenBucket(5, 100) // 300/minute across everyone: code lookups + TV links
+
+// linkTV sends room `to` (credentials included) to the TV clients currently showing room `code`.
+func linkTV(code string, to *Room, from string) error {
+	tvRoom := getRoom(code)
+	if tvRoom == to {
+		return errors.New("That TV is already showing this game")
+	}
+	if tvRoom == nil {
+		time.Sleep(300 * time.Millisecond)
+		return errors.New("No TV is showing that code")
+	}
+	to.mu.Lock()
+	msg := map[string]any{"t": "switch", "code": to.Code, "tvKey": to.TVKey, "from": from}
+	to.mu.Unlock()
+	tvRoom.mu.Lock()
+	defer tvRoom.mu.Unlock()
+	msg["ask"] = tvRoom.playingLocked() // don't yank a TV out of a game in progress without OK
+	n := 0
+	for c := range tvRoom.clients {
+		if c.role == "tv" {
+			sendJSON(c, msg)
+			n++
+		}
+	}
+	if n == 0 {
+		return errors.New("That TV isn't connected right now")
+	}
+	return nil
 }
 
 var (
@@ -158,8 +192,8 @@ func createRoom(base string) (*Room, error) {
 	for rooms[code] != nil {
 		code = newCode()
 	}
-	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{},
-		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0]}, lastUsed: time.Now(), baseURL: base}
+	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5),
+		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better"}, lastUsed: time.Now(), baseURL: base}
 	rooms[code] = r
 	r.mu.Lock()
 	r.saveLocked()
@@ -294,7 +328,10 @@ func loadRooms(dir string) error {
 			continue
 		}
 		r := &Room{Code: sr.Code, JoinKey: sr.JoinKey, TVKey: sr.TVKey, seats: sr.Seats, order: sr.Order,
-			settings: sr.Settings, gameNo: sr.GameNo, lastUsed: sr.LastUsed, baseURL: sr.BaseURL, clients: map[*Client]bool{}}
+			settings: sr.Settings, gameNo: sr.GameNo, lastUsed: sr.LastUsed, baseURL: sr.BaseURL, clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5)}
+		if r.settings.Bot == "" {
+			r.settings.Bot = "better"
+		}
 		if sr.Match != nil && len(sr.History) > 0 {
 			eng, err := RestoreEngine(sr.Lexicon, sr.History)
 			if err != nil {
@@ -328,6 +365,8 @@ type inMsg struct {
 	Lexicon string `json:"lexicon"`
 	TimeMin *int   `json:"timeMin"`
 	Theme   string `json:"theme"`
+	Bot     string `json:"bot"`
+	Code    string `json:"code"`
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -522,7 +561,8 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			r.errTo(cl, "Seat is taken by a player")
 			return
 		}
-		r.seats[other] = &Seat{Name: "Macondo", Bot: true}
+		lv := botLevel(r.settings.Bot)
+		r.seats[other] = &Seat{Name: lv.Name, Bot: true, Level: lv.ID}
 		r.broadcastLocked()
 	case "removebot":
 		if cl.seat < 0 || r.playingLocked() {
@@ -550,6 +590,15 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			}
 		}
 		if !r.playingLocked() && cl.seat >= 0 {
+			if m.Bot != "" {
+				lv := botLevel(m.Bot)
+				r.settings.Bot = lv.ID
+				for _, s := range r.seats {
+					if s != nil && s.Bot {
+						s.Name, s.Level = lv.Name, lv.ID
+					}
+				}
+			}
 			for _, l := range Lexicons {
 				if l == m.Lexicon {
 					r.settings.Lexicon = l
@@ -618,6 +667,25 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		r.m.Clock.Paused = m.T == "pause"
 		r.eventLocked(map[string]any{"t": "event", "kind": m.T, "seat": cl.seat})
 		r.broadcastLocked()
+	case "linktv":
+		// A phone asks the TV showing `code` (another room, e.g. the TV app's idle lobby) to show this game.
+		// The TV gets this room's TV key; the phone learns nothing about the TV's room.
+		if cl.seat < 0 {
+			return
+		}
+		if !r.linkLimit.allow() || !globalJoin.allow() {
+			r.errTo(cl, "Too many tries — wait a minute")
+			return
+		}
+		from := r.seats[cl.seat].Name
+		r.mu.Unlock()
+		err := linkTV(m.Code, r, from)
+		r.mu.Lock()
+		if err != nil {
+			r.errTo(cl, err.Error())
+			return
+		}
+		sendJSON(cl, map[string]any{"t": "notice", "msg": "Sent to the TV — it should switch in a moment"})
 	case "preview":
 		// Tentative tiles are private: only the placing player's own devices see the score preview.
 		if !r.playingLocked() || cl.seat < 0 || cl.seat != r.seatOnTurn() {
@@ -732,7 +800,7 @@ func (r *Room) maybeBotLocked() {
 			go func() { time.Sleep(2 * time.Second); r.mu.Lock(); r.maybeBotLocked(); r.mu.Unlock() }()
 			return
 		}
-		if err := m.eng.BotMove(); err != nil {
+		if err := m.eng.BotMove(botLevel(r.seats[seat].Level).Code); err != nil {
 			slog.Error("bot move", "err", err)
 			m.eng.Pass()
 		}
@@ -751,6 +819,24 @@ func (r *Room) seatConnected(seat int) bool {
 	}
 	return false
 }
+
+func (r *Room) tvCount() int {
+	n := 0
+	for c := range r.clients {
+		if c.role == "tv" {
+			n++
+		}
+	}
+	return n
+}
+
+var botLevelViews = func() []map[string]string {
+	out := []map[string]string{}
+	for _, b := range BotLevels {
+		out = append(out, map[string]string{"id": b.ID, "name": b.Name, "desc": b.Desc})
+	}
+	return out
+}()
 
 func (r *Room) eventLocked(ev map[string]any) {
 	for c := range r.clients {
@@ -800,7 +886,7 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 	}
 	st := map[string]any{
 		"t": "state", "code": r.Code, "phase": phase, "settings": r.settings,
-		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes,
+		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes, "bots": botLevelViews, "tvs": r.tvCount(),
 		"seats": seats, "you": cl.seat, "role": cl.role, "gameNo": r.gameNo, "joinUrl": r.joinURL(),
 	}
 	if r.m != nil {

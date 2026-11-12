@@ -83,7 +83,8 @@ body.tv.mouse { cursor: default; }
 .qrBox { background: #fff; padding: .5vh; border-radius: 2vh; box-shadow: inset 0 0 0 .4vh var(--line); }
 #qr { width: 40vh; height: 40vh; display: block; image-rendering: pixelated; }
 .manual { text-align: center; color: var(--muted); font-size: 2.2vh; margin: 2vh 0 0; line-height: 1.6; }
-.manual .code { font-size: 3.4vh; }
+.manual .code.big { display: block; font-size: 6vh; margin: .3vh 0 1vh; }
+.manual .small { font-size: 1.8vh; line-height: 1.5; }
 .manual .host { color: var(--ink); }
 #lobbySeats { display: flex; gap: 2vh; }
 .lseat { display: flex; align-items: center; gap: 1.4vh; background: var(--card2); border: .25vh solid var(--line); border-radius: 1.4vh; padding: 1.4vh 2.4vh; font-size: 2.6vh; font-weight: 800; min-width: 26vh; }
@@ -116,3 +117,5 @@ body.tv.mouse { cursor: default; }
 body.tv #toasts { top: 6vh; left: calc(2vh + 49vh); }
 body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
 #castWait { background: var(--bg); backdrop-filter: none; }
+#bingo { font-size: 3.4vh; }
+#bingo .btitle { font-size: 4.2em; }
