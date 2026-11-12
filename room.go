@@ -22,7 +22,8 @@ const (
 	maxRooms          = 500
 	maxClientsPerRoom = 16
 	roomIdleTTL       = 72 * time.Hour
-	maxOvertime       = 10 * time.Minute // NASPA: exceeding 10 min of overtime loses the game
+	gameIdleTTL       = 7 * 24 * time.Hour // rooms with an unfinished game are kept longer
+	maxOvertime       = 10 * time.Minute   // NASPA: exceeding 10 min of overtime loses the game
 )
 
 var TimeOptions = []int{0, 15, 30, 45, 60, 75, 90, 105, 120} // minutes per player for the whole game; 0 = untimed
@@ -220,7 +221,7 @@ func reapRooms() {
 		roomsMu.Lock()
 		for k, r := range rooms {
 			r.mu.Lock()
-			idle := len(r.clients) == 0 && time.Since(r.lastUsed) > roomIdleTTL
+			idle := len(r.clients) == 0 && time.Since(r.lastUsed) > r.ttlLocked()
 			if idle {
 				r.deleted = true
 				os.Remove(r.file())
@@ -323,7 +324,11 @@ func loadRooms(dir string) error {
 			slog.Warn("bad room file", "file", f, "err", err)
 			continue
 		}
-		if time.Since(sr.LastUsed) > roomIdleTTL {
+		ttl := roomIdleTTL
+		if sr.Match != nil && sr.Match.EndReason == "" {
+			ttl = gameIdleTTL // may be finished; the reaper re-checks precisely
+		}
+		if time.Since(sr.LastUsed) > ttl {
 			os.Remove(f)
 			continue
 		}
@@ -818,6 +823,64 @@ func (r *Room) seatConnected(seat int) bool {
 		}
 	}
 	return false
+}
+
+func (r *Room) ttlLocked() time.Duration {
+	if r.playingLocked() {
+		return gameIdleTTL
+	}
+	return roomIdleTTL
+}
+
+// Summary is a short status for game lists (TV "Games on this TV", phone "Your games").
+type Summary struct {
+	Code    string   `json:"code"`
+	Phase   string   `json:"phase"`
+	Names   []string `json:"names"`
+	Bots    []bool   `json:"bots"`
+	Scores  []int    `json:"scores"`
+	Turn    int      `json:"turn"`
+	Winner  *int     `json:"winner,omitempty"`
+	Lexicon string   `json:"lexicon"`
+	Moves   int      `json:"moves"`
+	Updated int64    `json:"updated"` // unix ms
+}
+
+// summaryFor returns the room's summary if the caller holds the TV key, the join key or a seat token.
+func (r *Room) summaryFor(tvKey, key, token string) (*Summary, int, bool) {
+	seat := -1
+	ok := false
+	if tvKey != "" {
+		_, ok = r.authorize("tv", tvKey, "")
+	} else {
+		seat, ok = r.authorize("player", key, token)
+	}
+	if !ok {
+		return nil, -1, false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	sm := &Summary{Code: r.Code, Phase: "lobby", Names: []string{"", ""}, Bots: []bool{false, false}, Scores: []int{0, 0},
+		Turn: -1, Lexicon: r.settings.Lexicon, Updated: r.lastUsed.UnixMilli()}
+	for i, st := range r.seats {
+		if st != nil {
+			sm.Names[i], sm.Bots[i] = st.Name, st.Bot
+		}
+	}
+	if r.m != nil {
+		sm.Phase = "playing"
+		sm.Lexicon = r.m.eng.Lexicon
+		sm.Scores = []int{r.score(0), r.score(1)}
+		sm.Moves = len(r.m.eng.Log())
+		if r.overLocked() {
+			sm.Phase = "over"
+			w := r.winnerLocked()
+			sm.Winner = &w
+		} else {
+			sm.Turn = r.seatOnTurn()
+		}
+	}
+	return sm, seat, true
 }
 
 func (r *Room) tvCount() int {

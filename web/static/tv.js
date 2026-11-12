@@ -194,9 +194,8 @@ function menuAct(act) {
   } else if (act === 'sound') {
     sfx.enabled = !sfx.enabled; localStorage.setItem('wt_sound', sfx.enabled ? 'on' : 'off');
     $('#mSound').textContent = sfx.enabled ? 'On' : 'Off'; sfx.turn();
-  } else if (act === 'newroom') {
-    if (confirm('Start a new room? Phones will need to scan the new QR code.')) { localStorage.removeItem('wt_tv'); location.href = '/tv?new=1' + (params.has('app') ? '&app=1' : ''); }
-  } else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
+  } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
+  else if (act === 'games') openGames(); else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
   else closeMenu();
 }
 document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('click', () => menuAct(b.dataset.act)));
@@ -207,6 +206,14 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const t = document.activeElement === yes ? no : yes; t.focus(); yes.classList.toggle('focus', t === yes); no.classList.toggle('focus', t === no); e.preventDefault(); }
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (document.activeElement === no ? no : yes).click(); }
     else if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); no.click(); }
+    return;
+  }
+  if (!$('#gamesMenu').classList.contains('hidden')) {
+    const it = gamesItems();
+    if (e.key === 'ArrowDown') { gamesIdx = (gamesIdx + 1) % it.length; focusGames(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { gamesIdx = (gamesIdx - 1 + it.length) % it.length; focusGames(); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); it[gamesIdx]?.click(); }
+    else if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); $('#gamesMenu').classList.add('hidden'); }
     return;
   }
   const open = !$('#menu').classList.contains('hidden');
@@ -231,7 +238,68 @@ async function roomGone(room) {
   } catch {} // server unreachable: keep retrying the socket
 }
 
+// ---- rooms this TV has shown (for "Games on this TV") ----
+const RECENT = 'wt_tv_recent';
+function recentRooms() { try { return JSON.parse(localStorage.getItem(RECENT) || '[]'); } catch { return []; } }
+function rememberRoom(room) {
+  const list = recentRooms().filter((x) => x.code !== room.code);
+  list.unshift({ code: room.code, tvKey: room.tvKey, at: Date.now() });
+  localStorage.setItem(RECENT, JSON.stringify(list.slice(0, 10)));
+}
+let currentRoom = null;
+async function newRoomHere() {
+  const r = await fetch('/api/rooms', { method: 'POST' }).catch(() => null);
+  if (!r || !r.ok) { toast('Could not start a new game — try again', 'bad'); return; }
+  const j = await r.json();
+  const room = { code: j.code, tvKey: j.tvKey };
+  if (!CAST) localStorage.setItem('wt_tv', JSON.stringify(room));
+  startRoom(room);
+}
+
+const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+async function openGames() {
+  closeMenu();
+  const list = recentRooms();
+  const box = $('#gamesList');
+  box.innerHTML = '<div class="hint">Loading…</div>';
+  $('#gamesMenu').classList.remove('hidden');
+  let res = [];
+  try {
+    const r = await fetch('/api/summaries', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: list.map((x) => ({ code: x.code, tvKey: x.tvKey })) }) });
+    res = await r.json();
+  } catch {}
+  const alive = list.filter((x, i) => res[i] && !res[i].gone);
+  localStorage.setItem(RECENT, JSON.stringify(alive));
+  box.innerHTML = '';
+  const rows = alive.map((x) => ({ x, sm: res.find((r) => r.code === x.code)?.summary })).filter((r) => r.sm);
+  rows.sort((a, b) => (a.x.code === currentRoom?.code ? -1 : 0) - (b.x.code === currentRoom?.code ? -1 : 0) || b.sm.updated - a.sm.updated);
+  for (const { x, sm } of rows) {
+    const empty = sm.phase === 'lobby' && !sm.names.some(Boolean);
+    if (empty && x.code !== currentRoom?.code) continue; // unused lobbies just clutter the list
+    const b = el('button', 'mitem gitem');
+    const who = empty ? 'Waiting for players' : sm.names.map((n) => n || 'open seat').join(' vs ');
+    const tag = x.code === currentRoom?.code ? '<span class="tag now">On screen</span>'
+      : sm.phase === 'playing' ? '<span class="tag live">In progress</span>' : sm.phase === 'over' ? '<span class="tag">Finished</span>' : '<span class="tag">Lobby</span>';
+    const sc = sm.phase === 'lobby' ? '' : `${sm.scores[0]}–${sm.scores[1]}`;
+    b.innerHTML = `<div><div class="gn">${tag}${esc(who)}</div><div class="gs">${sm.lexicon} · ${sm.moves} moves · code ${sm.code} · ${ago(sm.updated)}</div></div><div class="gsc">${sc}</div>`;
+    b.onclick = () => { $('#gamesMenu').classList.add('hidden'); if (x.code !== currentRoom?.code) { if (!CAST) localStorage.setItem('wt_tv', JSON.stringify(x)); startRoom(x); toast('Switched games', 'good'); } };
+    box.append(b);
+  }
+  const nb = el('button', 'mitem', '＋ New game (new QR code)');
+  nb.onclick = () => { $('#gamesMenu').classList.add('hidden'); newRoomHere(); };
+  box.append(nb);
+  const cb = el('button', 'mitem', 'Close');
+  cb.onclick = () => $('#gamesMenu').classList.add('hidden');
+  box.append(cb);
+  gamesIdx = 0; focusGames();
+}
+let gamesIdx = 0;
+const gamesItems = () => [...document.querySelectorAll('#gamesList .mitem')];
+function focusGames() { const it = gamesItems(); it.forEach((b, i) => b.classList.toggle('focus', i === gamesIdx)); it[gamesIdx]?.focus(); it[gamesIdx]?.scrollIntoView({ block: 'nearest' }); }
+
 function startRoom(room) {
+  currentRoom = room; rememberRoom(room);
   if (ws) ws.close();
   cells = null; prevBoard = null; gameNo = -1; state = { code: room.code }; $('#players').innerHTML = '';
   $('#castWait')?.classList.add('hidden');

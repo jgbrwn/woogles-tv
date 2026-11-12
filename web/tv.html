@@ -24,7 +24,7 @@
       <div class="cardTitle">Scorecard</div>
       <ol id="log"></ol>
     </div>
-    <div id="joinMini"><img id="qrMini" alt=""><div><div>Rejoin / swap phones</div><b class="code"></b></div></div>
+    <div id="joinMini"><img id="qrMini" alt=""><div><div>TV code · scan to join or watch</div><b class="code"></b></div></div>
   </aside>
 </main>
 <div id="scorePop" class="hidden"></div>
@@ -48,7 +48,7 @@
         <div class="small">No camera? Enter it at <b class="host"></b><br>Game started on a phone? Enter it there under <b>Show on TV</b></div></div>
     </div>
   </div>
-  <div class="lobbyFoot muted">Press <b>OK</b> on the remote for options · Rules &amp; dictionary by Macondo, the Woogles.io engine</div>
+  <div class="lobbyFoot muted">Press <b>OK</b> on the remote for options and earlier games · Rules &amp; dictionary by Macondo, the Woogles.io engine</div>
 </div>
 
 <div id="over" class="overlay hidden">
@@ -66,7 +66,8 @@
     <div class="cardTitle">Options</div>
     <button class="mitem" data-act="theme">Theme: <b id="mTheme"></b></button>
     <button class="mitem" data-act="sound">Sound: <b id="mSound"></b></button>
-    <button class="mitem" data-act="newroom">Start a new room (new QR code)</button>
+    <button class="mitem" data-act="games">Games on this TV…</button>
+    <button class="mitem" data-act="newroom">New game (new QR code)</button>
     <button class="mitem hidden" data-act="app" id="mApp">App settings (server URL)</button>
     <button class="mitem" data-act="close">Close</button>
   </div>
@@ -75,6 +76,11 @@
   <div class="logo big"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
   <p class="hint" style="font-size:3vh;margin-top:4vh">Connecting to your phone<span class="thinking"><i></i><i></i><i></i></span></p>
 </div>
+<div id="gamesMenu" class="overlay hidden"><div class="menuCard wide">
+  <div class="cardTitle">Games on this TV</div>
+  <div id="gamesList"></div>
+  <p class="hint" style="margin:1vh 0 0">Unfinished games are kept for 7 days. Phones can also bring a game back with <b>Show on TV</b>.</p>
+</div></div>
 <div id="switchAsk" class="overlay hidden"><div class="menuCard" style="text-align:center">
   <div class="cardTitle">Switch games?</div><p style="font-size:3vh;margin:1vh 0 3vh"><b id="switchFrom"></b> wants to show their game on this TV.</p>
   <button class="mitem focus" id="switchYes">Switch to their game</button><button class="mitem" id="switchNo">Keep this game</button>

@@ -21,6 +21,14 @@
  .tiles span { position: relative; width: 40px; height: 40px; }
  .tiles .tile { inset: 0; }
  small a { color: var(--primary); }
+ #gamesList { display: flex; flex-direction: column; gap: 8px; }
+ .g { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; text-align: left; padding: 12px 14px; border-radius: 12px;
+   background: var(--card2); border: 1px solid var(--line); color: inherit; text-decoration: none; }
+ .g .n { font-weight: 800; } .g .m { color: var(--muted); font-size: 13px; font-weight: 600; margin-top: 2px; }
+ .g .sc { font-weight: 900; font-size: 18px; font-variant-numeric: tabular-nums; }
+ .g .tag { display: inline-block; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 5px; margin-right: 6px; background: var(--card); border: 1px solid var(--line); }
+ .g .tag.turn { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
+ .g .tag.live { background: var(--timer-bg); color: var(--timer-ink); border-color: transparent; }
 </style></head><body>
 <main>
   <div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
@@ -28,9 +36,12 @@
   <div class="panel">
     <h2>Play</h2>
     <button class="btn primary" id="newBtn" type="button">✨ Start a new game</button>
-    <a class="btn hidden" id="rejoinBtn" href="#">↩ Back to room <b class="code" id="rejoinCode"></b></a>
     <button class="btn hidden" id="castBtn" type="button">📡 Start a game &amp; cast it to a TV</button>
     <small class="muted">Start on your phone, then put it on the TV by typing the TV's code — or just play the computer.</small>
+  </div>
+  <div class="panel hidden" id="myGames">
+    <h2>Your games</h2>
+    <div id="gamesList"></div>
   </div>
   <form class="panel" id="joinForm">
     <h2>Join a game</h2>

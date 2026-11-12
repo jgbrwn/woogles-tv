@@ -46,7 +46,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 2048)
+	r.Body = http.MaxBytesReader(w, r.Body, 8192)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		writeJSON(w, 400, map[string]string{"error": "bad request"})
 		return false
@@ -154,6 +154,33 @@ func main() {
 			}
 		}
 		writeJSON(w, 404, map[string]string{"error": "not found"})
+	})
+	// Status of several rooms at once, for the TV's and phones' game lists. Each item needs a credential.
+	mux.HandleFunc("POST /api/summaries", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Items []struct{ Code, TVKey, Key, Token string }
+		}
+		if !readJSON(w, r, &req) {
+			return
+		}
+		out := []any{}
+		for i, it := range req.Items {
+			if i >= 12 {
+				break
+			}
+			room := getRoom(it.Code)
+			if room == nil {
+				out = append(out, map[string]any{"code": it.Code, "gone": true})
+				continue
+			}
+			sm, seat, ok := room.summaryFor(it.TVKey, it.Key, it.Token)
+			if !ok {
+				out = append(out, map[string]any{"code": it.Code, "gone": true})
+				continue
+			}
+			out = append(out, map[string]any{"code": it.Code, "summary": sm, "seat": seat})
+		}
+		writeJSON(w, 200, out)
 	})
 	// Manual join by typing the room code shown on the TV. Rate limited against guessing.
 	mux.HandleFunc("POST /api/join", func(w http.ResponseWriter, r *http.Request) {

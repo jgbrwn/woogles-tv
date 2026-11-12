@@ -111,3 +111,6 @@ body.phone .toast { max-width: 90vw; text-align: center; }
 #tvBox small { text-align: left; }
 .inviteQR { width: min(70vw, 260px); aspect-ratio: 1; margin: 0 auto; background: #fff; border-radius: 12px; padding: 6px; }
 #bingo { font-size: 16px; }
+/* spectators: board + scores only */
+body.watching #rack, body.watching #actions, body.watching #swapBar, body.watching #preview { display: none !important; }
+body.watching #board { width: min(100%, calc(100dvh - 170px)); }

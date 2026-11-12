@@ -14,6 +14,7 @@
   <div id="joinBox" class="panel">
     <label class="field">Your name <input id="name" maxlength="16" autocomplete="nickname" placeholder="Name" enterkeyhint="done"></label>
     <div id="seatBtns"></div>
+    <button id="watchBtn" class="btn hidden">👀 Just watch the game</button>
   </div>
   <div id="tvBox" class="panel hidden">
     <div class="tvState" id="tvState"></div>
@@ -44,7 +45,7 @@
   </header>
   <div id="turnBar"><span id="turnMsg"></span><span id="bagMsg" class="muted"></span></div>
   <div id="boardScroll"><div id="board"></div></div>
-  <div id="status"><span id="preview"></span><button id="zoomBtn" class="chip" aria-label="Zoom">🔍</button><button id="menuBtn" class="chip" aria-label="Menu">☰</button></div>
+  <div id="status"><span id="preview"></span><button id="seatChip" class="chip hidden">🪑 Take empty seat</button><button id="zoomBtn" class="chip" aria-label="Zoom">🔍</button><button id="menuBtn" class="chip" aria-label="Menu">☰</button></div>
   <div id="rack"></div>
   <div id="actions">
     <button id="shuffleBtn" class="btn" title="Shuffle">⇄<small>Shuffle</small></button>

@@ -119,3 +119,12 @@ body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
 #castWait { background: var(--bg); backdrop-filter: none; }
 #bingo { font-size: 3.4vh; }
 #bingo .btitle { font-size: 4.2em; }
+.menuCard.wide { min-width: 80vh; max-width: 90vw; }
+#gamesList { display: flex; flex-direction: column; gap: 1vh; max-height: 64vh; overflow-y: auto; }
+.gitem { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2vh; }
+.gitem .gn { font-size: 2.6vh; font-weight: 800; }
+.gitem .gs { font-size: 1.8vh; color: var(--muted); font-weight: 700; margin-top: .4vh; }
+.gitem .gsc { font-size: 3vh; font-weight: 900; font-variant-numeric: tabular-nums; }
+.gitem .tag { display: inline-block; font-size: 1.5vh; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; padding: .2vh .8vh; border-radius: .6vh; margin-right: .8vh; background: var(--card); }
+.gitem .tag.live { background: var(--timer-bg); color: var(--timer-ink); }
+.gitem .tag.now { background: var(--primary); color: var(--primary-ink); }
