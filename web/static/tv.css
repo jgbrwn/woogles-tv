@@ -128,3 +128,6 @@ body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
 .gitem .tag { display: inline-block; font-size: 1.5vh; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; padding: .2vh .8vh; border-radius: .6vh; margin-right: .8vh; background: var(--card); }
 .gitem .tag.live { background: var(--timer-bg); color: var(--timer-ink); }
 .gitem .tag.now { background: var(--primary); color: var(--primary-ink); }
+.grow { display: flex; gap: 1vh; } .grow > .gitem { flex: 1; min-width: 0; }
+.gx { flex: none; width: auto; min-width: 7vh; display: grid; place-items: center; font-weight: 900; color: var(--muted); }
+.gx.armed { background: var(--bad) !important; color: #fff !important; }

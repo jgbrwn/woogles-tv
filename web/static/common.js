@@ -15,7 +15,7 @@ export function applyTheme(t) {
   }
 }
 // apply last-used theme immediately to avoid a flash
-try { const t = localStorage.getItem('wt_theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+try { const t = localStorage.getItem('wt_theme'); if (t && !document.documentElement.dataset.home) document.documentElement.dataset.theme = t; } catch {}
 
 export function el(tag, cls, text) {
   const e = document.createElement(tag);

@@ -15,7 +15,7 @@
   --t-last-bg: #f4b000; --t-last-ink: #414141; --t-tent-bg: #955f9a; --t-tent-ink: #ffffff; --t-edge: rgba(0,0,0,.18);
   --timer-bg: #e5ffdf; --timer-ink: #449e2d; --timer-low-bg: #fbe5ae; --timer-low-ink: #8a6200; --timer-out-bg: #ffeaea; --timer-out-ink: #a92e2e;
   --p0: #11659e; --p1: #6b268b;
-  color-scheme: light;
+  color-scheme: light dark; /* declares dark support so Chrome never force-darkens; colours are explicit */
 }
 [data-theme="woogles-dark"] {
   --bg: #282828; --bg2: #2e2e2e; --card: #3a3a3a; --card2: #313131; --ink: #ffffff; --muted: #bebebe; --line: #515151;

@@ -16,6 +16,7 @@ let rack = [];                // [{id, ch}] in display order; ch is 'A'..'Z' or 
 let pending = new Map();      // "r,c" -> {id, l, blank}
 let selected = null;          // rack tile id
 let cursor = null;            // {r, c, vert}
+let anchor = null;            // where (and which way) the first tile of this move went; Recall returns the cursor here
 let swapMode = false, swapSet = new Set();
 let nextId = 1, lastPreview = null, wasMyTurn = false;
 
@@ -66,11 +67,11 @@ function render(st) {
   // game board (also kept updated beneath the over screen)
   if (!cells || s.gameNo !== gameNo) {
     cells = buildBoard($('#board'), s.bonuses);
-    gameNo = s.gameNo; logLen = -1; pending.clear(); rack = []; cursor = null;
+    gameNo = s.gameNo; logLen = -1; pending.clear(); rack = []; cursor = null; anchor = null;
     cells.flat().forEach((c) => c.addEventListener('click', () => onCellTap(+c.dataset.r, +c.dataset.c)));
   }
   const newLog = (s.log || []).length;
-  if (newLog !== logLen) { pending.clear(); selected = null; cursor = null; swapMode = false; swapSet.clear(); lastPreview = null; logLen = newLog; }
+  if (newLog !== logLen) { pending.clear(); selected = null; cursor = null; anchor = null; swapMode = false; swapSet.clear(); lastPreview = null; logLen = newLog; }
   // drop pending tiles on squares that became occupied
   for (const [k] of pending) { const [r, c] = k.split(',').map(Number); if (s.board[r][c] !== '.') pending.delete(k); }
   reconcileRack(s.rack || '');
@@ -78,6 +79,7 @@ function render(st) {
   renderHeader();
   renderRack();
   renderPending();
+  $('#backBtn').disabled = $('#recallBtn').disabled = !pending.size;
   show('game');
   const mine = myTurn();
   if (prev && prev.gameNo === s.gameNo && prev.log && s.log.length > prev.log.length) {
@@ -272,6 +274,7 @@ function renderPending() {
 
 function onTilesChanged() {
   renderRack(); renderPending();
+  $('#backBtn').disabled = $('#recallBtn').disabled = !pending.size;
   clearTimeout(onTilesChanged.t);
   onTilesChanged.t = setTimeout(sendPreview, 120);
 }
@@ -289,6 +292,7 @@ async function place(r, c, id) {
   if (!t || s.board[r][c] !== '.' || pending.has(r + ',' + c)) return false;
   let l = t.ch, blank = false;
   if (t.ch === '?') { l = await pickLetter(); if (!l) return false; blank = true; }
+  if (!pending.size) anchor = { r, c, vert: cursor?.vert ?? false };
   pending.set(r + ',' + c, { id, l, blank });
   return true;
 }
@@ -391,7 +395,24 @@ $('#shuffleBtn').onclick = () => {
   for (let i = rack.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rack[i], rack[j]] = [rack[j], rack[i]]; }
   renderRack();
 };
-$('#recallBtn').onclick = () => { pending.clear(); selected = null; onTilesChanged(); };
+$('#recallBtn').onclick = () => {
+  if (pending.size && anchor) cursor = { ...anchor };
+  pending.clear(); selected = null; anchor = null; onTilesChanged();
+};
+// Backspace: take back the last tile placed; the cursor steps back onto its square (same direction).
+function backspace() {
+  if (!myTurn() || swapMode || !pending.size) return;
+  const k = [...pending.keys()].at(-1);
+  pending.delete(k);
+  const [r, c] = k.split(',').map(Number);
+  cursor = { r, c, vert: cursor?.vert ?? anchor?.vert ?? false };
+  if (!pending.size) anchor = null;
+  selected = null; onTilesChanged();
+}
+$('#backBtn').onclick = backspace;
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Backspace' && !e.target.closest?.('input, textarea')) { e.preventDefault(); backspace(); }
+});
 $('#playBtn').onclick = () => {
   if (!pending.size) { toast('Place some tiles first', 'bad'); return; }
   ws.send({ t: 'play', tiles: tilesPayload() });

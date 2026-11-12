@@ -64,7 +64,8 @@ body.phone { overflow: hidden; height: 100dvh; user-select: none; -webkit-user-s
 .rslot.sel .tile { transform: translateY(-7px); box-shadow: 0 0 0 3px var(--primary), 0 6px 10px rgba(0,0,0,.3); }
 .rslot.used .tile { opacity: 0; }
 .rslot.swap .tile { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--bad), 0 6px 10px rgba(0,0,0,.3); }
-#actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.6fr; gap: 6px; }
+#actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) 1.5fr; gap: 5px; }
+#actions .btn:disabled { opacity: .45; }
 #actions .btn { padding: 8px 2px; flex-direction: column; gap: 0; font-size: 18px; line-height: 1.1; }
 #actions .btn small { font-size: 11px; font-weight: 800; color: var(--muted); }
 #actions #playBtn { font-size: 18px; }

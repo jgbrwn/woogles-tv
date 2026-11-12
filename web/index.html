@@ -1,10 +1,11 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en" data-home="1"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#eeeeee"><meta name="referrer" content="no-referrer">
 <title>Woogles-TV — living-room word game</title>
 <link rel="icon" href="/static/icon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/static/icon-192.png">
 <link rel="stylesheet" href="/static/app.css">
+<script src="/static/home-theme.js"></script>
 <style>
  body { display: flex; min-height: 100vh; padding: 24px 16px; text-align: center; }
  main { margin: auto; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 18px; }
@@ -21,6 +22,12 @@
  .tiles span { position: relative; width: 40px; height: 40px; }
  .tiles .tile { inset: 0; }
  small a { color: var(--primary); }
+ .look { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: 14px; }
+ .look .seg { width: 210px; }
+ .g { position: relative; } .g .x { width: 30px; height: 30px; border-radius: 99px; color: var(--muted); font-size: 16px; font-weight: 900; display: grid; place-items: center; }
+ .g .x:hover { background: var(--card); } .g .rt { display: flex; align-items: center; gap: 6px; }
+ .g .tag.old { background: transparent; color: var(--muted); }
+ #gamesList:empty::after { content: "No games here"; color: var(--muted); font-weight: 600; font-size: 14px; }
  #gamesList { display: flex; flex-direction: column; gap: 8px; }
  .g { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; text-align: left; padding: 12px 14px; border-radius: 12px;
    background: var(--card2); border: 1px solid var(--line); color: inherit; text-decoration: none; }
@@ -41,7 +48,9 @@
   </div>
   <div class="panel hidden" id="myGames">
     <h2>Your games</h2>
+    <div class="seg" id="gamesFilter"><button type="button" data-f="active" class="on">Active <span></span></button><button type="button" data-f="done">Finished <span></span></button></div>
     <div id="gamesList"></div>
+    <small class="muted" id="gamesHint"></small>
   </div>
   <form class="panel" id="joinForm">
     <h2>Join a game</h2>
@@ -55,6 +64,7 @@
     <a class="btn ghost" href="/app">Android TV / Google TV app</a>
   </div>
   <button class="btn hidden" id="installBtn" type="button">📲 Install Woogles-TV on this phone</button>
+  <div class="look"><span class="muted">Appearance</span><div class="seg" id="lookSeg"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
   <small class="muted">Rules, scoring &amp; dictionaries by <a href="https://github.com/domino14/macondo" rel="noopener">Macondo</a>, the engine behind <a href="https://woogles.io" rel="noopener">Woogles.io</a>. NWL23 &amp; CSW24.</small>
 </main>
 <script type="module" src="/static/index.js"></script>

@@ -209,10 +209,12 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (!$('#gamesMenu').classList.contains('hidden')) {
-    const it = gamesItems();
-    if (e.key === 'ArrowDown') { gamesIdx = (gamesIdx + 1) % it.length; focusGames(); e.preventDefault(); }
-    else if (e.key === 'ArrowUp') { gamesIdx = (gamesIdx - 1 + it.length) % it.length; focusGames(); e.preventDefault(); }
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); it[gamesIdx]?.click(); }
+    const n = gamesRows.length, r = gamesRows[gamesIdx];
+    if (e.key === 'ArrowDown') { gamesIdx = (gamesIdx + 1) % n; gamesCol = 0; focusGames(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { gamesIdx = (gamesIdx - 1 + n) % n; gamesCol = 0; focusGames(); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { if (r?.x) { gamesCol = 1; focusGames(); } e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { gamesCol = 0; focusGames(); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (gamesCol === 1 && r?.x ? r.x : r?.main)?.click(); }
     else if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); $('#gamesMenu').classList.add('hidden'); }
     return;
   }
@@ -257,46 +259,70 @@ async function newRoomHere() {
 }
 
 const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+let gamesRows = [], gamesIdx = 0, gamesCol = 0;
+function forgetRoom(code) { localStorage.setItem(RECENT, JSON.stringify(recentRooms().filter((x) => x.code !== code))); }
 async function openGames() {
   closeMenu();
   const list = recentRooms();
   const box = $('#gamesList');
   box.innerHTML = '<div class="hint">Loading…</div>';
   $('#gamesMenu').classList.remove('hidden');
-  let res = [];
+  let res = null;
   try {
     const r = await fetch('/api/summaries', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: list.map((x) => ({ code: x.code, tvKey: x.tvKey })) }) });
-    res = await r.json();
+      body: JSON.stringify({ items: list.slice(0, 12).map((x) => ({ code: x.code, tvKey: x.tvKey })) }) });
+    if (r.ok) res = await r.json();
   } catch {}
-  const alive = list.filter((x, i) => res[i] && !res[i].gone);
-  localStorage.setItem(RECENT, JSON.stringify(alive));
+  if (res) {
+    // games the server no longer has (expired or removed) drop off automatically
+    const gone = new Set(res.filter((r) => r.gone).map((r) => r.code));
+    localStorage.setItem(RECENT, JSON.stringify(list.filter((x) => !gone.has(x.code))));
+  }
+  const rows = recentRooms().map((x) => ({ x, sm: res?.find((r) => r.code === x.code)?.summary })).filter((r) => r.sm);
+  const on = (r) => r.x.code === currentRoom?.code;
+  rows.sort((a, b) => on(b) - on(a) || b.sm.updated - a.sm.updated);
   box.innerHTML = '';
-  const rows = alive.map((x) => ({ x, sm: res.find((r) => r.code === x.code)?.summary })).filter((r) => r.sm);
-  rows.sort((a, b) => (a.x.code === currentRoom?.code ? -1 : 0) - (b.x.code === currentRoom?.code ? -1 : 0) || b.sm.updated - a.sm.updated);
+  gamesRows = [];
   for (const { x, sm } of rows) {
     const empty = sm.phase === 'lobby' && !sm.names.some(Boolean);
-    if (empty && x.code !== currentRoom?.code) continue; // unused lobbies just clutter the list
+    if (empty && !on({ x })) continue; // unused lobbies just clutter the list
+    const row = el('div', 'grow');
     const b = el('button', 'mitem gitem');
     const who = empty ? 'Waiting for players' : sm.names.map((n) => n || 'open seat').join(' vs ');
-    const tag = x.code === currentRoom?.code ? '<span class="tag now">On screen</span>'
+    const tag = on({ x }) ? '<span class="tag now">On screen</span>'
       : sm.phase === 'playing' ? '<span class="tag live">In progress</span>' : sm.phase === 'over' ? '<span class="tag">Finished</span>' : '<span class="tag">Lobby</span>';
     const sc = sm.phase === 'lobby' ? '' : `${sm.scores[0]}–${sm.scores[1]}`;
     b.innerHTML = `<div><div class="gn">${tag}${esc(who)}</div><div class="gs">${sm.lexicon} · ${sm.moves} moves · code ${sm.code} · ${ago(sm.updated)}</div></div><div class="gsc">${sc}</div>`;
-    b.onclick = () => { $('#gamesMenu').classList.add('hidden'); if (x.code !== currentRoom?.code) { if (!CAST) localStorage.setItem('wt_tv', JSON.stringify(x)); startRoom(x); toast('Switched games', 'good'); } };
-    box.append(b);
+    b.onclick = () => { $('#gamesMenu').classList.add('hidden'); if (!on({ x })) { if (!CAST) localStorage.setItem('wt_tv', JSON.stringify(x)); startRoom(x); toast('Switched games', 'good'); } };
+    row.append(b);
+    let xb = null;
+    if (!on({ x })) {
+      xb = el('button', 'mitem gx', '✕');
+      xb.title = 'Remove from this TV';
+      xb.onclick = () => {
+        if (!xb.classList.contains('armed')) { xb.classList.add('armed'); xb.textContent = 'Remove?'; return; }
+        forgetRoom(x.code); row.remove(); gamesRows = gamesRows.filter((r) => r.main !== b); gamesIdx = Math.min(gamesIdx, gamesRows.length - 1); gamesCol = 0; focusGames();
+        toast('Removed from this TV');
+      };
+      row.append(xb);
+    }
+    box.append(row);
+    gamesRows.push({ main: b, x: xb });
   }
-  const nb = el('button', 'mitem', '＋ New game (new QR code)');
-  nb.onclick = () => { $('#gamesMenu').classList.add('hidden'); newRoomHere(); };
-  box.append(nb);
-  const cb = el('button', 'mitem', 'Close');
-  cb.onclick = () => $('#gamesMenu').classList.add('hidden');
-  box.append(cb);
-  gamesIdx = 0; focusGames();
+  for (const [label, fn] of [['＋ New game (new QR code)', () => newRoomHere()], ['Close', () => {}]]) {
+    const nb = el('button', 'mitem', label);
+    nb.onclick = () => { $('#gamesMenu').classList.add('hidden'); fn(); };
+    box.append(nb); gamesRows.push({ main: nb, x: null });
+  }
+  gamesIdx = 0; gamesCol = 0; focusGames();
 }
-let gamesIdx = 0;
-const gamesItems = () => [...document.querySelectorAll('#gamesList .mitem')];
-function focusGames() { const it = gamesItems(); it.forEach((b, i) => b.classList.toggle('focus', i === gamesIdx)); it[gamesIdx]?.focus(); it[gamesIdx]?.scrollIntoView({ block: 'nearest' }); }
+function focusGames() {
+  document.querySelectorAll('#gamesList .mitem').forEach((n) => n.classList.remove('focus'));
+  document.querySelectorAll('#gamesList .gx.armed').forEach((n) => { if (n !== gamesRows[gamesIdx]?.x || gamesCol === 0) { n.classList.remove('armed'); n.textContent = '✕'; } });
+  const r = gamesRows[gamesIdx]; if (!r) return;
+  const t = gamesCol === 1 && r.x ? r.x : r.main;
+  t.classList.add('focus'); t.focus(); t.scrollIntoView({ block: 'nearest' });
+}
 
 function startRoom(room) {
   currentRoom = room; rememberRoom(room);

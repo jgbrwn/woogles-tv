@@ -19,6 +19,9 @@ showing (the TV switches to your game; if it is mid-game it asks first). Invite 
 press OK → *New game*; earlier games stay listed under OK → *Games on this TV* (switch back with the remote), and
 each phone lists its games on the home page (*Your games*), where *Show on TV* can bring one back. Unfinished games
 are kept 7 days. Anyone with the room link who isn't seated can watch (board and scores only, never racks).
+*Your games* has Active / Finished tabs (finished, left, or idle 3+ days counts as finished); ✕ removes a game from
+that phone, ◀ ▶ + OK removes one from the TV list, and games the server has expired disappear from both on their own.
+The home screen has its own Appearance (Auto follows the phone's light/dark mode); games keep their chosen theme.
 Installable as a PWA (Chrome menu → Install app, or the *Install* button on the home page).
 
 ## Game options (chosen on a phone before the game)

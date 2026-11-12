@@ -21,6 +21,12 @@
 - Multiple games per TV: "Games on this TV" list (remote), "Your games" on phones, spectator mode,
   unfinished games kept 7 days, /api/summaries (each item needs its own credential).
 
+- Phone: ⌫ Back takes back the last tile (cursor steps back); Recall returns the cursor to where the move
+  started, same direction. Hardware Backspace works too.
+- Games lists: Active/Finished filter, remove (phone ✕, TV ◀ ▶), expired games auto-pruned.
+- Home Appearance setting (Auto/Light/Dark); light themes declare `color-scheme: light dark` so Chrome's
+  auto-dark never force-darkens them.
+
 ## Next ideas
 - Test on the Onn 4K box + two real phones; tune TV sizes for 720p receivers.
 - Spectator mode / 3–4 players, challenge modes (single/double), game history export (GCG).
