@@ -25,7 +25,9 @@ closet.
 - A big, readable 15×15 board with coordinates, the last move highlighted, tiles that drop in, and score pop-ups.
 - Player cards with scores, the player on turn, an optional chess clock, tiles left in the bag, and a running scorecard.
 - Full-screen **BINGO!** celebration with confetti and a fanfare.
-- Driven entirely by the TV remote (D-pad + OK): theme, sound, **Games on this TV** (switch between games in progress), new game.
+- **Spoken announcer**: "Bingo! Alex plays QUIXOTIC… for 98 points", lead changes, the bag running low, clock warnings and the result, with a choice of voice, speed and spelling words out.
+- Clock warnings: chimes at 5 and 1 minute left, a 10-second countdown, and an alarm plus penalty tones in overtime.
+- Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, **Games on this TV** (switch between games in progress), new game.
 - Your tiles never appear on the TV; only submitted moves do.
 
 **On your phone** (any modern browser; installable as an app/PWA)
@@ -34,6 +36,8 @@ closet.
 - **Drag tiles along your rack to rearrange them** (the others slide aside), or **Shuffle**.
 - A live score of your tentative move, visible only to you. Invalid words are rejected before they're played.
 - 📋 scorecard overlay, 🔍 board zoom, unseen tiles (bag + opponent), swap, pass, blanks, pause, resign, rematch.
+- Phones, tall phones, **tablets** and landscape: the layout adapts (in landscape the board sits beside a full scorecard; tall screens show the latest moves under the board).
+- Sound & voice settings per phone: volume, clock warnings for your own clock (with vibration), and an optional announcer for games without a TV.
 - *Your games*: every game on this phone with live status (Your turn / In progress / Finished), a filter, and removal.
 - Join as a spectator: anyone with the link who isn't seated sees the board and scores, never the racks.
 

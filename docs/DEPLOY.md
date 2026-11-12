@@ -131,7 +131,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 
 | Flag / variable | Default | Meaning |
 |---|---|---|
-| `-addr` | `:8420` | Listen address (`127.0.0.1:8420` to accept only a local proxy) |
+| `-addr` | `:8420` | Listen address, e.g. `:9000` for another port, or `127.0.0.1:8420` to accept only a local proxy |
+| `PORT` | | If set (Render, Railway, Fly, Cloud Run and Heroku set it for you), the default listen address becomes `:$PORT`. `-addr` still wins |
 | `-data` | `./data` | Data directory (word lists, strategy files, `rooms/`) |
 | `-apk` | `./android/out/woogles-tv.apk` | APK served at `/app/woogles-tv.apk` (the `/app` page links to it). If the file is missing, that link returns 404 |
 | `-fetch-only` | | Download the word lists into `DATA/lexica` and exit |

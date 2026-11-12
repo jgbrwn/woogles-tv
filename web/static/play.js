@@ -1,4 +1,8 @@
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES } from './common.js';
+import { makeAnnouncer, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
+sfx.load('high', 'wt_ph_sound');
+const ann = makeAnnouncer('wt_ph_', 'off');
+let speechCtx = {};
 import { confetti } from './confetti.js';
 import { castAvailable, castRoom, castSession, NS } from './cast.js';
 
@@ -89,7 +93,12 @@ function render(st) {
   if (prev && prev.gameNo === s.gameNo && prev.log && s.log.length > prev.log.length) {
     const b = s.log.slice(prev.log.length).find((m) => m.type === 'play' && m.bingo);
     if (b) celebrateBingo(b, names()[b.player], b.player === s.you);
+    if (ann.on('moves')) {
+      const lines = describeForSpeech(s.log.slice(prev.log.length), s, names(), ann, speechCtx);
+      setTimeout(() => lines.forEach((l) => ann.say(l)), b ? 1300 : 400);
+    }
   }
+  if (!prev || prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
   if (mine && !wasMyTurn && prev) { navigator.vibrate?.([60, 60, 60]); sfx.turn(); }
   wasMyTurn = mine;
 }
@@ -229,7 +238,17 @@ function tickClocks() {
   paintTimer($('#pc0 .timer'), s.clock, recvAt, meSeat());
   paintTimer($('#pc1 .timer'), s.clock, recvAt, 1 - meSeat());
 }
-setInterval(tickClocks, 250);
+const alertsTick = clockAlerts((seat, kind, n) => {
+  if (watching() || seat !== s.you) return; // phones only warn about their own clock
+  if (kind === 'count') { sfx.count(n); if (n <= 3) navigator.vibrate?.(30); return; }
+  if (kind === '5min' || kind === '1min') { sfx.warn(); navigator.vibrate?.([80, 60, 80]); }
+  else if (kind === 'overtime' || kind === 'lastmin') { sfx.overtime(); navigator.vibrate?.([200, 80, 200]); }
+  else if (kind === 'overmin') { sfx.penalty(); navigator.vibrate?.(150); }
+  const msg = { '5min': '5 minutes left', '1min': '1 minute left', overtime: 'Overtime: −10 points per minute', overmin: `${n} min over: −${10 * (n + 1)} so far`, lastmin: '1 minute until you lose on time!' }[kind];
+  if (msg) toast(msg, kind === '5min' || kind === '1min' ? '' : 'bad');
+  if (ann.on('all')) setTimeout(() => ann.say(clockSpeech(kind, n, '', true)), 500);
+});
+setInterval(() => { tickClocks(); if (s && s.phase === 'playing') alertsTick(s.clock, recvAt, s.gameNo); }, 250);
 
 function reconcileRack(str) {
   const want = [...str];
@@ -475,7 +494,7 @@ $('#swapGo').onclick = () => {
   const letters = rack.filter((t) => swapSet.has(t.id)).map((t) => t.ch).join('');
   ws.send({ t: 'exchange', letters }); endSwap();
 };
-$('#zoomBtn').onclick = () => $('#boardScroll').classList.toggle('zoom');
+$('#zoomBtn').onclick = () => document.body.classList.toggle('zoomed', $('#boardScroll').classList.toggle('zoom'));
 // ---- modal / blank picker ----
 let modalResolve = null;
 function openModal(html) { $('#mbody').innerHTML = html; $('#modal').classList.remove('hidden'); }
@@ -491,7 +510,10 @@ function pickLetter() {
 function renderOver(prev) {
   if (overDismissed === s.gameNo) return;
   $('#over').classList.remove('hidden');
-  if (prev && prev.phase === 'playing') { sfx.over(); navigator.vibrate?.([100, 50, 100]); }
+  if (prev && prev.phase === 'playing') {
+    sfx.over(); navigator.vibrate?.([100, 50, 100]);
+    if (ann.on('moves')) setTimeout(() => ann.say(gameOverSpeech(s, names())), 1200);
+  }
   const n = names();
   const W = watching(), me = meSeat();
   const won = !W && s.winner === s.you;
@@ -523,10 +545,12 @@ $('#menuBtn').onclick = () => {
     const free = s.seats.some((x) => !x.connected);
     openModal(`<h3>Watching</h3><p class="muted" style="margin:0">You can see the board and scores; players' tiles stay private.</p><div class="menuList">
       ${free ? '<button class="btn primary" data-a="seat">🪑 Take an empty seat</button>' : ''}
-      <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button></div>`);
+      <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
+      <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button></div>`);
     $('#mbody').querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
       const a = b.dataset.a; closeModal(null);
       if (a === 'seat') { wantSeat = true; render(s); }
+      else if (a === 'sound') soundSheet();
       else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); }
     });
     return;
@@ -539,6 +563,7 @@ $('#menuBtn').onclick = () => {
     ${canCast ? '<button class="btn" data-a="cast">📡 Cast board to TV</button>' : ''}
     <button class="btn" data-a="invite">📨 Invite / room QR</button>
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
+    <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button>
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
     ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
     <button class="btn danger" data-a="end">✖ End game for everyone</button></div>`);
@@ -548,6 +573,7 @@ $('#menuBtn').onclick = () => {
     else if (a === 'cast') doCast();
     else if (a === 'invite') $('#inviteBtn').click();
     else if (a === 'tv') linkPrompt();
+    else if (a === 'sound') soundSheet();
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }
@@ -555,6 +581,34 @@ $('#menuBtn').onclick = () => {
     else if (a === 'end' && confirm('End this game and go back to the lobby?')) ws.send({ t: 'end' });
   });
 };
+const soundIcon = () => (sfx.level === 'off' ? '🔇' : sfx.level === 'low' ? '🔈' : '🔊');
+// Sound & voice settings (this phone only)
+function soundSheet() {
+  const seg = (id, opts, names, cur) => `<div class="seg" id="${id}">${opts.map((o) => `<button data-v="${o}" class="${String(o) === String(cur) ? 'on' : ''}">${names[o]}</button>`).join('')}</div>`;
+  const can = ann.available(), voices = can ? ann.voices() : [];
+  openModal(`<h3>Sound &amp; voice</h3><p class="muted" style="margin:0">Settings for this phone. The TV has its own (hold OK on the remote).</p>
+    <div class="field">Volume ${seg('sVol', SOUND_LEVELS, SOUND_NAMES, sfx.level)}</div>
+    ${can ? `<div class="field">Announcer ${seg('sAnn', ANN_MODES, ANN_MODE_NAMES, ann.mode)}<small class="muted">Reads out each move, the score and clock warnings. Handy when there's no TV.</small></div>
+    <div class="annOpts">
+      <div class="field">Spell out words ${seg('sSpell', SPELL_MODES, SPELL_NAMES, ann.spell)}</div>
+      <div class="field">Speaking speed ${seg('sRate', RATES, RATE_NAMES, ann.rate)}</div>
+      ${voices.length > 1 ? `<div class="field">Voice <select id="sVoice"><option value="">Default</option>${voices.map((v) => `<option value="${esc(v.id)}" ${v.id === ann.voice ? 'selected' : ''}>${esc(v.name)}${v.lang ? ' · ' + esc(v.lang) : ''}</option>`).join('')}</select></div>` : ''}
+      <button class="btn" id="sTest">▶ Test the announcer</button>
+    </div>` : '<small class="muted">Spoken announcements aren\'t supported by this browser.</small>'}`);
+  const body = $('#mbody');
+  const sync = () => { body.querySelector('.annOpts')?.classList.toggle('hidden', ann.mode === 'off' || !sfx.enabled); };
+  const wire = (id, fn) => body.querySelector('#' + id)?.querySelectorAll('button').forEach((b) => b.onclick = () => {
+    b.parentNode.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); fn(b.dataset.v); sync();
+  });
+  const test = () => { ann.stop(); ann.say(`Stee Bot plays zoea. Z, O, E, A. For 34 points.`, { force: true }); };
+  wire('sVol', (v) => { sfx.ctx(); sfx.set(v); sfx.turn(); });
+  wire('sAnn', (v) => { ann.set('mode', v); ann.stop(); if (v !== 'off') ann.say(v === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.'); });
+  wire('sSpell', (v) => ann.set('spell', v));
+  wire('sRate', (v) => { ann.set('rate', +v); test(); });
+  const vs = body.querySelector('#sVoice'); if (vs) vs.onchange = () => { ann.set('voice', vs.value); test(); };
+  body.querySelector('#sTest')?.addEventListener('click', test);
+  sync();
+}
 function linkPrompt() {
   openModal(`<h3>Show on a TV</h3><p class="muted" style="margin:0">Type the 6-letter code shown on the TV</p>
     <form id="mLink" class="linkRow"><input id="mTvCode" maxlength="6" placeholder="TV CODE" autocomplete="off" autocapitalize="characters"><button class="btn primary">Show</button></form>`);
@@ -568,12 +622,23 @@ function placeScoreSheet() {
   const sh = $('#scoreSheet'), top = $('#turnBar').getBoundingClientRect().top, bottom = $('#status').getBoundingClientRect().top;
   sh.style.top = Math.max(8, top) + 'px'; sh.style.height = Math.max(160, bottom - Math.max(8, top) - 6) + 'px';
 }
+// The move list is drawn in two places: #scoreSheet (overlay toggled by 📋) and #recent (in-flow panel that fills
+// spare height on tall phones and is the sidebar scorecard in landscape/tablet layouts).
+const recentShown = () => { const r = $('#recent'); return r.offsetParent !== null && !r.classList.contains('tiny'); };
 function renderScorecard() {
-  if (!scoreOpen || !s || !s.seats) return;
+  if (!s || !s.seats || !s.log) return;
+  if (scoreOpen) renderMoves($('#scoreSheet'));
+  if (recentShown()) renderMoves($('#recent'));
+}
+function renderMoves(panel) {
   const n = names();
   const turns = (s.log || []).filter((m) => ['play', 'pass', 'exchange'].includes(m.type)).length;
-  $('#scMeta').textContent = `${turns} turn${turns === 1 ? '' : 's'} · ${s.bag} in bag`;
-  const list = $('#scList'), log = s.log || [];
+  panel.querySelector('.scMeta').textContent = `${turns} turn${turns === 1 ? '' : 's'} · ${s.bag} in bag`;
+  const list = panel.querySelector('.scList'), log = s.log || [];
+  const key = `${s.gameNo}:${log.length}:${s.bag}:${n.join('|')}`;
+  if (panel.dataset.key === key) return;
+  const fresh = panel.dataset.key === undefined || !panel.dataset.key.startsWith(s.gameNo + ':');
+  panel.dataset.key = key;
   const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 30;
   list.innerHTML = log.length ? '' : '<li class="empty">No moves yet</li>';
   log.forEach((m, i) => {
@@ -584,11 +649,16 @@ function renderScorecard() {
       <span class="s">${d.score > 0 ? '+' : ''}${d.score ?? ''}</span><span class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total ?? ''}</span>`;
     list.append(li);
   });
-  if (atBottom || !renderScorecard.done) list.scrollTop = list.scrollHeight;
-  renderScorecard.done = true;
+  if (atBottom || fresh) list.scrollTop = list.scrollHeight;
 }
+// hide the in-flow panel when there's too little room for it to be useful
+new ResizeObserver(() => {
+  const r = $('#recent'), tiny = r.clientHeight < 96;
+  if (r.classList.contains('tiny') !== tiny) { r.classList.toggle('tiny', tiny); }
+  if (!tiny) { delete r.dataset.key; renderScorecard(); }
+}).observe($('#recent'));
 function toggleScorecard(on = !scoreOpen) {
-  scoreOpen = on; renderScorecard.done = false;
+  scoreOpen = on; delete $('#scoreSheet').dataset.key;
   $('#scoreSheet').classList.toggle('hidden', !on);
   $('#scoreChip').classList.toggle('on', on); $('#scoreChip').setAttribute('aria-pressed', on);
   if (on) { placeScoreSheet(); renderScorecard(); }

@@ -41,7 +41,8 @@ It sits down, adds the computer opponent, starts a game and only exchanges or pa
   client's view, `broadcastLocked` sends it) → `engine.go` (all Macondo calls). Everything a room does happens under
   its mutex, and saving happens in `saveLocked` after each change.
 - **Web:** `web/static/common.js` has the shared pieces (board and tile rendering, the WebSocket connection with
-  reconnect, clocks, sounds, themes). `tv.js` / `play.js` / `index.js` drive the three pages. `app.css` holds the
+  reconnect, clocks, sounds, themes). `tv.js` / `play.js` / `index.js` drive the three pages. `announcer.js` turns game events into spoken sentences
+  (Web Speech API, or the Android app's native TTS bridge). `app.css` holds the
   design tokens and all six themes; `tv.css` / `play.css` hold the layouts.
 - **Android:** `android/src/io/woogles/tv/MainActivity.java`, one file. See [android/README.md](../android/README.md).
 

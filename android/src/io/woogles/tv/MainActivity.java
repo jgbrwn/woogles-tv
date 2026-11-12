@@ -12,6 +12,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.text.InputType;
 import android.util.Base64;
 import android.view.KeyEvent;
@@ -31,6 +33,14 @@ import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Woogles-TV launcher: a single full-screen WebView pointed at the TV page.
@@ -57,6 +67,8 @@ public class MainActivity extends Activity {
     private boolean clearHistoryOnLoad;
     private long lastBackAt;
     private Toast exitToast;
+    private TextToSpeech tts;        // the announcer's voice (Android's WebView has no Web Speech API)
+    private volatile boolean ttsReady;
 
     // Long-press-OK tracking: we hold back the OK key-down until we know it is a short press.
     private KeyEvent pendingOkDown;
@@ -125,6 +137,7 @@ public class MainActivity extends Activity {
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         web.addJavascriptInterface(new Bridge(), "WooglesTV");
+        initTts();
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new Client());
     }
@@ -136,6 +149,95 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void openMenu() {
             handler.post(new Runnable() { @Override public void run() { showMenu(); } });
         }
+        /** Speak text (queued). rate 1 = normal, volume 0..1, voice = name from voices() or "" for default. */
+        @JavascriptInterface public void speak(final String text, final double rate, final double volume, final String voice) {
+            handler.post(new Runnable() { @Override public void run() { say(text, rate, volume, voice); } });
+        }
+        @JavascriptInterface public void stopSpeaking() {
+            handler.post(new Runnable() { @Override public void run() { if (tts != null) tts.stop(); } });
+        }
+        /** JSON array of installed voices: [{name, lang, label}], English and on-device voices first. */
+        @JavascriptInterface public String voices() { return voiceList(); }
+        @JavascriptInterface public boolean ttsReady() { return ttsReady; }
+    }
+
+    private void initTts() {
+        if (tts != null) return;
+        tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override public void onInit(int status) {
+                if (status != TextToSpeech.SUCCESS) return;
+                try {
+                    int r = tts.setLanguage(Locale.US);
+                    if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) tts.setLanguage(Locale.ENGLISH);
+                } catch (Exception ignored) { }
+                ttsReady = true;
+            }
+        });
+    }
+
+    private String currentVoice = "";
+
+    private void say(String text, double rate, double volume, String voice) {
+        if (text == null || text.isEmpty()) return;
+        if (tts == null) initTts();
+        if (!ttsReady) { // engine still binding (first use): try again shortly
+            final String t = text; final double ra = rate, vo = volume; final String vc = voice;
+            handler.postDelayed(new Runnable() { @Override public void run() { if (ttsReady) say(t, ra, vo, vc); } }, 800);
+            return;
+        }
+        try {
+            String want = voice == null ? "" : voice;
+            if (!want.equals(currentVoice)) {
+                boolean set = false;
+                if (!want.isEmpty()) {
+                    Set<Voice> vs = tts.getVoices();
+                    if (vs != null) for (Voice v : vs) if (v.getName().equals(want)) { tts.setVoice(v); set = true; break; }
+                }
+                if (!set) tts.setLanguage(Locale.US);
+                currentVoice = want;
+            }
+            tts.setSpeechRate((float) Math.max(0.5, Math.min(2.0, rate)));
+            Bundle p = new Bundle();
+            p.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, (float) Math.max(0, Math.min(1, volume)));
+            tts.speak(text, TextToSpeech.QUEUE_ADD, p, "wt" + System.nanoTime());
+        } catch (Exception ignored) { }
+    }
+
+    private String voiceList() {
+        JSONArray out = new JSONArray();
+        if (!ttsReady) return out.toString();
+        try {
+            Set<Voice> vs = tts.getVoices();
+            if (vs == null) return out.toString();
+            List<Voice> list = new ArrayList<>();
+            for (Voice v : vs) {
+                if (v.getLocale() == null || !"en".equals(v.getLocale().getLanguage())) continue;
+                if (v.getFeatures() != null && v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                list.add(v);
+            }
+            Collections.sort(list, new Comparator<Voice>() {
+                @Override public int compare(Voice a, Voice b) {
+                    int c = Boolean.compare(a.isNetworkConnectionRequired(), b.isNetworkConnectionRequired());
+                    if (c != 0) return c;
+                    c = a.getLocale().toLanguageTag().compareTo(b.getLocale().toLanguageTag());
+                    return c != 0 ? c : a.getName().compareTo(b.getName());
+                }
+            });
+            int n = 0;
+            String lastLang = "";
+            for (Voice v : list) {
+                String lang = v.getLocale().toLanguageTag();
+                n = lang.equals(lastLang) ? n + 1 : 1;
+                lastLang = lang;
+                JSONObject o = new JSONObject();
+                o.put("name", v.getName());
+                o.put("lang", lang);
+                o.put("label", v.getLocale().getDisplayCountry(Locale.ENGLISH) + " " + n + (v.isNetworkConnectionRequired() ? " (online)" : ""));
+                out.put(o);
+                if (out.length() >= 40) break;
+            }
+        } catch (Exception ignored) { }
+        return out.toString();
     }
 
     class Client extends WebViewClient {
@@ -433,6 +535,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (tts != null) { tts.shutdown(); tts = null; }
         if (web != null) {
             ((ViewGroup) web.getParent()).removeView(web);
             web.destroy();

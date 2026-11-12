@@ -1,5 +1,6 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
-  applyTheme, paintTimer, sfx, THEME_NAMES, tileEl } from './common.js';
+  applyTheme, paintTimer, sfx, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
+import { makeAnnouncer, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 
 const $ = (s) => document.querySelector(s);
@@ -7,7 +8,10 @@ const params = new URLSearchParams(location.search);
 const CAST = document.body.dataset.cast === '1';
 const NS = 'urn:x-cast:io.woogles.tv';
 let cells = null, prevBoard = null, gameNo = -1, state = {}, recvAt = 0, ws = null;
-sfx.enabled = localStorage.getItem('wt_sound') !== 'off';
+sfx.load('high', 'wt_sound');
+const ann = makeAnnouncer('wt_tv_', 'all');
+let speechCtx = {};
+const alertsTick = clockAlerts(onClockAlert);
 
 // ---- room bootstrap: reuse the room saved on this TV, else create one ----
 async function getRoom() {
@@ -116,13 +120,21 @@ function render(s) {
       } else if (m.type === 'pass') { sfx.pass(); toast(`${names[m.player]} passed`); }
       else if (m.type === 'exchange') { sfx.pass(); toast(`${names[m.player]} exchanged ${m.count}`); }
     }
+    if (ann.on('moves')) {
+      const lines = describeForSpeech(s.log.slice(prev.log.length), s, names, ann, speechCtx);
+      setTimeout(() => lines.forEach((l) => ann.say(l)), s.log.slice(prev.log.length).some((m) => m.bingo) ? 1300 : 650);
+    }
   }
+  if (prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
 
   // game over
   const wasOver = prev.phase === 'over';
   $('#over').classList.toggle('hidden', s.phase !== 'over');
   if (s.phase === 'over') {
-    if (!wasOver && prev.phase) setTimeout(() => sfx.over(), 900);
+    if (!wasOver && prev.phase) {
+      setTimeout(() => sfx.over(), 900);
+      if (ann.on('moves')) setTimeout(() => ann.say(gameOverSpeech(s, names)), 1900);
+    }
     $('#trophy').textContent = s.winner === -1 ? '🤝' : '🏆';
     $('#winner').textContent = s.winner === -1 ? "It's a tie!" : `${names[s.winner]} wins!`;
     const loser = s.winner >= 0 ? names[1 - s.winner] : '';
@@ -178,16 +190,36 @@ function tickClocks() {
   const pl = $('#players');
   s.seats.forEach((_, i) => { const t = pl.children[i]?.querySelector('.timer'); if (t) paintTimer(t, s.clock, recvAt, i); });
 }
-setInterval(tickClocks, 250);
+setInterval(() => { tickClocks(); if (state.phase === 'playing') alertsTick(state.clock, recvAt, state.gameNo); }, 250);
+function onClockAlert(seat, kind, n) {
+  const name = state.seats?.[seat]?.name || '';
+  if (kind === 'count') { sfx.count(n); return; }
+  if (kind === '5min' || kind === '1min') sfx.warn();
+  else if (kind === 'overtime' || kind === 'lastmin') sfx.overtime();
+  else if (kind === 'overmin') sfx.penalty();
+  if (kind === 'overtime') toast(`${name} is in overtime: −10 points per minute`, 'bad');
+  else if (kind === 'lastmin') toast(`${name}: one minute until a loss on time`, 'bad');
+  if (ann.on('all')) setTimeout(() => ann.say(clockSpeech(kind, n, name)), 500);
+}
 
 // ---- options menu (works with a TV remote: arrows + OK) ----
 let menuIdx = 0;
 const menuItems = () => [...document.querySelectorAll('#menu .mitem:not(.hidden)')];
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
-  $('#mSound').textContent = sfx.enabled ? 'On' : 'Off';
+  paintSoundMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
   $('#menu').classList.remove('hidden'); menuIdx = 0; focusMenu();
+}
+function paintSoundMenu() {
+  $('#mSound').textContent = SOUND_NAMES[sfx.level];
+  const can = ann.available();
+  $('#mAnnItem').classList.toggle('hidden', !can);
+  $('#mAnn').textContent = ANN_MODE_NAMES[ann.mode];
+  document.querySelectorAll('#menu .annOpt').forEach((b) => b.classList.toggle('hidden', !can || ann.mode === 'off' || !sfx.enabled));
+  $('#mVoice').textContent = ann.voiceName();
+  $('#mSpell').textContent = SPELL_NAMES[ann.spell];
+  $('#mRate').textContent = RATE_NAMES[ann.rate] || 'Normal';
 }
 function focusMenu() { const it = menuItems(); it.forEach((b, i) => b.classList.toggle('focus', i === menuIdx)); it[menuIdx]?.focus(); }
 function closeMenu() { $('#menu').classList.add('hidden'); }
@@ -198,9 +230,13 @@ function menuAct(act) {
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
   } else if (act === 'sound') {
-    sfx.enabled = !sfx.enabled; localStorage.setItem('wt_sound', sfx.enabled ? 'on' : 'off');
-    $('#mSound').textContent = sfx.enabled ? 'On' : 'Off'; sfx.turn();
-  } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
+    sfx.cycle(); paintSoundMenu(); sfx.turn();
+  } else if (act === 'ann') {
+    ann.cycleMode(); ann.stop(); paintSoundMenu();
+    if (ann.mode !== 'off') ann.say(ann.mode === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.');
+  } else if (act === 'voice') { ann.cycleVoice(); ann.stop(); paintSoundMenu(); ann.say("Hi! I'll be your announcer."); }
+  else if (act === 'spell') { ann.cycleSpell(); paintSoundMenu(); ann.stop(); ann.say(ann.spell === 'never' ? 'Words will not be spelled out.' : `Zoea. Z, O, E, A.`); }
+  else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
   else if (act === 'games') openGames(); else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
   else closeMenu();
 }
@@ -330,6 +366,16 @@ function focusGames() {
   t.classList.add('focus'); t.focus(); t.scrollIntoView({ block: 'nearest' });
 }
 
+// "New game! Alex versus Steebot. NWL23, 30 minutes each. Alex goes first. Good luck!"
+function announceStart() {
+  if (!ann.on('all') || !state.seats) return;
+  const n = state.seats.map((x) => sayName(x.name));
+  const lex = { NWL23: 'N W L 23', CSW24: 'C S W 24' }[state.lexicon] || state.lexicon || '';
+  const time = state.clock ? `, ${Math.round(state.clock.initialMs / 60000)} minutes each` : '';
+  const first = state.seats[state.turn] ? ` ${n[state.turn]} goes first.` : '';
+  ann.say(`New game! ${n[0]} versus ${n[1]}. ${lex}${time}.${first} Good luck!`);
+}
+
 function startRoom(room) {
   currentRoom = room; rememberRoom(room);
   if (ws) ws.close();
@@ -341,9 +387,9 @@ function startRoom(room) {
     else if (m.t === 'event') {
       const nm = state.seats?.[m.seat]?.name || '';
       if (m.kind === 'rejected') { toast(`${nm}: ${m.msg}`, 'bad'); sfx.bad(); }
-      else if (m.kind === 'pause') toast(`${nm} paused the clock`);
-      else if (m.kind === 'resume') toast(`${nm} resumed the clock`, 'good');
-      else if (m.kind === 'start') { sfx.turn(); }
+      else if (m.kind === 'pause') { toast(`${nm} paused the clock`); if (ann.on('all')) ann.say('Clock paused.'); }
+      else if (m.kind === 'resume') { toast(`${nm} resumed the clock`, 'good'); if (ann.on('all')) ann.say('Clock resumed.'); }
+      else if (m.kind === 'start') { sfx.turn(); setTimeout(announceStart, 400); }
     }
   }, (ok, fails) => {
     $('#conn').classList.toggle('hidden', ok);
@@ -390,7 +436,7 @@ function startCastReceiver() {
   if (CAST) {
     $('#lobby').classList.add('hidden'); $('#castWait').classList.remove('hidden');
     document.querySelector('[data-act="newroom"]').classList.add('hidden');
-    sfx.enabled = true;
+    if (sfx.level === 'off') sfx.set('high');
     startCastReceiver();
     return;
   }

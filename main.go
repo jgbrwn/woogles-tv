@@ -55,7 +55,11 @@ func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 
 func main() {
-	addr := flag.String("addr", ":8420", "listen address")
+	defAddr := ":8420"
+	if p := os.Getenv("PORT"); p != "" { // set by Render, Railway, Fly, Cloud Run, Heroku…
+		defAddr = ":" + p
+	}
+	addr := flag.String("addr", defAddr, "listen address, e.g. :9000 or 127.0.0.1:8420 (default :8420, or :$PORT if PORT is set)")
 	data := flag.String("data", "./data", "macondo data path (lexica etc.); rooms are saved in DATA/rooms")
 	apk := flag.String("apk", "./android/out/woogles-tv.apk", "Android TV APK to serve at /app/woogles-tv.apk")
 	demo := flag.Int("demo", 0, "seed a demo game with this many moves played and print TV/phone links (for trying the UI)")

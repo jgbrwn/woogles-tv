@@ -199,11 +199,29 @@ export function countUp(node, to, ms = 900) {
 }
 
 // ---- tiny synthesized sound effects (no audio files) ----
-let actx = null;
+// Volume is a per-device setting: off / low / med / high, stored in localStorage (wt_sound). Everything goes through
+// one master gain node so the level applies to all sounds (and the announcer reads it too).
+export const SOUND_LEVELS = ['off', 'low', 'med', 'high'];
+export const SOUND_NAMES = { off: 'Off', low: 'Low', med: 'Medium', high: 'High' };
+const GAIN = { off: 0, low: 0.3, med: 0.6, high: 1 };
+let actx = null, master = null;
 export const sfx = {
-  enabled: true,
+  level: 'high', key: 'wt_sound',
+  get enabled() { return this.level !== 'off'; },
+  get gain() { return GAIN[this.level] ?? 1; },
+  load(def = 'high', key = 'wt_sound') {
+    this.key = key;
+    const v = localStorage.getItem(key);
+    this.level = v === 'on' ? 'high' : SOUND_LEVELS.includes(v) ? v : def; // 'on' = setting from older versions
+    return this.level;
+  },
+  set(level) { this.level = level; localStorage.setItem(this.key, level); if (master) master.gain.value = this.gain; },
+  cycle() { this.set(SOUND_LEVELS[(SOUND_LEVELS.indexOf(this.level) + 1) % SOUND_LEVELS.length]); return this.level; },
   ctx() {
-    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+    if (!actx) {
+      try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+      master = actx.createGain(); master.gain.value = this.gain; master.connect(actx.destination);
+    }
     if (actx.state === 'suspended') actx.resume().catch(() => {});
     return actx;
   },
@@ -215,7 +233,7 @@ export const sfx = {
     o.type = type; o.frequency.setValueAtTime(freq, t);
     if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
   },
   clack(at = 0) { // wooden tile click: short filtered noise burst
     if (!this.enabled) return;
@@ -224,7 +242,7 @@ export const sfx = {
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
     const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     src.buffer = buf; f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 600; f.Q.value = 1.2; g.gain.value = 0.7;
-    src.connect(f).connect(g).connect(c.destination); src.start(t);
+    src.connect(f).connect(g).connect(master); src.start(t);
   },
   play(n) { for (let i = 0; i < n; i++) this.clack(i * 0.11); },
   bingo() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.25, { type: 'triangle', vol: 0.16, at: 0.5 + i * 0.09 })); },
@@ -233,4 +251,30 @@ export const sfx = {
   pass() { this.tone(392, 0.15, { type: 'triangle', vol: 0.1, slide: 0.8 }); },
   over() { [784, 659, 523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, { type: 'triangle', vol: 0.14, at: i * 0.14 })); },
   tick() { this.tone(1400, 0.04, { type: 'square', vol: 0.04 }); },
+  // clock alerts
+  warn() { [0, 0.22].forEach((at) => { this.tone(988, 0.16, { type: 'triangle', vol: 0.16, at }); this.tone(1319, 0.2, { type: 'triangle', vol: 0.1, at: at + 0.08 }); }); },
+  count(n) { this.tone(n <= 3 ? 1568 : 1175, 0.07, { type: 'square', vol: n <= 3 ? 0.07 : 0.045 }); },
+  overtime() { [880, 698, 554].forEach((f, i) => this.tone(f, 0.28, { type: 'sawtooth', vol: 0.07, at: i * 0.2, slide: 0.97 })); },
+  penalty() { this.tone(196, 0.3, { type: 'square', vol: 0.06, slide: 0.6 }); this.tone(147, 0.35, { type: 'triangle', vol: 0.14, at: 0.05, slide: 0.7 }); },
 };
+
+// Watches a game clock and reports thresholds as they are crossed *while watching*: no alerts on page load,
+// reconnect or for time that passed while the tab was hidden. Call the returned function every ~250 ms.
+// Alerts: '5min', '1min', 'count' (n = 10..1 seconds left), 'overtime', 'overmin' (n = minutes over), 'lastmin'
+// (9 minutes over: one more minute and the game is lost on time).
+export function clockAlerts(onAlert) {
+  let last = null; // {key, ms}
+  return (clock, recvAt, gameNo) => {
+    if (!clock || clock.paused || clock.running < 0) { last = null; return; }
+    const seat = clock.running, ms = clockNow(clock, recvAt, seat), key = `${gameNo}:${seat}`;
+    const prev = last && last.key === key ? last.ms : null;
+    last = { key, ms };
+    if (prev === null || ms > prev || prev - ms > 4000) return;
+    const crossed = (t) => prev > t && ms <= t;
+    if (clock.initialMs > 10 * 60000 && crossed(5 * 60000)) onAlert(seat, '5min');
+    if (clock.initialMs > 2 * 60000 && crossed(60000)) onAlert(seat, '1min');
+    for (let n = 10; n >= 1; n--) if (crossed(n * 1000)) onAlert(seat, 'count', n);
+    if (crossed(0)) onAlert(seat, 'overtime');
+    for (let m = 1; m <= 9; m++) if (crossed(-m * 60000)) onAlert(seat, m === 9 ? 'lastmin' : 'overmin', m);
+  };
+}

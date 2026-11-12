@@ -7,5 +7,5 @@ Contributions welcome. Open an issue to discuss before starting on something big
 - Challenge modes besides void (single / double challenge with a phony-word penalty).
 - Export finished games as GCG and open them in Woogles' analyzer, or show Macondo's best play per turn after the game.
 - More dictionaries supported by Macondo (e.g. other languages' letter distributions are already in `data/`).
-- A server-wide sound/volume setting for TVs, and spoken announcements of moves.
+- Announcer: more languages (it's English only today), and optional recorded voice packs.
 - Prebuilt multi-arch container images and release binaries via CI (mind the word-list licensing when publishing images).

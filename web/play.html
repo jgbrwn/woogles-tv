@@ -46,6 +46,7 @@
   </header>
   <div id="turnBar"><span id="turnMsg"></span><span id="bagMsg" class="muted"></span></div>
   <div id="boardScroll"><div id="board"></div></div>
+  <div id="recent" class="scPanel"><div class="scHead"><span>Scorecard</span><span class="scMeta"></span></div><ol class="scList"></ol></div>
   <div id="status"><span id="preview"></span><button id="seatChip" class="chip hidden">🪑 Take empty seat</button><button id="scoreChip" class="chip" aria-label="Scorecard" aria-pressed="false">📋</button><button id="zoomBtn" class="chip" aria-label="Zoom">🔍</button><button id="menuBtn" class="chip" aria-label="Menu">☰</button></div>
   <div id="rack"></div>
   <div id="actions">
@@ -56,7 +57,7 @@
     <button id="backBtn" class="btn" title="Take back the last tile" disabled>⌫<small>Back</small></button>
     <button id="playBtn" class="btn primary">Play</button>
   </div>
-  <div id="scoreSheet" class="hidden"><div class="scHead"><span>Scorecard</span><span id="scMeta"></span></div><ol id="scList"></ol></div>
+  <div id="scoreSheet" class="scPanel hidden"><div class="scHead"><span>Scorecard</span><span class="scMeta"></span></div><ol class="scList"></ol></div>
   <div id="swapBar" class="hidden"><span>Tap tiles to exchange</span><button id="swapCancel" class="btn">Cancel</button><button id="swapGo" class="btn primary">Swap 0</button></div>
 </div>
 

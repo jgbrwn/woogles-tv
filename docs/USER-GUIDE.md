@@ -100,17 +100,46 @@ spot in the rack.
 
 Your phone buzzes when it's your turn (on phones that support vibration), and plays a short sound.
 
+**Sound & voice** (☰ → *Sound & voice*, settings for this phone only)
+- **Volume**: Off, Low, Medium or High.
+- **Clock warnings** for *your* clock: a chime and buzz at 5 minutes and 1 minute left, a countdown over the last 10
+  seconds, an alarm when you go into overtime, and a tone each time another overtime minute (another −10) starts.
+- **Announcer** (off by default on phones): reads out the moves like the TV does. Useful when you play with no TV.
+  Choose *Moves* (just the plays) or *Everything* (plus lead changes, the bag, clock warnings and the result).
+
+**Tablets and landscape.** On a tablet, or a phone turned sideways, the board sits on the left and the scorecard,
+rack and buttons on the right. On tall phones, the latest moves appear under the board.
+
 ## 4. The TV remote
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (theme, sound, Games on this TV, New game) |
+| **OK** | Opens the options menu (theme, volume, announcer, Games on this TV, New game) |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
 | **Back** | Closes a menu. In the app, press Back twice to exit |
 | **Hold OK** or **Menu** (app only) | Native app menu: reload, change server URL, reset, exit |
 
 Browsers on a computer: Enter opens the menu, the arrow keys move, Esc closes.
+
+### Sound and the announcer
+
+The TV plays sounds for each move, bingos, the end of the game, and clock warnings for whoever is on turn (chimes at 5
+and 1 minute left, a 10-second countdown, an overtime alarm, and a tone for each extra overtime minute).
+
+The **announcer** speaks the game aloud: *"Bingo! Alex plays quixotic. Q, U, I, X, O, T, I, C, for 98 points."*
+In the options menu (press **OK**):
+
+| Option | Choices |
+|---|---|
+| **Volume** | Off, Low, Medium, High (applies to the announcer too) |
+| **Announcer** | *Off*; *Moves* (plays, passes, exchanges and the result); *Everything* (also the start of the game, lead changes, side words, the bag running low or empty, pauses, clock warnings, and comments on big plays) |
+| **Voice** | The voices installed on the TV (or browser). In the Android TV app these are Android's text-to-speech voices. More can be installed in the TV's settings under *Text-to-speech output* |
+| **Spell out words** | Never, Bingos (default), Always |
+| **Speaking speed** | Slow, Normal, Fast |
+
+The announcer needs the Android TV app **version 1.0.10 or later**, or a browser with speech support (Chrome, Edge,
+Safari, Firefox). Chromecast devices don't support it.
 
 ## 5. Rules, clocks and the computer
 
@@ -180,5 +209,7 @@ install button (see [LOCAL-NETWORK.md](LOCAL-NETWORK.md)).
 | "This link is missing its join key" | Scan the QR code again, or type the room code on the home page |
 | "No TV is showing that code" | Check the code in the TV's corner; the TV must be open and online |
 | No sound on a browser TV | Click or press a key once on the TV page |
+| The announcer is missing from the TV menu | Update the Android TV app (1.0.10+). In a browser it needs speech support. Check that **Volume** isn't Off |
+| The announcer has a strange accent or is silent | Pick another **Voice**, or install English voice data under the TV's *Settings → Accessibility → Text-to-speech* |
 | The phone can't reach a home server | Same Wi-Fi as the server? Guest networks often block devices from reaching each other ([LOCAL-NETWORK.md](LOCAL-NETWORK.md)) |
 | No Cast button | Only Chrome on Android/desktop can cast a web page, and the server needs a Cast app ID ([CAST.md](CAST.md)) |
