@@ -15,6 +15,10 @@ Live: **https://woogles-tv.exe.xyz/**
 **TV-first:** the TV shows a QR code and a 6-letter code; phones scan it (or open `/` and type the code).
 **Phone-first:** tap *Start a new game* on a phone, then *Show on TV* and type the code the TV app/browser is
 showing (the TV switches to your game; if it is mid-game it asks first). Invite the other player with the room QR.
+**Several games:** the code in the TV's corner is always the code of the game on screen. To start another game
+press OK → *New game*; earlier games stay listed under OK → *Games on this TV* (switch back with the remote), and
+each phone lists its games on the home page (*Your games*), where *Show on TV* can bring one back. Unfinished games
+are kept 7 days. Anyone with the room link who isn't seated can watch (board and scores only, never racks).
 Installable as a PWA (Chrome menu → Install app, or the *Install* button on the home page).
 
 ## Game options (chosen on a phone before the game)

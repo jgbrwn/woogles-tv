@@ -112,3 +112,20 @@ func TestLinkTV(t *testing.T) {
 		t.Fatalf("TV mid-game should be asked first: %s", msg)
 	}
 }
+
+func TestSummaryNeedsCredential(t *testing.T) {
+	r := newTestRoom(t)
+	if _, _, ok := r.summaryFor("", "wrong", ""); ok {
+		t.Fatal("summary without a valid key")
+	}
+	if _, _, ok := r.summaryFor("nope", "", ""); ok {
+		t.Fatal("summary with a bad TV key")
+	}
+	sm, seat, ok := r.summaryFor(r.TVKey, "", "")
+	if !ok || seat != -1 || sm.Phase != "lobby" {
+		t.Fatalf("tv summary: %+v %d %v", sm, seat, ok)
+	}
+	if _, _, ok := r.summaryFor("", r.JoinKey, ""); !ok {
+		t.Fatal("join key should allow a summary")
+	}
+}

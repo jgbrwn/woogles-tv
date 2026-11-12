@@ -466,7 +466,7 @@ $('#menuBtn').onclick = () => {
   openModal(`<h3>Menu</h3><div class="menuList">
     <button class="btn" data-a="unseen">🔤 Unseen tiles</button>
     ${playing && timed ? `<button class="btn" data-a="pause">${s.clock.paused ? '▶ Resume clock' : '⏸ Pause clock'}</button>` : ''}
-    ${s.tvs ? '' : '<button class="btn" data-a="tv">📺 Show on a TV</button>'}
+    <button class="btn" data-a="tv">📺 ${s.tvs ? 'Show on another TV' : 'Show on a TV'}</button>
     ${canCast ? '<button class="btn" data-a="cast">📡 Cast board to TV</button>' : ''}
     <button class="btn" data-a="invite">📨 Invite / room QR</button>
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>

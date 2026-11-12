@@ -18,6 +18,9 @@
 - Clock in 15-minute steps (off, 15 min … 2 h).
 - Bingo celebration (word in tiles, score, confetti, fanfare) on the TV and both phones.
 
+- Multiple games per TV: "Games on this TV" list (remote), "Your games" on phones, spectator mode,
+  unfinished games kept 7 days, /api/summaries (each item needs its own credential).
+
 ## Next ideas
 - Test on the Onn 4K box + two real phones; tune TV sizes for 720p receivers.
 - Spectator mode / 3–4 players, challenge modes (single/double), game history export (GCG).
