@@ -62,7 +62,7 @@ function render(st) {
   const watch = s.you < 0 && s.phase !== 'lobby' && !wantSeat;
   document.body.classList.toggle('watching', watch);
   if (s.you >= 0) wantSeat = false;
-  if (!watch && (s.you < 0 || s.phase === 'lobby')) { renderLobby(); show('lobby'); $('#over').classList.add('hidden'); if (s.phase === 'lobby') { gameNo = -1; } return; }
+  if (!watch && (s.you < 0 || s.phase === 'lobby')) { if (scoreOpen) toggleScorecard(false); renderLobby(); show('lobby'); $('#over').classList.add('hidden'); if (s.phase === 'lobby') { gameNo = -1; } return; }
   if (s.phase === 'over') renderOver(prev); else $('#over').classList.add('hidden');
   // game board (also kept updated beneath the over screen)
   if (!cells || s.gameNo !== gameNo) {
@@ -77,6 +77,7 @@ function render(st) {
   reconcileRack(s.rack || '');
   paintBoard(cells, s.board, { last: new Set(lastPlaySquares(s.log)) });
   renderHeader();
+  renderScorecard();
   renderRack();
   renderPending();
   $('#backBtn').disabled = $('#recallBtn').disabled = !pending.size;
@@ -514,6 +515,40 @@ function linkPrompt() {
   inp.addEventListener('input', () => { inp.value = inp.value.toUpperCase().replace(/[^A-Z]/g, ''); });
   $('#mLink').addEventListener('submit', (e) => { e.preventDefault(); ws.send({ t: 'linktv', code: inp.value.trim() }); closeModal(null); });
 }
+// ---- scorecard overlay (toggled by the 📋 chip, which it never covers) ----
+let scoreOpen = false;
+function placeScoreSheet() {
+  const sh = $('#scoreSheet'), top = $('#turnBar').getBoundingClientRect().top, bottom = $('#status').getBoundingClientRect().top;
+  sh.style.top = Math.max(8, top) + 'px'; sh.style.height = Math.max(160, bottom - Math.max(8, top) - 6) + 'px';
+}
+function renderScorecard() {
+  if (!scoreOpen || !s || !s.seats) return;
+  const n = names();
+  const turns = (s.log || []).filter((m) => ['play', 'pass', 'exchange'].includes(m.type)).length;
+  $('#scMeta').textContent = `${turns} turn${turns === 1 ? '' : 's'} · ${s.bag} in bag`;
+  const list = $('#scList'), log = s.log || [];
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 30;
+  list.innerHTML = log.length ? '' : '<li class="empty">No moves yet</li>';
+  log.forEach((m, i) => {
+    const d = describeMove(m, n);
+    const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet' : ''));
+    const init = s.seats[m.player]?.bot ? '🤖' : esc([...(n[m.player] || '?')][0]);
+    li.innerHTML = `<span class="no">${i + 1}</span><span class="av p${m.player}">${init}</span><span class="w">${esc(d.text)}${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</span>
+      <span class="s">${d.score > 0 ? '+' : ''}${d.score ?? ''}</span><span class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total ?? ''}</span>`;
+    list.append(li);
+  });
+  if (atBottom || !renderScorecard.done) list.scrollTop = list.scrollHeight;
+  renderScorecard.done = true;
+}
+function toggleScorecard(on = !scoreOpen) {
+  scoreOpen = on; renderScorecard.done = false;
+  $('#scoreSheet').classList.toggle('hidden', !on);
+  $('#scoreChip').classList.toggle('on', on); $('#scoreChip').setAttribute('aria-pressed', on);
+  if (on) { placeScoreSheet(); renderScorecard(); }
+}
+$('#scoreChip').onclick = () => toggleScorecard();
+window.addEventListener('resize', () => scoreOpen && placeScoreSheet());
+
 function showUnseen() {
   const u = s.unseen || {}; const keys = Object.keys(u).sort((a, b) => (a === '?') - (b === '?') || a.localeCompare(b));
   const total = Object.values(u).reduce((a, b) => a + b, 0);

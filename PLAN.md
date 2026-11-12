@@ -23,6 +23,7 @@
 
 - Phone: ⌫ Back takes back the last tile (cursor steps back); Recall returns the cursor to where the move
   started, same direction. Hardware Backspace works too.
+- Phone 📋 scorecard overlay over the board area (toggle chip stays visible); unseen-tiles modal fixed.
 - Games lists: Active/Finished filter, remove (phone ✕, TV ◀ ▶), expired games auto-pruned.
 - Home Appearance setting (Auto/Light/Dark); light themes declare `color-scheme: light dark` so Chrome's
   auto-dark never force-darkens them.
