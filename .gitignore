@@ -1,0 +1,4 @@
+wooglecast
+data/lexica/
+data/strategy/*/
+!data/strategy/default/

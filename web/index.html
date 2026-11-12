@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WoogleCast</title><link rel="stylesheet" href="/static/app.css">
+<style>
+ body { display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 24px; }
+ h1 { font-size: 56px; margin: 0; } h1 span { color: var(--accent); }
+ p { color: var(--muted); }
+ .row { display: flex; flex-direction: column; gap: 14px; max-width: 340px; margin: 28px auto 0; }
+ a.btn, button { display: block; padding: 18px; border-radius: 12px; background: var(--accent); color: #1a1300; font-weight: 800; font-size: 20px; text-decoration: none; }
+ a.btn:focus, button:focus, input:focus { outline: 4px solid #fff; }
+ input { font: inherit; font-size: 24px; text-align: center; letter-spacing: .3em; text-transform: uppercase; padding: 14px; border-radius: 12px; border: 1px solid #334155; background: var(--panel); color: var(--ink); }
+ .or { margin: 8px 0; }
+</style></head><body>
+<div>
+  <h1>Woogle<span>Cast</span></h1>
+  <p>Living-room crossword game · board on the TV, racks on your phones<br><small>Powered by the open-source Macondo / Woogles.io engine</small></p>
+  <div class="row">
+    <a class="btn" href="/tv" autofocus>📺 This is the TV</a>
+    <div class="or">— or join a game —</div>
+    <form onsubmit="event.preventDefault(); const c=this.code.value.trim().toUpperCase(); if(c) location.href='/p/'+c;">
+      <input name="code" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters">
+      <button style="margin-top:10px;width:100%">Join</button>
+    </form>
+  </div>
+</div>
+</body></html>

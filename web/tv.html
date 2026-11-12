@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WoogleCast — TV</title>
+<link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/tv.css">
+</head><body class="tv">
+<main id="game">
+  <section id="boardWrap"><div id="board"></div><div id="previewBadge" class="hidden"></div></section>
+  <aside id="side">
+    <div id="players"></div>
+    <div id="bagRow"><span id="bag">100</span> tiles in bag <span class="sep">·</span> <span id="lex"></span></div>
+    <div id="logTitle">Moves</div>
+    <ol id="log"></ol>
+    <div id="joinMini"><img id="qrMini" alt=""><div>Join: <b class="code"></b></div></div>
+  </aside>
+</main>
+<div id="lobby" class="overlay">
+  <div class="card">
+    <h1>Woogle<span>Cast</span></h1>
+    <p class="sub">Scan with your phone to grab a rack</p>
+    <img id="qr" alt="QR code">
+    <p class="url"></p>
+    <p class="codeline">Room code <b class="code"></b></p>
+    <div id="lobbySeats"></div>
+    <p class="hint" id="lobbyHint">Waiting for players…</p>
+  </div>
+</div>
+<div id="over" class="overlay hidden"><div class="card"><h2 id="winner"></h2><div id="finals"></div><p class="hint">Press <b>Rematch</b> on a phone to play again</p></div></div>
+<div id="conn" class="hidden">Reconnecting…</div>
+<script type="module" src="/static/tv.js"></script>
+</body></html>

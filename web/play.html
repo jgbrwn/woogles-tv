@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#10151c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>WoogleCast — Rack</title>
+<link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/play.css">
+</head><body class="phone">
+<div id="lobby" class="screen">
+  <h1>Woogle<span>Cast</span></h1>
+  <p class="muted">Room <b class="code"></b></p>
+  <label class="field">Your name <input id="name" maxlength="16" autocomplete="nickname" placeholder="Name"></label>
+  <div id="seatBtns"></div>
+  <div id="seatedBox" class="hidden">
+    <p id="seatedMsg"></p>
+    <label class="field">Dictionary <select id="lexSel"></select></label>
+    <button id="startBtn" class="primary big">Start game</button>
+    <button id="botBtn" class="big">🤖 Play vs computer</button>
+    <button id="leaveBtn" class="ghostbtn">Leave seat</button>
+  </div>
+</div>
+<div id="game" class="screen hidden">
+  <header id="hdr">
+    <div class="sc" id="scMe"><div class="n"></div><div class="v">0</div></div>
+    <div id="mid"><div id="turnMsg"></div><div id="bagMsg" class="muted"></div></div>
+    <div class="sc" id="scOpp"><div class="n"></div><div class="v">0</div></div>
+  </header>
+  <div id="lastMove" class="muted"></div>
+  <div id="boardScroll"><div id="board"></div></div>
+  <div id="status"><span id="preview"></span><button id="zoomBtn" class="chip">🔍 Zoom</button><button id="unseenBtn" class="chip">Unseen</button></div>
+  <div id="rack"></div>
+  <div id="actions">
+    <button id="shuffleBtn">Shuffle</button><button id="recallBtn">Recall</button>
+    <button id="swapBtn">Swap</button><button id="passBtn">Pass</button>
+    <button id="playBtn" class="primary">Play</button>
+  </div>
+  <div id="swapBar" class="hidden"><span>Tap tiles to swap</span><button id="swapCancel">Cancel</button><button id="swapGo" class="primary">Swap 0</button></div>
+</div>
+<div id="over" class="screen hidden">
+  <h2 id="ovTitle"></h2><div id="ovScores"></div>
+  <button id="rematchBtn" class="primary big">Rematch</button>
+  <button id="lobbyBtn" class="ghostbtn">Back to lobby</button>
+</div>
+<div id="modal" class="hidden"><div class="mcard"><div id="mbody"></div><button id="mclose" class="ghostbtn">Close</button></div></div>
+<div id="conn" class="hidden">Reconnecting…</div>
+<script type="module" src="/static/play.js"></script>
+</body></html>
