@@ -2,46 +2,62 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#10151c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
-<title>WoogleCast — Rack</title>
+<meta name="theme-color" content="#eeeeee"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="referrer" content="no-referrer">
+<title>Woogles-TV — your rack</title>
+<link rel="icon" href="/static/icon.svg">
 <link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/play.css">
 </head><body class="phone">
 <div id="lobby" class="screen">
-  <h1>Woogle<span>Cast</span></h1>
-  <p class="muted">Room <b class="code"></b></p>
-  <label class="field">Your name <input id="name" maxlength="16" autocomplete="nickname" placeholder="Name"></label>
-  <div id="seatBtns"></div>
-  <div id="seatedBox" class="hidden">
-    <p id="seatedMsg"></p>
-    <label class="field">Dictionary <select id="lexSel"></select></label>
-    <button id="startBtn" class="primary big">Start game</button>
-    <button id="botBtn" class="big">🤖 Play vs computer</button>
-    <button id="leaveBtn" class="ghostbtn">Leave seat</button>
+  <div class="logo big"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
+  <p class="muted roomline">Room <b class="code"></b></p>
+  <div id="joinBox" class="panel">
+    <label class="field">Your name <input id="name" maxlength="16" autocomplete="nickname" placeholder="Name" enterkeyhint="done"></label>
+    <div id="seatBtns"></div>
+  </div>
+  <div id="seatedBox" class="panel hidden">
+    <div id="matchup"></div>
+    <div class="field">Dictionary <div class="seg" id="lexSeg"></div><small class="muted" id="lexHelp"></small></div>
+    <div class="field">Clock (per player, whole game) <div class="seg" id="timeSeg"></div><small class="muted" id="timeHelp"></small></div>
+    <div class="field">Theme <div id="themeRow" class="themes"></div></div>
+    <button id="startBtn" class="btn primary big">Start game</button>
+    <button id="botBtn" class="btn big">🤖 Play vs computer</button>
+    <button id="leaveBtn" class="btn ghost">Leave seat</button>
   </div>
 </div>
+
 <div id="game" class="screen hidden">
   <header id="hdr">
-    <div class="sc" id="scMe"><div class="n"></div><div class="v">0</div></div>
-    <div id="mid"><div id="turnMsg"></div><div id="bagMsg" class="muted"></div></div>
-    <div class="sc" id="scOpp"><div class="n"></div><div class="v">0</div></div>
+    <div class="pc p0" id="pc0"><span class="avatar"></span><div class="pinfo"><div class="n"></div><div class="timer hidden"></div></div><div class="v">0</div></div>
+    <div class="pc p1" id="pc1"><span class="avatar"></span><div class="pinfo"><div class="n"></div><div class="timer hidden"></div></div><div class="v">0</div></div>
   </header>
-  <div id="lastMove" class="muted"></div>
+  <div id="turnBar"><span id="turnMsg"></span><span id="bagMsg" class="muted"></span></div>
   <div id="boardScroll"><div id="board"></div></div>
-  <div id="status"><span id="preview"></span><button id="zoomBtn" class="chip">🔍 Zoom</button><button id="unseenBtn" class="chip">Unseen</button></div>
+  <div id="status"><span id="preview"></span><button id="zoomBtn" class="chip" aria-label="Zoom">🔍</button><button id="menuBtn" class="chip" aria-label="Menu">☰</button></div>
   <div id="rack"></div>
   <div id="actions">
-    <button id="shuffleBtn">Shuffle</button><button id="recallBtn">Recall</button>
-    <button id="swapBtn">Swap</button><button id="passBtn">Pass</button>
-    <button id="playBtn" class="primary">Play</button>
+    <button id="shuffleBtn" class="btn" title="Shuffle">⇄<small>Shuffle</small></button>
+    <button id="recallBtn" class="btn" title="Recall">↺<small>Recall</small></button>
+    <button id="swapBtn" class="btn" title="Exchange">⟳<small>Swap</small></button>
+    <button id="passBtn" class="btn" title="Pass">⏭<small>Pass</small></button>
+    <button id="playBtn" class="btn primary">Play</button>
   </div>
-  <div id="swapBar" class="hidden"><span>Tap tiles to swap</span><button id="swapCancel">Cancel</button><button id="swapGo" class="primary">Swap 0</button></div>
+  <div id="swapBar" class="hidden"><span>Tap tiles to exchange</span><button id="swapCancel" class="btn">Cancel</button><button id="swapGo" class="btn primary">Swap 0</button></div>
 </div>
-<div id="over" class="screen hidden">
-  <h2 id="ovTitle"></h2><div id="ovScores"></div>
-  <button id="rematchBtn" class="primary big">Rematch</button>
-  <button id="lobbyBtn" class="ghostbtn">Back to lobby</button>
+
+<div id="over" class="sheet hidden"><div class="sheetCard">
+  <div id="ovIcon">🏆</div>
+  <h2 id="ovTitle"></h2><p id="ovReason" class="muted"></p><div id="ovScores"></div>
+  <button id="rematchBtn" class="btn primary big">Rematch</button>
+  <div class="row2"><button id="ovBoardBtn" class="btn">See board</button><button id="lobbyBtn" class="btn">Change settings</button></div>
+</div></div>
+
+<div id="modal" class="sheet hidden"><div class="sheetCard"><div id="mbody"></div><button id="mclose" class="btn ghost">Close</button></div></div>
+<div id="noauth" class="screen hidden">
+  <div class="logo big"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
+  <p>This link is missing its join key.</p><p class="muted">Scan the QR code on the TV again, or enter the room code.</p>
+  <a class="btn primary big" id="noauthLink" href="/">Enter a room code</a>
 </div>
-<div id="modal" class="hidden"><div class="mcard"><div id="mbody"></div><button id="mclose" class="ghostbtn">Close</button></div></div>
 <div id="conn" class="hidden">Reconnecting…</div>
 <script type="module" src="/static/play.js"></script>
 </body></html>

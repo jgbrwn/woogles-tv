@@ -20,6 +20,7 @@ import (
 	"github.com/domino14/macondo/move"
 	"github.com/domino14/macondo/turnplayer"
 	"github.com/domino14/word-golib/tilemapping"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -366,6 +367,32 @@ func (e *Engine) Unseen(i int) map[string]int {
 }
 
 var _ = tilemapping.MachineLetter(0)
+
+// HistoryJSON serializes the full game record (moves, racks, scores) for persistence.
+func (e *Engine) HistoryJSON() ([]byte, error) {
+	return protojson.Marshal(e.tp.History())
+}
+
+// RestoreEngine rebuilds a game from a saved history. Future draws are random,
+// which is fine because the bag contents (unseen tiles) are exact.
+func RestoreEngine(lex string, hist []byte) (*Engine, error) {
+	rules, err := getRules(lex)
+	if err != nil {
+		return nil, err
+	}
+	h := &pb.GameHistory{}
+	if err := protojson.Unmarshal(hist, h); err != nil {
+		return nil, err
+	}
+	g, err := game.NewFromHistory(h, rules, len(h.Events))
+	if err != nil {
+		return nil, err
+	}
+	g.SetBackupMode(game.InteractiveGameplayMode)
+	g.SetStateStackLength(1)
+	g.SetChallengeRule(pb.ChallengeRule_VOID)
+	return &Engine{tp: &turnplayer.BaseTurnPlayer{Game: g}, Lexicon: lex}, nil
+}
 
 // BotMove lets Macondo's HastyBot pick and play the best static move for the player on turn.
 func (e *Engine) BotMove() error {

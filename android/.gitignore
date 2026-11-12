@@ -1,0 +1,7 @@
+# build intermediates (recreated by build.sh)
+/build/
+/out/*
+# the final, signed APK is kept in the repo so the Go server can serve it at /app/woogles-tv.apk
+!/out/woogles-tv.apk
+# woogles-tv.keystore is intentionally NOT ignored: every build must be signed with the same
+# key or Android refuses to install updates over the existing app (see README).

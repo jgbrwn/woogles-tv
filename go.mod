@@ -1,4 +1,4 @@
-module wooglecast
+module woogles-tv
 
 go 1.27.0
 

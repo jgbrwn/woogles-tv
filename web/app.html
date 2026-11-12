@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eeeeee"><meta name="referrer" content="no-referrer">
+<title>Woogles-TV — TV app</title><link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+ body { padding: 24px 16px; } main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+ .logo { font-size: 40px; } .panel { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 20px 24px; }
+ h2 { margin-top: 0; } li { margin: 8px 0; line-height: 1.5; } code { font-family: "Roboto Mono", monospace; background: var(--card2); padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+ .btn { padding: 14px 20px; }
+</style></head><body><main>
+<a href="/" style="text-decoration:none;color:inherit"><div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div></a>
+<div class="panel">
+  <h2>📺 Android TV / Google TV app</h2>
+  <p>A small full-screen app for Google TV boxes (like the Onn 4K). It opens the board, keeps the screen on, and works with the remote.</p>
+  <a class="btn primary" href="/app/woogles-tv.apk">Download woogles-tv.apk</a>
+</div>
+<div class="panel">
+  <h2>Install it on the TV</h2>
+  <ol>
+    <li><b>Turn on Developer options:</b> Settings → System → About → press OK on <i>Android TV OS build</i> 7 times.</li>
+    <li>Install <b>Downloader</b> (by AFTVnews) from the Play Store.</li>
+    <li>Settings → Apps → Security &amp; restrictions → <i>Unknown sources</i> → turn on <b>Downloader</b>.</li>
+    <li>Open Downloader and enter <code id="apkUrl"></code>, then press <b>Install</b>.</li>
+    <li>Open <b>Woogles-TV</b> from your apps. Phones scan the QR code to join.</li>
+  </ol>
+  <p class="muted">Remote: <b>OK</b> opens options (theme, sound, new room). Long-press <b>OK</b> or <b>Menu</b> for app settings (server URL). <b>Back</b> twice exits.</p>
+</div>
+<div class="panel">
+  <h2>No app? Use any browser</h2>
+  <p>Any TV or computer browser works: open <code id="tvUrl"></code> full-screen.</p>
+</div>
+</main>
+<script type="module" src="/static/apppage.js"></script>
+</body></html>

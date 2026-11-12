@@ -1,8 +1,12 @@
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, connect, toast, describeMove } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES } from './common.js';
 
 const $ = (s) => document.querySelector(s);
 const code = location.pathname.split('/').pop().toUpperCase();
-const tokKey = 'wc_tok_' + code;
+const tokKey = 'wt_tok_' + code, keyKey = 'wt_key_' + code;
+// The join key arrives in the URL fragment (never sent to the server in HTTP requests or logs). Keep it, then hide it.
+const frag = new URLSearchParams(location.hash.slice(1));
+if (frag.get('k')) { localStorage.setItem(keyKey, frag.get('k')); history.replaceState(null, '', location.pathname); }
+let recvAt = 0;
 let s = null;                 // latest server state
 let cells = null, gameNo = -1, logLen = -1;
 let rack = [];                // [{id, ch}] in display order; ch is 'A'..'Z' or '?'
@@ -13,27 +17,43 @@ let swapMode = false, swapSet = new Set();
 let nextId = 1, lastPreview = null, wasMyTurn = false;
 
 document.querySelectorAll('.code').forEach((n) => (n.textContent = code));
-$('#name').value = localStorage.getItem('wc_name') || '';
-$('#name').addEventListener('input', () => localStorage.setItem('wc_name', $('#name').value));
+$('#name').value = localStorage.getItem('wt_name') || '';
+$('#name').addEventListener('input', () => localStorage.setItem('wt_name', $('#name').value));
 
-const ws = connect({ room: code, role: 'player', token: localStorage.getItem(tokKey) || '' }, onMsg, (ok) => $('#conn').classList.toggle('hidden', ok));
+let ws = { send() {}, params: {} };
+if (!localStorage.getItem(keyKey) && !localStorage.getItem(tokKey)) {
+  show('noauth'); $('#noauthLink').href = '/?code=' + encodeURIComponent(code);
+} else {
+  ws = connect({ room: code, role: 'player', key: localStorage.getItem(keyKey) || '', token: localStorage.getItem(tokKey) || '' }, onMsg, (ok, fails) => {
+    $('#conn').classList.toggle('hidden', ok || fails >= 4);
+    if (!ok && fails >= 4 && !s) { show('noauth'); $('#noauthLink').href = '/?code=' + encodeURIComponent(code); }
+  });
+}
 
 function onMsg(m) {
   if (m.t === 'state') render(m);
   else if (m.t === 'joined') { localStorage.setItem(tokKey, m.token); ws.params.token = m.token; }
   else if (m.t === 'error') { toast(m.msg, 'bad'); navigator.vibrate?.(80); }
   else if (m.t === 'preview') showPreview(m.preview);
+  else if (m.t === 'event' && s) {
+    const nm = s.seats?.[m.seat]?.name || '';
+    if (m.kind === 'pause' && m.seat !== s.you) toast(`${nm} paused the clock`);
+    if (m.kind === 'resume' && m.seat !== s.you) toast(`${nm} resumed the clock`, 'good');
+    if (m.kind === 'resign' && m.seat !== s.you) toast(`${nm} resigned`);
+  }
 }
 
 const myTurn = () => s && s.phase === 'playing' && s.you >= 0 && s.turn === s.you;
 const names = () => s.seats.map((x, i) => x.name || `Player ${i + 1}`);
 
-function show(id) { for (const x of ['lobby', 'game', 'over']) $('#' + x).classList.toggle('hidden', x !== id); }
+function show(id) { for (const x of ['lobby', 'game', 'noauth']) $('#' + x).classList.toggle('hidden', x !== id); }
 
+let overDismissed = -1;
 function render(st) {
-  const prev = s; s = st;
-  if (s.you < 0 || s.phase === 'lobby') { renderLobby(); show('lobby'); if (s.phase === 'lobby') { gameNo = -1; } return; }
-  if (s.phase === 'over') renderOver();
+  const prev = s; s = st; recvAt = performance.now();
+  applyTheme(s.settings.theme);
+  if (s.you < 0 || s.phase === 'lobby') { renderLobby(); show('lobby'); $('#over').classList.add('hidden'); if (s.phase === 'lobby') { gameNo = -1; } return; }
+  if (s.phase === 'over') renderOver(prev); else $('#over').classList.add('hidden');
   // game board (also kept updated beneath the over screen)
   if (!cells || s.gameNo !== gameNo) {
     cells = buildBoard($('#board'), s.bonuses);
@@ -45,61 +65,102 @@ function render(st) {
   // drop pending tiles on squares that became occupied
   for (const [k] of pending) { const [r, c] = k.split(',').map(Number); if (s.board[r][c] !== '.') pending.delete(k); }
   reconcileRack(s.rack || '');
-  paintBoard(cells, s.board, { last: lastPlaySquares(s.log) });
+  paintBoard(cells, s.board, { last: new Set(lastPlaySquares(s.log)) });
   renderHeader();
   renderRack();
   renderPending();
-  if (s.phase === 'playing') show('game');
+  show('game');
   const mine = myTurn();
-  if (mine && !wasMyTurn && prev) { navigator.vibrate?.([60, 60, 60]); toast('Your turn!', 'good', 1500); }
+  if (mine && !wasMyTurn && prev) { navigator.vibrate?.([60, 60, 60]); sfx.turn(); }
   wasMyTurn = mine;
 }
 
+const TIME_LABEL = (m) => m ? (m % 60 ? `${m}m` : `${m / 60}h`) : 'Off';
 function renderLobby() {
-  const box = $('#seatBtns'); box.innerHTML = '';
   const seated = s.you >= 0;
   $('#seatedBox').classList.toggle('hidden', !seated);
-  $('#name').parentElement.classList.toggle('hidden', seated);
+  $('#joinBox').classList.toggle('hidden', seated);
   if (!seated) {
+    const box = $('#seatBtns'); box.innerHTML = '';
     s.seats.forEach((seat, i) => {
-      const b = el('button');
-      if (!seat.taken) b.textContent = `Join as Player ${i + 1}`;
-      else if (!seat.connected) b.textContent = `Take over ${seat.name}'s seat`;
-      else { b.textContent = `${seat.name} (Player ${i + 1})`; b.disabled = true; }
-      b.onclick = () => ws.send({ t: 'join', seat: i, name: $('#name').value.trim() || (seat.taken ? seat.name : '') });
+      const b = el('button', 'seatBtn' + (seat.taken ? '' : ' open'));
+      const av = `<span class="avatar p${i}">${seat.taken ? (seat.bot ? '🤖' : esc([...seat.name][0] || '?')) : i + 1}</span>`;
+      if (!seat.taken) b.innerHTML = `${av}<span>Join as Player ${i + 1}<small>Seat open</small></span>`;
+      else if (!seat.connected) b.innerHTML = `${av}<span>Take over ${esc(seat.name)}'s seat<small>Their phone disconnected</small></span>`;
+      else { b.innerHTML = `${av}<span>${esc(seat.name)}<small>${seat.bot ? 'Computer' : 'Playing'}</small></span>`; b.disabled = true; }
+      b.onclick = () => { sfx.ctx(); ws.send({ t: 'join', seat: i, name: $('#name').value.trim() || (seat.taken ? seat.name : '') }); };
       box.append(b);
     });
-  } else {
-    const other = s.seats[1 - s.you];
-    $('#seatedMsg').innerHTML = `You're <b>${esc(s.seats[s.you].name)}</b>. ` + (other.taken ? `Playing against <b>${esc(other.name)}</b>.` : 'Waiting for an opponent to scan the TV…');
-    const sel = $('#lexSel');
-    if (sel.options.length !== s.lexicons.length) sel.innerHTML = s.lexicons.map((l) => `<option>${l}</option>`).join('');
-    sel.value = s.lexicon;
-    $('#startBtn').disabled = !other.taken;
-    $('#botBtn').textContent = other.bot ? 'Remove computer' : '🤖 Play vs computer';
-    $('#botBtn').classList.toggle('hidden', other.taken && !other.bot);
+    return;
   }
+  const me = s.seats[s.you], other = s.seats[1 - s.you];
+  const av = (seat, i) => `<span class="avatar p${i}">${seat.bot ? '🤖' : esc([...(seat.name || '?')][0])}</span>`;
+  $('#matchup').innerHTML = `<div class="m">${av(me, s.you)}<span>${esc(me.name)} (you)</span></div><span class="vs">VS</span>` +
+    (other.taken ? `<div class="m">${av(other, 1 - s.you)}<span>${esc(other.name)}</span></div>` : `<div class="m"><span class="avatar" style="background:var(--line)">?</span><span class="muted">Waiting…</span></div>`);
+  const st = s.settings;
+  seg($('#lexSeg'), s.lexicons.map((l) => [l, l]), st.lexicon, (v) => ws.send({ t: 'settings', lexicon: v }));
+  $('#lexHelp').textContent = st.lexicon === 'CSW24' ? 'Collins Scrabble Words — international' : 'NASPA Word List — North America';
+  seg($('#timeSeg'), s.timeOptions.map((t) => [t, TIME_LABEL(t)]), st.timeMin, (v) => ws.send({ t: 'settings', timeMin: +v }));
+  $('#timeHelp').textContent = st.timeMin ? `${st.timeMin} minutes each. Overtime costs 10 points per minute; more than 10 minutes over loses.` : 'No clock — take as long as you like.';
+  renderThemes($('#themeRow'));
+  $('#startBtn').disabled = !other.taken;
+  $('#startBtn').textContent = other.taken ? 'Start game' : 'Waiting for an opponent…';
+  $('#botBtn').textContent = other.bot ? 'Remove computer' : '🤖 Play vs computer';
+  $('#botBtn').classList.toggle('hidden', other.taken && !other.bot);
 }
-$('#lexSel').onchange = (e) => ws.send({ t: 'lexicon', lexicon: e.target.value });
+function seg(box, opts, cur, onPick) {
+  const key = opts.map((o) => o[0]).join('|');
+  if (box.dataset.k !== key) {
+    box.dataset.k = key; box.innerHTML = '';
+    for (const [v, label] of opts) { const b = el('button', '', label); b.dataset.v = v; b.onclick = () => onPick(v); box.append(b); }
+  }
+  [...box.children].forEach((b) => b.classList.toggle('on', b.dataset.v === String(cur)));
+}
+const SW = (t) => { const d = document.createElement('div'); d.dataset.theme = t; document.body.append(d); const cs = getComputedStyle(d);
+  const v = ['--b-empty', '--b-tw', '--b-dl', '--t-bg'].map((k) => cs.getPropertyValue(k)); d.remove(); return v; };
+function renderThemes(box) {
+  if (box.children.length !== s.themes.length) {
+    box.innerHTML = '';
+    for (const t of s.themes) {
+      const b = el('button'); b.dataset.t = t;
+      b.innerHTML = `<span class="swatch">${SW(t).map((c) => `<i style="background:${c}"></i>`).join('')}</span>${THEME_NAMES[t] || t}`;
+      b.onclick = () => { applyTheme(t); ws.send({ t: 'settings', theme: t }); };
+      box.append(b);
+    }
+  }
+  [...box.children].forEach((b) => b.classList.toggle('on', b.dataset.t === s.settings.theme));
+}
 $('#botBtn').onclick = () => ws.send({ t: s.seats[1 - s.you].bot ? 'removebot' : 'addbot' });
-$('#startBtn').onclick = () => ws.send({ t: 'start' });
+$('#startBtn').onclick = () => { sfx.ctx(); ws.send({ t: 'start' }); };
 $('#leaveBtn').onclick = () => { ws.send({ t: 'leave' }); localStorage.removeItem(tokKey); ws.params.token = ''; };
 
 function renderHeader() {
   const n = names(), me = s.you, op = 1 - me;
-  $('#scMe .n').textContent = n[me] + ' (you)'; $('#scMe .v').textContent = s.seats[me].score;
-  $('#scOpp .n').textContent = n[op]; $('#scOpp .v').textContent = s.seats[op].score;
-  $('#scMe').classList.toggle('turn', s.turn === me); $('#scOpp').classList.toggle('turn', s.turn === op);
+  // you are always on the left
+  [[me, '#pc0'], [op, '#pc1']].forEach(([seat, id]) => {
+    const card = $(id), x = s.seats[seat];
+    card.className = `pc p${seat}` + (s.phase === 'playing' && s.turn === seat ? ' turn' : '');
+    card.querySelector('.avatar').textContent = x.bot ? '🤖' : ([...n[seat]][0] || '?');
+    card.querySelector('.n').textContent = seat === me ? 'You' : n[seat];
+    card.querySelector('.v').textContent = x.score;
+  });
+  tickClocks();
   const tm = $('#turnMsg');
-  tm.textContent = myTurn() ? 'Your turn' : `${n[op]}'s turn`;
+  const paused = s.clock?.paused;
+  tm.textContent = s.phase !== 'playing' ? 'Game over' : paused ? '⏸ Clock paused' : myTurn() ? 'Your turn' : `${n[op]}'s turn…`;
   tm.classList.toggle('mine', myTurn());
-  const last = (s.log || []).at(-1);
-  $('#bagMsg').textContent = `${s.bag} in bag`;
+  const last = (s.log || []).filter((m) => ['play', 'pass', 'exchange'].includes(m.type)).at(-1);
   const d = last && describeMove(last, n);
-  $('#lastMove').textContent = d ? `Last: ${last.player === me ? 'You' : n[op]} — ${d.text}${d.detail ? ' (' + d.detail + ')' : ''} · ${d.score}` : '';
-  for (const id of ['#playBtn', '#passBtn', '#swapBtn']) $(id).disabled = !myTurn();
-  $('#swapBtn').disabled = !myTurn() || s.bag < 7;
+  $('#bagMsg').textContent = (d ? `${last.player === me ? 'You' : n[op]}: ${d.text}${d.score ? ' ' + d.score : ''} · ` : '') + `${s.bag} in bag`;
+  for (const id of ['#playBtn', '#passBtn', '#swapBtn']) $(id).disabled = !myTurn() || paused;
+  $('#swapBtn').disabled = !myTurn() || paused || s.bag < 7;
 }
+function tickClocks() {
+  if (!s || s.you < 0 || !s.seats) return;
+  paintTimer($('#pc0 .timer'), s.clock, recvAt, s.you);
+  paintTimer($('#pc1 .timer'), s.clock, recvAt, 1 - s.you);
+}
+setInterval(tickClocks, 250);
 
 function reconcileRack(str) {
   const want = [...str];
@@ -156,7 +217,7 @@ function sendPreview() { if (myTurn()) ws.send({ t: 'preview', tiles: tilesPaylo
 function showPreview(p) {
   const n = $('#preview');
   if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tap tiles' : ''; n.className = 'err'; return; }
-  if (p.score != null) { n.textContent = `${p.score} points`; n.className = ''; }
+  if (p.score != null) { n.innerHTML = `<b>${p.score}</b> points`; n.className = 'score'; }
   else { n.textContent = p.err || ''; n.className = 'err'; }
 }
 
@@ -273,6 +334,7 @@ $('#playBtn').onclick = () => {
   ws.send({ t: 'play', tiles: tilesPayload() });
 };
 $('#passBtn').onclick = () => { if (confirm('Pass your turn?')) ws.send({ t: 'pass' }); };
+document.addEventListener('pointerdown', () => sfx.ctx(), { once: true });
 $('#swapBtn').onclick = () => { pending.clear(); swapMode = true; swapSet.clear(); selected = null; $('#actions').classList.add('hidden'); $('#swapBar').classList.remove('hidden'); onTilesChanged(); };
 const endSwap = () => { swapMode = false; swapSet.clear(); $('#actions').classList.remove('hidden'); $('#swapBar').classList.add('hidden'); renderRack(); };
 $('#swapCancel').onclick = endSwap;
@@ -282,12 +344,6 @@ $('#swapGo').onclick = () => {
   ws.send({ t: 'exchange', letters }); endSwap();
 };
 $('#zoomBtn').onclick = () => $('#boardScroll').classList.toggle('zoom');
-$('#unseenBtn').onclick = () => {
-  const u = s.unseen || {}; const keys = Object.keys(u).sort((a, b) => (a === '?') - (b === '?') || a.localeCompare(b));
-  const total = Object.values(u).reduce((a, b) => a + b, 0);
-  openModal(`<h3>Unseen tiles (${total})</h3><p class="muted">Bag + opponent's rack</p><div class="unseen">${keys.map((k) => `<span>${k}<b>${u[k]}</b></span>`).join('')}</div>`);
-};
-
 // ---- modal / blank picker ----
 let modalResolve = null;
 function openModal(html) { $('#mbody').innerHTML = html; $('#modal').classList.remove('hidden'); }
@@ -300,13 +356,48 @@ function pickLetter() {
 }
 
 // ---- game over ----
-function renderOver() {
-  show('over');
+function renderOver(prev) {
+  if (overDismissed === s.gameNo) return;
+  $('#over').classList.remove('hidden');
+  if (prev && prev.phase === 'playing') { sfx.over(); navigator.vibrate?.([100, 50, 100]); }
   const n = names();
-  $('#ovTitle').textContent = s.winner === -1 ? "It's a tie!" : s.winner === s.you ? 'You win! 🎉' : `${n[s.winner]} wins`;
-  $('#ovScores').innerHTML = s.seats.map((x, i) => `<div>${esc(n[i])}<b>${x.score}</b></div>`).join('');
+  const won = s.winner === s.you;
+  $('#ovIcon').textContent = s.winner === -1 ? '🤝' : won ? '🏆' : '👏';
+  $('#ovTitle').textContent = s.winner === -1 ? "It's a tie!" : won ? 'You win!' : `${n[s.winner]} wins`;
+  const loser = s.winner >= 0 ? (s.winner === s.you ? n[1 - s.you] : 'You') : '';
+  $('#ovReason').textContent = s.endReason === 'time' ? `${loser} went over 10 minutes of overtime` : s.endReason === 'resign' ? `${loser} resigned` : '';
+  $('#ovScores').innerHTML = [s.you, 1 - s.you].map((i) => `<div class="${s.winner === i ? 'win' : ''}">${esc(i === s.you ? 'You' : n[i])}<b>${s.seats[i].score}</b></div>`).join('');
 }
 $('#rematchBtn').onclick = () => ws.send({ t: 'start' });
 $('#lobbyBtn').onclick = () => ws.send({ t: 'end' });
+$('#ovBoardBtn').onclick = () => { overDismissed = s.gameNo; $('#over').classList.add('hidden'); toast('Tap ☰ for rematch', '', 2000); };
 
-const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// ---- menu ----
+$('#menuBtn').onclick = () => {
+  const playing = s.phase === 'playing', timed = !!s.clock;
+  openModal(`<h3>Menu</h3><div class="menuList">
+    <button class="btn" data-a="unseen">🔤 Unseen tiles</button>
+    ${playing && timed ? `<button class="btn" data-a="pause">${s.clock.paused ? '▶ Resume clock' : '⏸ Pause clock'}</button>` : ''}
+    <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
+    ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
+    ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
+    <button class="btn danger" data-a="end">✖ End game for everyone</button></div>`);
+  $('#mbody').querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+    const a = b.dataset.a; closeModal(null);
+    if (a === 'unseen') showUnseen();
+    else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
+    else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
+    else if (a === 'results') { overDismissed = -1; renderOver(); }
+    else if (a === 'resign' && confirm('Resign this game?')) ws.send({ t: 'resign' });
+    else if (a === 'end' && confirm('End this game and go back to the lobby?')) ws.send({ t: 'end' });
+  });
+};
+function showUnseen() {
+  const u = s.unseen || {}; const keys = Object.keys(u).sort((a, b) => (a === '?') - (b === '?') || a.localeCompare(b));
+  const total = Object.values(u).reduce((a, b) => a + b, 0);
+  const vow = keys.filter((k) => 'AEIOU'.includes(k)).reduce((a, k) => a + u[k], 0);
+  openModal(`<h3>Unseen tiles · ${total}</h3><p class="muted" style="margin:0">Bag + opponent's rack</p>
+    <div class="unseenSum"><span>Vowels ${vow}</span><span>Consonants ${total - vow - (u['?'] || 0)}</span>${u['?'] ? `<span>Blanks ${u['?']}</span>` : ''}</div>
+    <div class="unseen">${keys.map((k) => `<span>${tileEl(k).outerHTML}<b>${u[k]}</b></span>`).join('')}</div>`);
+}
+

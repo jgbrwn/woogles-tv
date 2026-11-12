@@ -1,4 +1,6 @@
-wooglecast
+woogles-tv
+/woogles-tv-bin
 data/lexica/
+data/rooms/
 data/strategy/*/
 !data/strategy/default/

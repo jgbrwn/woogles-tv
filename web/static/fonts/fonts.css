@@ -1,0 +1,4 @@
+/* Mulish, Fjalla One, Roboto Mono — SIL Open Font License (Google Fonts). Same families Woogles.io uses. */
+@font-face { font-family: 'Fjalla One'; font-style: normal; font-weight: 400; font-display: swap; src: url(/static/fonts/FjallaOne-400.woff2) format('woff2'); }
+@font-face { font-family: 'Mulish'; font-style: normal; font-weight: 400 900; font-display: swap; src: url(/static/fonts/Mulish-400_900.woff2) format('woff2'); }
+@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(/static/fonts/RobotoMono.woff2) format('woff2'); }

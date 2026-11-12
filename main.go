@@ -7,8 +7,11 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/rs/zerolog"
@@ -23,7 +26,7 @@ func baseURL(r *http.Request) string {
 		return strings.TrimRight(pub, "/")
 	}
 	proto := "http"
-	if p := r.Header.Get("X-Forwarded-Proto"); p != "" {
+	if p := r.Header.Get("X-Forwarded-Proto"); p == "https" || p == "http" {
 		proto = p
 	} else if r.TLS != nil {
 		proto = "https"
@@ -35,18 +38,43 @@ func baseURL(r *http.Request) string {
 	return proto + "://" + host
 }
 
+func writeJSON(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(v)
+}
+
+func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, 2048)
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "bad request"})
+		return false
+	}
+	return true
+}
+
 func main() {
 	addr := flag.String("addr", ":8420", "listen address")
-	data := flag.String("data", "./data", "macondo data path")
+	data := flag.String("data", "./data", "macondo data path (lexica etc.); rooms are saved in DATA/rooms")
+	apk := flag.String("apk", "./android/out/woogles-tv.apk", "Android TV APK to serve at /app/woogles-tv.apk")
 	flag.Parse()
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	if err := initEngine(*data); err != nil {
 		slog.Error("engine init", "err", err)
 		os.Exit(1)
 	}
+	if err := loadRooms(filepath.Join(*data, "rooms")); err != nil {
+		slog.Error("load rooms", "err", err)
+		os.Exit(1)
+	}
 	go reapRooms()
+	go clockWatch()
 
 	sub, _ := fs.Sub(webFS, "web")
+	if os.Getenv("WT_DEV") == "1" { // serve web/ from disk for live editing
+		sub = os.DirFS("web")
+	}
 	static := http.FileServer(http.FS(sub))
 	page := func(name string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -57,64 +85,134 @@ func main() {
 		}
 	}
 
+	createLimit := newIPLimiter(20.0/60, 10) // 20 rooms/hour per IP, burst 10
+	joinLimit := newIPLimiter(10, 10)        // 10 code lookups/minute per IP
+	globalJoin := newTokenBucket(5, 100)     // 300/minute across everyone
+	qrLimit := newIPLimiter(60, 30)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", page("index.html"))
 	mux.HandleFunc("GET /tv", page("tv.html"))
 	mux.HandleFunc("GET /p/{code}", page("play.html"))
-	mux.Handle("GET /static/", noCache(static))
-
-	mux.HandleFunc("POST /api/rooms", func(w http.ResponseWriter, r *http.Request) {
-		room := createRoom()
-		room.joinURL = baseURL(r) + "/p/" + room.Code
-		json.NewEncoder(w).Encode(map[string]string{"code": room.Code, "joinUrl": room.joinURL})
+	mux.HandleFunc("GET /app", page("app.html"))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("GET /app/woogles-tv.apk", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.android.package-archive")
+		w.Header().Set("Content-Disposition", `attachment; filename="woogles-tv.apk"`)
+		http.ServeFile(w, r, *apk)
 	})
-	mux.HandleFunc("GET /api/rooms/{code}", func(w http.ResponseWriter, r *http.Request) {
-		if getRoom(r.PathValue("code")) == nil {
-			http.NotFound(w, r)
+	mux.Handle("GET /static/", cacheHeaders(static))
+
+	// TV creates a room. The response holds the TV's private key.
+	mux.HandleFunc("POST /api/rooms", func(w http.ResponseWriter, r *http.Request) {
+		if !createLimit.allow(clientIP(r)) {
+			writeJSON(w, 429, map[string]string{"error": "too many new rooms, slow down"})
 			return
 		}
-		w.Write([]byte(`{"ok":true}`))
-	})
-	mux.HandleFunc("GET /qr", func(w http.ResponseWriter, r *http.Request) {
-		png, err := qrcode.Encode(r.URL.Query().Get("d"), qrcode.Medium, 512)
+		room, err := createRoom(baseURL(r))
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			writeJSON(w, 503, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"code": room.Code, "tvKey": room.TVKey})
+	})
+	// TV checks that its saved room still exists (needs the TV key; reveals nothing otherwise).
+	mux.HandleFunc("POST /api/tv", func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Code, TVKey string }
+		if !readJSON(w, r, &req) {
+			return
+		}
+		if room := getRoom(req.Code); room != nil {
+			if _, ok := room.authorize("tv", req.TVKey, ""); ok {
+				writeJSON(w, 200, map[string]bool{"ok": true})
+				return
+			}
+		}
+		writeJSON(w, 404, map[string]string{"error": "not found"})
+	})
+	// Manual join by typing the room code shown on the TV. Rate limited against guessing.
+	mux.HandleFunc("POST /api/join", func(w http.ResponseWriter, r *http.Request) {
+		if !joinLimit.allow(clientIP(r)) || !globalJoin.allow() {
+			writeJSON(w, 429, map[string]string{"error": "Too many tries — wait a minute and try again"})
+			return
+		}
+		var req struct{ Code string }
+		if !readJSON(w, r, &req) {
+			return
+		}
+		room := getRoom(req.Code)
+		if room == nil {
+			time.Sleep(300 * time.Millisecond)
+			writeJSON(w, 404, map[string]string{"error": "No game with that code — check the TV"})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"code": room.Code, "key": room.JoinKey})
+	})
+	// QR codes are only generated for this site's own join links.
+	mux.HandleFunc("GET /qr", func(w http.ResponseWriter, r *http.Request) {
+		d := r.URL.Query().Get("d")
+		if len(d) > 300 || !strings.HasPrefix(d, baseURL(r)+"/") || !qrLimit.allow(clientIP(r)) {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		png, err := qrcode.Encode(d, qrcode.Medium, 512)
+		if err != nil {
+			http.Error(w, "bad request", 400)
 			return
 		}
 		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "private, max-age=86400")
 		w.Write(png)
 	})
 	mux.HandleFunc("GET /ws", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		room := getRoom(q.Get("room"))
-		if room == nil {
-			http.Error(w, "no such room", 404)
-			return
-		}
 		role := q.Get("role")
 		if role != "tv" {
 			role = "player"
 		}
-		if room.joinURL == "" {
-			room.joinURL = baseURL(r) + "/p/" + room.Code
+		if room == nil {
+			http.Error(w, "forbidden", 403)
+			return
 		}
-		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
+		seat, ok := room.authorize(role, q.Get("key"), q.Get("token"))
+		if !ok {
+			http.Error(w, "forbidden", 403)
+			return
+		}
+		var origins []string
+		if u, err := url.Parse(baseURL(r)); err == nil {
+			origins = append(origins, u.Host)
+		}
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: origins})
 		if err != nil {
 			return
 		}
 		defer c.CloseNow()
-		room.serve(r.Context(), c, role, q.Get("token"))
+		room.serve(r.Context(), c, role, seat)
 	})
+
+	srv := &http.Server{
+		Addr:              *addr,
+		Handler:           securityHeaders(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+	}
 	slog.Info("listening", "addr", *addr)
-	if err := http.ListenAndServe(*addr, mux); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("serve", "err", err)
 		os.Exit(1)
 	}
 }
 
-func noCache(h http.Handler) http.Handler {
+func cacheHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
+		if strings.HasPrefix(r.URL.Path, "/static/fonts/") {
+			w.Header().Set("Cache-Control", "public, max-age=2592000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		h.ServeHTTP(w, r)
 	})
 }

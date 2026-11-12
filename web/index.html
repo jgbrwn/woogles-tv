@@ -1,27 +1,42 @@
 <!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WoogleCast</title><link rel="stylesheet" href="/static/app.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eeeeee"><meta name="referrer" content="no-referrer">
+<title>Woogles-TV — living-room word game</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/app.css">
 <style>
- body { display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 24px; }
- h1 { font-size: 56px; margin: 0; } h1 span { color: var(--accent); }
- p { color: var(--muted); }
- .row { display: flex; flex-direction: column; gap: 14px; max-width: 340px; margin: 28px auto 0; }
- a.btn, button { display: block; padding: 18px; border-radius: 12px; background: var(--accent); color: #1a1300; font-weight: 800; font-size: 20px; text-decoration: none; }
- a.btn:focus, button:focus, input:focus { outline: 4px solid #fff; }
- input { font: inherit; font-size: 24px; text-align: center; letter-spacing: .3em; text-transform: uppercase; padding: 14px; border-radius: 12px; border: 1px solid #334155; background: var(--panel); color: var(--ink); }
- .or { margin: 8px 0; }
+ body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px 16px; text-align: center; }
+ main { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 18px; }
+ .logo { font-size: 52px; }
+ .tag { color: var(--muted); font-weight: 600; margin: 0; line-height: 1.5; }
+ .panel { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+ h2 { margin: 0; font-size: 15px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+ #code { font: inherit; font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 30px; text-align: center; letter-spacing: .3em; text-transform: uppercase;
+   padding: 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card2); color: var(--ink); width: 100%; }
+ #code:focus { outline: none; border-color: var(--primary); }
+ .btn { padding: 15px; font-size: 17px; }
+ #err { color: var(--bad); font-weight: 700; min-height: 1.2em; margin: 0; }
+ .tiles { display: flex; justify-content: center; gap: 6px; }
+ .tiles span { position: relative; width: 40px; height: 40px; }
+ .tiles .tile { inset: 0; }
+ small a { color: var(--primary); }
 </style></head><body>
-<div>
-  <h1>Woogle<span>Cast</span></h1>
-  <p>Living-room crossword game · board on the TV, racks on your phones<br><small>Powered by the open-source Macondo / Woogles.io engine</small></p>
-  <div class="row">
-    <a class="btn" href="/tv" autofocus>📺 This is the TV</a>
-    <div class="or">— or join a game —</div>
-    <form onsubmit="event.preventDefault(); const c=this.code.value.trim().toUpperCase(); if(c) location.href='/p/'+c;">
-      <input name="code" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters">
-      <button style="margin-top:10px;width:100%">Join</button>
-    </form>
+<main>
+  <div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
+  <p class="tag">A living-room crossword game. The board lives on your TV,<br>your tiles live on your phone.</p>
+  <form class="panel" id="joinForm">
+    <h2>Join a game</h2>
+    <input id="code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Room code">
+    <button class="btn primary">Join</button>
+    <p id="err"></p>
+  </form>
+  <div class="panel">
+    <h2>Set up the TV</h2>
+    <a class="btn" href="/tv">📺 Open the TV board here</a>
+    <a class="btn ghost" href="/app">Android TV / Google TV app</a>
   </div>
-</div>
+  <small class="muted">Rules, scoring &amp; dictionaries by <a href="https://github.com/domino14/macondo" rel="noopener">Macondo</a>, the engine behind <a href="https://woogles.io" rel="noopener">Woogles.io</a>. NWL23 &amp; CSW24.</small>
+</main>
+<script type="module" src="/static/index.js"></script>
 </body></html>

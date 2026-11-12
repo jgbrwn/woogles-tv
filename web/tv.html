@@ -1,31 +1,76 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WoogleCast — TV</title>
+<meta name="theme-color" content="#eeeeee"><meta name="referrer" content="no-referrer">
+<title>Woogles-TV</title>
+<link rel="icon" href="/static/icon.svg">
 <link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/tv.css">
 </head><body class="tv">
 <main id="game">
-  <section id="boardWrap"><div id="board"></div><div id="previewBadge" class="hidden"></div></section>
+  <section id="boardWrap">
+    <div id="coordTop" class="coords top"></div>
+    <div id="coordSide" class="coords side"></div>
+    <div id="board"></div>
+    <div id="pausedBanner" class="hidden"><div>⏸ Clock paused</div></div>
+  </section>
   <aside id="side">
+    <header id="brand"><div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div><div id="meta"></div></header>
     <div id="players"></div>
-    <div id="bagRow"><span id="bag">100</span> tiles in bag <span class="sep">·</span> <span id="lex"></span></div>
-    <div id="logTitle">Moves</div>
-    <ol id="log"></ol>
-    <div id="joinMini"><img id="qrMini" alt=""><div>Join: <b class="code"></b></div></div>
+    <div id="bagCard" class="card">
+      <div class="bagHead"><span id="bagNum">100</span><span class="muted"> tiles in the bag</span></div>
+      <div id="bagBar"><div></div></div>
+    </div>
+    <div id="logCard" class="card">
+      <div class="cardTitle">Scorecard</div>
+      <ol id="log"></ol>
+    </div>
+    <div id="joinMini"><img id="qrMini" alt=""><div><div>Rejoin / swap phones</div><b class="code"></b></div></div>
   </aside>
 </main>
+<div id="scorePop" class="hidden"></div>
+
 <div id="lobby" class="overlay">
-  <div class="card">
-    <h1>Woogle<span>Cast</span></h1>
-    <p class="sub">Scan with your phone to grab a rack</p>
-    <img id="qr" alt="QR code">
-    <p class="url"></p>
-    <p class="codeline">Room code <b class="code"></b></p>
-    <div id="lobbySeats"></div>
-    <p class="hint" id="lobbyHint">Waiting for players…</p>
+  <div class="lobbyCard">
+    <div class="lobbyLeft">
+      <div class="logo big"><span class="w">W</span>oogles<span class="tv">-TV</span></div>
+      <p class="sub">The board lives on the TV. Your tiles live on your phone.</p>
+      <ol class="steps">
+        <li><span><b>Scan the code</b> with your phone camera</span></li>
+        <li><span><b>Pick a seat</b> — or play the computer</span></li>
+        <li><span><b>Choose your game</b> and press <b>Start</b></span></li>
+      </ol>
+      <div id="lobbySeats"></div>
+      <p class="hint" id="lobbyHint">Waiting for players…</p>
+    </div>
+    <div class="lobbyRight">
+      <div class="qrBox"><img id="qr" alt="QR code to join"></div>
+      <p class="manual">No camera? Go to <b class="host"></b><br>and enter code <b class="code"></b></p>
+    </div>
+  </div>
+  <div class="lobbyFoot muted">Press <b>OK</b> on the remote for options · Rules &amp; dictionary by Macondo, the Woogles.io engine</div>
+</div>
+
+<div id="over" class="overlay hidden">
+  <div class="overCard">
+    <div id="trophy">🏆</div>
+    <h2 id="winner"></h2>
+    <p id="reason" class="muted"></p>
+    <div id="finals"></div>
+    <p class="hint">Press <b>Rematch</b> on a phone to play again</p>
   </div>
 </div>
-<div id="over" class="overlay hidden"><div class="card"><h2 id="winner"></h2><div id="finals"></div><p class="hint">Press <b>Rematch</b> on a phone to play again</p></div></div>
+
+<div id="menu" class="overlay hidden">
+  <div class="menuCard">
+    <div class="cardTitle">Options</div>
+    <button class="mitem" data-act="theme">Theme: <b id="mTheme"></b></button>
+    <button class="mitem" data-act="sound">Sound: <b id="mSound"></b></button>
+    <button class="mitem" data-act="newroom">Start a new room (new QR code)</button>
+    <button class="mitem hidden" data-act="app" id="mApp">App settings (server URL)</button>
+    <button class="mitem" data-act="close">Close</button>
+  </div>
+</div>
+<div id="soundHint" class="hidden">🔊 Click or press any key to enable sound</div>
 <div id="conn" class="hidden">Reconnecting…</div>
 <script type="module" src="/static/tv.js"></script>
 </body></html>
