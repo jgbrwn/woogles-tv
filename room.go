@@ -174,7 +174,11 @@ func getRoom(code string) *Room {
 }
 
 func (r *Room) joinURL() string {
-	return r.baseURL + "/p/" + r.Code + "#k=" + r.JoinKey
+	base := r.baseURL
+	if pub := os.Getenv("PUBLIC_URL"); pub != "" {
+		base = strings.TrimRight(pub, "/")
+	}
+	return base + "/p/" + r.Code + "#k=" + r.JoinKey
 }
 
 func reapRooms() {

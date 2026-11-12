@@ -1,0 +1,42 @@
+[Unit]
+Description=Woogles-TV living-room crossword game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=exedev
+WorkingDirectory=/home/exedev/woogles-tv
+ExecStart=/home/exedev/woogles-tv/woogles-tv -addr :8420 -data /home/exedev/woogles-tv/data
+Environment=PUBLIC_URL=https://woogles-tv.exe.xyz
+# Set CAST_APP_ID to the Google Cast receiver App ID to enable "Cast to TV" (see CAST.md):
+EnvironmentFile=-/home/exedev/woogles-tv/deploy/woogles-tv.env
+Restart=always
+RestartSec=2
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/exedev/woogles-tv/data
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+MemoryMax=1500M
+TasksMax=256
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

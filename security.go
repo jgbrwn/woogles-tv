@@ -90,16 +90,24 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+// www.gstatic.com serves the Google Cast sender SDK (phones casting the board to a TV).
+const csp = "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
 	"font-src 'self'; connect-src 'self' ws: wss:; media-src 'self' data:; object-src 'none'; base-uri 'none'; " +
 	"form-action 'self'; frame-ancestors 'none'"
+
+// The Cast receiver runs inside the Chromecast/Google TV and needs Google's receiver SDK.
+const castCSP = "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data: https://www.gstatic.com; font-src 'self'; connect-src 'self' ws: wss: https://*.gstatic.com https://*.google.com; " +
+	"media-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
 
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hd := w.Header()
 		hd.Set("Content-Security-Policy", csp)
 		hd.Set("X-Content-Type-Options", "nosniff")
-		hd.Set("X-Frame-Options", "DENY")
+		if r.URL.Path != "/cast" {
+			hd.Set("X-Frame-Options", "DENY")
+		}
 		hd.Set("Referrer-Policy", "no-referrer")
 		hd.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
 		hd.Set("Cross-Origin-Opener-Policy", "same-origin")

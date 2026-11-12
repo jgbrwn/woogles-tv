@@ -3,6 +3,8 @@ import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, e
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
+const CAST = document.body.dataset.cast === '1';
+const NS = 'urn:x-cast:io.woogles.tv';
 let cells = null, prevBoard = null, gameNo = -1, state = {}, recvAt = 0, ws = null;
 sfx.enabled = localStorage.getItem('wt_sound') !== 'off';
 
@@ -212,9 +214,10 @@ async function roomGone(room) {
   } catch {} // server unreachable: keep retrying the socket
 }
 
-(async () => {
-  const room = await getRoom();
-  state = { code: room.code };
+function startRoom(room) {
+  if (ws) ws.close();
+  cells = null; prevBoard = null; gameNo = -1; state = { code: room.code }; $('#players').innerHTML = '';
+  $('#castWait')?.classList.add('hidden');
   ws = connect({ room: room.code, role: 'tv', key: room.tvKey }, (m) => {
     if (m.t === 'state') render(m);
     else if (m.t === 'event') {
@@ -226,8 +229,35 @@ async function roomGone(room) {
     }
   }, (ok, fails) => {
     $('#conn').classList.toggle('hidden', ok);
-    if (!ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
+    if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });
+}
+
+// Chromecast / Google TV receiver: the phone that cast us sends {t:'room', code, tvKey}.
+function startCastReceiver() {
+  const ctx = cast.framework.CastReceiverContext.getInstance();
+  let current = '';
+  ctx.addCustomMessageListener(NS, (ev) => {
+    const d = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
+    if (d?.t === 'room' && d.code && d.tvKey && d.code !== current) { current = d.code; startRoom({ code: d.code, tvKey: d.tvKey }); }
+  });
+  const opts = new cast.framework.CastReceiverOptions();
+  opts.disableIdleTimeout = true;
+  opts.skipPlayersLoad = true;
+  opts.maxInactivity = 3600;
+  opts.customNamespaces = { [NS]: cast.framework.system.MessageType.JSON };
+  ctx.start(opts);
+}
+
+(async () => {
+  if (CAST) {
+    $('#lobby').classList.add('hidden'); $('#castWait').classList.remove('hidden');
+    document.querySelector('[data-act="newroom"]').classList.add('hidden');
+    sfx.enabled = true;
+    startCastReceiver();
+    return;
+  }
+  startRoom(await getRoom());
   setTimeout(() => { if (sfx.enabled && !sfx.ready()) { sfx.ctx(); if (!sfx.ready()) $('#soundHint').classList.remove('hidden'); } }, 1500);
   try { await navigator.wakeLock?.request('screen'); } catch {}
   document.addEventListener('visibilitychange', async () => { if (!document.hidden) try { await navigator.wakeLock?.request('screen'); } catch {} });

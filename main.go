@@ -95,6 +95,20 @@ func main() {
 	mux.HandleFunc("GET /tv", page("tv.html"))
 	mux.HandleFunc("GET /p/{code}", page("play.html"))
 	mux.HandleFunc("GET /app", page("app.html"))
+	// Google Cast Web Receiver: the TV page plus the Cast receiver SDK.
+	mux.HandleFunc("GET /cast", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := fs.ReadFile(sub, "tv.html")
+		h := strings.Replace(string(b), `<body class="tv">`, `<body class="tv" data-cast="1">`, 1)
+		h = strings.Replace(h, `<script type="module" src="/static/tv.js">`,
+			`<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>`+"\n"+`<script type="module" src="/static/tv.js">`, 1)
+		w.Header().Set("Content-Security-Policy", castCSP)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write([]byte(h))
+	})
+	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]string{"castAppId": os.Getenv("CAST_APP_ID")})
+	})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /app/woogles-tv.apk", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.android.package-archive")
@@ -114,7 +128,7 @@ func main() {
 			writeJSON(w, 503, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, 200, map[string]string{"code": room.Code, "tvKey": room.TVKey})
+		writeJSON(w, 200, map[string]string{"code": room.Code, "tvKey": room.TVKey, "joinKey": room.JoinKey})
 	})
 	// TV checks that its saved room still exists (needs the TV key; reveals nothing otherwise).
 	mux.HandleFunc("POST /api/tv", func(w http.ResponseWriter, r *http.Request) {

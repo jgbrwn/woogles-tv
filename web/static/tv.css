@@ -115,3 +115,4 @@ body.tv.mouse { cursor: default; }
 #conn { position: fixed; right: 2vh; bottom: 2vh; background: var(--bad); color: #fff; padding: 1vh 2vh; border-radius: 1vh; font-weight: 800; z-index: 40; }
 body.tv #toasts { top: 6vh; left: calc(2vh + 49vh); }
 body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
+#castWait { background: var(--bg); backdrop-filter: none; }

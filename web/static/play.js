@@ -1,4 +1,5 @@
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES } from './common.js';
+import { castAvailable, castRoom, castSession, NS } from './cast.js';
 
 const $ = (s) => document.querySelector(s);
 const code = location.pathname.split('/').pop().toUpperCase();
@@ -130,6 +131,17 @@ function renderThemes(box) {
   }
   [...box.children].forEach((b) => b.classList.toggle('on', b.dataset.t === s.settings.theme));
 }
+// ---- casting (Chrome on Android -> Chromecast / Google TV) ----
+const tvKey = localStorage.getItem('wt_tvkey_' + code);
+let canCast = false;
+if (tvKey) castAvailable().then((ok) => {
+  canCast = ok; $('#castBtn').classList.toggle('hidden', !ok);
+  if (ok && castSession()) castSession().sendMessage(NS, { t: 'room', code, tvKey }).catch(() => {});
+});
+async function doCast() {
+  try { toast(`Casting to ${await castRoom(code, tvKey)}`, 'good'); } catch (e) { toast(e?.message || 'Casting was cancelled', 'bad'); }
+}
+$('#castBtn').onclick = doCast;
 $('#botBtn').onclick = () => ws.send({ t: s.seats[1 - s.you].bot ? 'removebot' : 'addbot' });
 $('#startBtn').onclick = () => { sfx.ctx(); ws.send({ t: 'start' }); };
 $('#leaveBtn').onclick = () => { ws.send({ t: 'leave' }); localStorage.removeItem(tokKey); ws.params.token = ''; };
@@ -378,6 +390,7 @@ $('#menuBtn').onclick = () => {
   openModal(`<h3>Menu</h3><div class="menuList">
     <button class="btn" data-a="unseen">🔤 Unseen tiles</button>
     ${playing && timed ? `<button class="btn" data-a="pause">${s.clock.paused ? '▶ Resume clock' : '⏸ Pause clock'}</button>` : ''}
+    ${canCast ? '<button class="btn" data-a="cast">📺 Cast board to TV</button>' : ''}
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
     ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
@@ -385,6 +398,7 @@ $('#menuBtn').onclick = () => {
   $('#mbody').querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
     const a = b.dataset.a; closeModal(null);
     if (a === 'unseen') showUnseen();
+    else if (a === 'cast') doCast();
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }

@@ -1,22 +1,17 @@
-# WoogleCast — Living-Room Scrabble (TV board + phone racks)
+# Woogles-TV — plan / status
 
-## Goal
-TV shows the shared board/scoreboard; each player's phone is a private rack + controller.
-Rules, scoring and word validation come from **Macondo** (the Woogles.io engine, GPL/AGPL).
+## Done
+- Macondo engine (rules, scoring, NWL23/CSW24, HastyBot), rooms over WebSockets, reconnect & seat takeover.
+- TV board (coords, last-move highlight, drop-in tiles, score pops, scorecard, bag meter, clocks, D-pad menu).
+- Phone rack (tap/drag placement, private live score, blank picker, swap, pass, unseen tiles, zoom, menu).
+- Six Woogles-inspired themes, synthesized sounds, vibration on your turn.
+- NASPA-style game clock (off / 30-120 min), pause/resume, resign, rematch (other player starts).
+- Persistence of rooms + games across restarts (protojson game history replay).
+- Security: unguessable join/TV keys, rate limits, CSP & headers, origin check, sandboxed systemd unit.
+- Android TV launcher APK (android/), served at /app/woogles-tv.apk.
+- Google Cast custom receiver (/cast) + Chrome sender (needs CAST_APP_ID, see CAST.md).
 
-## Architecture (v1)
-- **Single Go binary** (`wooglecast`) — authoritative game server.
-  - Embeds Macondo `game`/`turnplayer` for move validation, scoring, bag, end-game.
-  - Lexicons: NWL23 (default) / CSW24 KWG files auto-downloaded from woogles-io/liwords.
-  - Rooms in memory (4-letter code), WebSocket per client, per-seat secret tokens (reconnect-safe).
-- **TV page** `/tv` — 1080p full-screen board, scores, move log, bag, QR code to join.
-  Works in any TV browser on the Onn 4K stick (or a tiny WebView launcher APK, phase 2).
-- **Phone page** `/p/CODE` — private rack, mini board, tap/drag placement, live score preview
-  (ghost tiles shown on TV), submit / pass / exchange / shuffle / recall, blank picker.
-- Runs on this exe.dev VM now; the same binary can run on any LAN box (Pi, PC) later.
-
-## Phases
-1. **MVP (now)**: engine wrapper, rooms + WS, TV board, phone controller, QR join, reconnect, game over screen.
-2. **Polish**: tile fly-in animations, score count-up, endgame reveal, sounds, VS-computer (Macondo HastyBot),
-   game persistence (survive server restart), Android TV WebView launcher APK (D-pad friendly).
-3. **Optional**: Google Cast receiver app, timers/clock, challenge modes, more word games.
+## Next ideas
+- Test on the Onn 4K box + two real phones; tune TV sizes for 720p receivers.
+- Spectator mode / 3–4 players, challenge modes (single/double), game history export (GCG).
+- Optional end-of-game analysis from Macondo (best play per turn).

@@ -172,7 +172,7 @@ export function connect(params, onMsg, onStatus) {
     };
   }
   open();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && ws.readyState > 1) { clearTimeout(timer); open(); } });
+  document.addEventListener('visibilitychange', () => { if (!closed && !document.hidden && ws.readyState > 1) { clearTimeout(timer); open(); } });
   return api;
 }
 

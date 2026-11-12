@@ -4,3 +4,4 @@ data/lexica/
 data/rooms/
 data/strategy/*/
 !data/strategy/default/
+deploy/woogles-tv.env
