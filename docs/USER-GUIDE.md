@@ -86,10 +86,13 @@ spot in the rack.
 ![Rearranging the rack](screenshots/phone-rearrange.png)
 
 **Above the rack**
+- **🏠 Home**: back to the home page to start or join another game. The game isn't ended: it keeps going (on the TV
+  too) and is listed under *Your games*, so tap it to come back. If it's your turn on a running clock, you're asked first,
+  since your clock keeps running while you're away (pause it from ☰ if needed).
 - **📋 Scorecard**: shows every move (player, word, position, points, running total) over the board. Tap 📋 again to
   hide it. It never covers the button, so it toggles easily.
 - **🔍 Zoom**: enlarges the board; scroll around it with your finger.
-- **☰ Menu**: 🔤 *Unseen tiles* (everything in the bag plus your opponent's rack, with vowel/consonant counts),
+- **☰ Menu**: 🏠 *Home*, 🔤 *Unseen tiles* (everything in the bag plus your opponent's rack, with vowel/consonant counts),
   ⏸ *Pause clock*, 🎨 *Theme*, 📺 *Show on a TV*, 📡 *Cast board to TV*, 📨 *Invite / room QR*, 🏳 *Resign*,
   ✖ *End game for everyone*.
 

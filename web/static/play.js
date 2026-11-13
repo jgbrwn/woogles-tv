@@ -557,17 +557,21 @@ $('#menuBtn').onclick = () => {
     openModal(`<h3>Watching</h3><p class="muted" style="margin:0">You can see the board and scores; players' tiles stay private.</p><div class="menuList">
       ${free ? '<button class="btn primary" data-a="seat">🪑 Take an empty seat</button>' : ''}
       <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
-      <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button></div>`);
+      <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button>
+      <button class="btn" data-a="home">🏠 Home</button></div>`);
     $('#mbody').querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
       const a = b.dataset.a; closeModal(null);
       if (a === 'seat') { wantSeat = true; render(s); }
       else if (a === 'sound') soundSheet();
+    else if (a === 'home') goHome();
+      else if (a === 'home') goHome();
       else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); }
     });
     return;
   }
   const playing = s.phase === 'playing', timed = !!s.clock;
   openModal(`<h3>Menu</h3><div class="menuList">
+    <button class="btn" data-a="home">🏠 Home <small class="muted">· the game keeps going</small></button>
     <button class="btn" data-a="unseen">🔤 Unseen tiles</button>
     ${playing && timed ? `<button class="btn" data-a="pause">${s.clock.paused ? '▶ Resume clock' : '⏸ Pause clock'}</button>` : ''}
     <button class="btn" data-a="tv">📺 ${s.tvs ? 'Show on another TV' : 'Show on a TV'}</button>
@@ -592,6 +596,13 @@ $('#menuBtn').onclick = () => {
     else if (a === 'end' && confirm('End this game and go back to the lobby?')) ws.send({ t: 'end' });
   });
 };
+// Leave the game without ending it: it stays under "Your games" on the home page and on any TV showing it.
+function goHome() {
+  if (s && s.phase === 'playing' && s.clock && !s.clock.paused && s.clock.running === s.you && s.you >= 0 &&
+      !confirm("It's your turn and your clock is running. It keeps running while you're away (you can pause it from ☰). Leave anyway?")) return;
+  location.href = '/';
+}
+$('#homeBtn').onclick = goHome;
 const soundIcon = () => (sfx.level === 'off' ? '🔇' : sfx.level === 'low' ? '🔈' : '🔊');
 // Sound & voice settings (this phone only)
 function soundSheet() {
