@@ -35,6 +35,7 @@ closet.
 - **⌫ Back** takes back the last tile; **Recall** clears the board and returns the cursor to where you started.
 - **Drag tiles along your rack to rearrange them** (the others slide aside), or **Shuffle**.
 - A live score of your tentative move, visible only to you. Invalid words are rejected before they're played.
+- **Double-tap a word in the scorecard to hear what it means**, read by the TV's announcer (or your phone's), with the definition shown on screen.
 - 📋 scorecard overlay, 🔍 board zoom, unseen tiles (bag + opponent), swap, pass, blanks, pause, resign, rematch.
 - Phones, tall phones, **tablets** and landscape: the layout adapts (in landscape the board sits beside a full scorecard; tall screens show the latest moves under the board).
 - Sound & voice settings per phone: volume, clock warnings for your own clock (with vibration), and an optional announcer for games without a TV.

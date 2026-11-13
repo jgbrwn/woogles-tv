@@ -47,10 +47,11 @@ and also why you should only share a game's link with people you're happy to hav
 ≤ 16 KB each, rate limited per connection.
 
 Client → server (`t` field): `join` (seat, name), `leave`, `addbot`, `removebot`, `settings`, `start`, `end`, `resign`,
-`pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code).
+`pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code),
+`define` (move number: look up that play's word), `tvprefs` (TV only: whether its announcer will speak).
 
 Server → client: `state` (the full view for that client: board, scores, log, clock, settings, seats, and **your rack only**),
-`event` (moves, bingos, start, time-outs for sounds and animations), `preview` (score or error for your tentative
+`define` (a played word's definition, also sent to TVs as an `event`), `event` (moves, bingos, start, time-outs for sounds and animations), `preview` (score or error for your tentative
 move, sent only to you), `joined` (your seat token), `notice` / `error` (toasts), `switch` (TV only: show another room;
 `ask` if it's mid-game).
 
@@ -91,6 +92,9 @@ The server is meant to sit on the open internet without accounts.
   `nosniff`, `no-referrer`, COOP, Permissions-Policy, HSTS behind HTTPS.
 - **WebSockets:** origin-checked, size and rate limited, and per-role authorization on every message (TVs can't
   act; players can only act for their own seat).
+- **Definitions:** a phone can only ask about a word already played in its game (by move number), so the server
+  can't be used as an open dictionary proxy. Lookups are cached and rate limited per room and globally. The only
+  data sent out is the word and the dictionary name (to Woogles.io, or dictionaryapi.dev as a fallback).
 - **Process:** the systemd unit and Docker image run unprivileged with a read-only filesystem, apart from `data/`.
 
 Found a problem? See [SECURITY.md](../SECURITY.md).

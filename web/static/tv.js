@@ -1,6 +1,6 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
   applyTheme, paintTimer, sfx, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
-import { makeAnnouncer, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 
 const $ = (s) => document.querySelector(s);
@@ -122,7 +122,7 @@ function render(s) {
     }
     if (ann.on('moves')) {
       const lines = describeForSpeech(s.log.slice(prev.log.length), s, names, ann, speechCtx);
-      setTimeout(() => lines.forEach((l) => ann.say(l)), s.log.slice(prev.log.length).some((m) => m.bingo) ? 1300 : 650);
+      ann.later(() => lines.forEach((l) => ann.say(l)), s.log.slice(prev.log.length).some((m) => m.bingo) ? 1300 : 650);
     }
   }
   if (prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
@@ -133,7 +133,7 @@ function render(s) {
   if (s.phase === 'over') {
     if (!wasOver && prev.phase) {
       setTimeout(() => sfx.over(), 900);
-      if (ann.on('moves')) setTimeout(() => ann.say(gameOverSpeech(s, names)), 1900);
+      if (ann.on('moves')) ann.later(() => ann.say(gameOverSpeech(s, names)), 1900);
     }
     $('#trophy').textContent = s.winner === -1 ? '🤝' : '🏆';
     $('#winner').textContent = s.winner === -1 ? "It's a tie!" : `${names[s.winner]} wins!`;
@@ -199,7 +199,7 @@ function onClockAlert(seat, kind, n) {
   else if (kind === 'overmin') sfx.penalty();
   if (kind === 'overtime') toast(`${name} is in overtime: −10 points per minute`, 'bad');
   else if (kind === 'lastmin') toast(`${name}: one minute until a loss on time`, 'bad');
-  if (ann.on('all')) setTimeout(() => ann.say(clockSpeech(kind, n, name)), 500);
+  if (ann.on('all')) ann.later(() => ann.say(clockSpeech(kind, n, name)), 500);
 }
 
 // ---- options menu (works with a TV remote: arrows + OK) ----
@@ -212,6 +212,7 @@ function openMenu() {
   $('#menu').classList.remove('hidden'); menuIdx = 0; focusMenu();
 }
 function paintSoundMenu() {
+  sendPrefs();
   $('#mSound').textContent = SOUND_NAMES[sfx.level];
   const can = ann.available();
   $('#mAnnItem').classList.toggle('hidden', !can);
@@ -366,6 +367,29 @@ function focusGames() {
   t.classList.add('focus'); t.focus(); t.scrollIntoView({ block: 'nearest' });
 }
 
+// Tell the room whether this TV will speak, so a phone asking for a definition knows whether to speak it itself.
+function sendPrefs() { ws?.send({ t: 'tvprefs', voice: ann.mode !== 'off' && ann.available() && sfx.enabled }); }
+
+// A phone double-tapped a word in its scorecard: show the definition, and say it once the TV is quiet.
+let defTimer = null;
+function showDefinition(ev) {
+  const names = (state.seats || []).map((x, i) => x.name || `Player ${i + 1}`);
+  const card = $('#defCard'), senses = ev.senses || [];
+  card.className = `p${ev.player}`;
+  card.innerHTML = `<div class="dw"><b>${esc(ev.word)}</b><span>${esc(names[ev.player] || '')} · ${esc(ev.pos || '')} · ${ev.score} pts</span></div>` +
+    (senses.length ? `<ol>${senses.slice(0, 3).map((x) => `<li>${x.pos ? `<i>${esc(x.pos)}</i>` : ''}${esc(x.text)}</li>`).join('')}</ol>`
+      : `<div class="none">No definition found for this word.</div>`) +
+    `<small>${ev.by ? esc(ev.by) + ' asked · ' : ''}${esc(ev.lexicon || '')}</small>`;
+  const speak = ann.mode !== 'off' && ann.available() && sfx.enabled;
+  const text = definitionSpeech(ev, names, ann);
+  clearTimeout(defTimer);
+  const hide = () => { defTimer = setTimeout(() => card.classList.add('hidden'), 12000); };
+  if (speak) { ann.sayWhenQuiet(text, 2000); waitSpoken(hide); } else hide();
+  card.classList.remove('hidden');
+}
+// keep the card up while the definition is (about to be) spoken
+function waitSpoken(done) { let t = 0; const iv = setInterval(() => { t += 500; if ((!ann.busy() && t > 3000) || t > 60000) { clearInterval(iv); done(); } }, 500); }
+
 // "New game! Alex versus Steebot. NWL23, 30 minutes each. Alex goes first. Good luck!"
 function announceStart() {
   if (!ann.on('all') || !state.seats) return;
@@ -390,8 +414,10 @@ function startRoom(room) {
       else if (m.kind === 'pause') { toast(`${nm} paused the clock`); if (ann.on('all')) ann.say('Clock paused.'); }
       else if (m.kind === 'resume') { toast(`${nm} resumed the clock`, 'good'); if (ann.on('all')) ann.say('Clock resumed.'); }
       else if (m.kind === 'start') { sfx.turn(); setTimeout(announceStart, 400); }
+      else if (m.kind === 'define') showDefinition(m);
     }
   }, (ok, fails) => {
+    if (ok) sendPrefs();
     $('#conn').classList.toggle('hidden', ok);
     if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });

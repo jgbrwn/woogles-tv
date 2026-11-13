@@ -99,6 +99,7 @@ if (window.WooglesTV) {
   // Text-to-speech for the announcer (Android's WebView has no Web Speech API):
   WooglesTV.speak(text, rate, volume, voiceName); // queued; rate 1 = normal, volume 0..1, voiceName '' = default
   WooglesTV.stopSpeaking();
+  WooglesTV.isSpeaking(); // true while speech is playing or queued (app 1.0.14+)
   WooglesTV.voices();    // JSON: [{name, lang, label}], installed English voices
 }
 ```

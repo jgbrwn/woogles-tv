@@ -35,6 +35,7 @@ type Client struct {
 	seat   int    // -1 if not seated
 	send   chan []byte
 	bucket *tokenBucket
+	voice  bool // TV only: its announcer is on and can speak (reported by the TV)
 }
 
 type Seat struct {
@@ -119,6 +120,7 @@ type Room struct {
 	baseURL   string
 	deleted   bool
 	linkLimit *tokenBucket
+	defLimit  *tokenBucket // word definition lookups
 }
 
 var globalJoin = newTokenBucket(5, 100) // 300/minute across everyone: code lookups + TV links
@@ -193,7 +195,7 @@ func createRoom(base string) (*Room, error) {
 	for rooms[code] != nil {
 		code = newCode()
 	}
-	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5),
+	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8),
 		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better"}, lastUsed: time.Now(), baseURL: base}
 	rooms[code] = r
 	r.mu.Lock()
@@ -333,7 +335,7 @@ func loadRooms(dir string) error {
 			continue
 		}
 		r := &Room{Code: sr.Code, JoinKey: sr.JoinKey, TVKey: sr.TVKey, seats: sr.Seats, order: sr.Order,
-			settings: sr.Settings, gameNo: sr.GameNo, lastUsed: sr.LastUsed, baseURL: sr.BaseURL, clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5)}
+			settings: sr.Settings, gameNo: sr.GameNo, lastUsed: sr.LastUsed, baseURL: sr.BaseURL, clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8)}
 		if r.settings.Bot == "" {
 			r.settings.Bot = "better"
 		}
@@ -372,6 +374,8 @@ type inMsg struct {
 	Theme   string `json:"theme"`
 	Bot     string `json:"bot"`
 	Code    string `json:"code"`
+	Move    *int   `json:"move"`  // define: index into the game log
+	Voice   *bool  `json:"voice"` // tvprefs: the TV's announcer is on
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -672,6 +676,32 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		r.m.Clock.Paused = m.T == "pause"
 		r.eventLocked(map[string]any{"t": "event", "kind": m.T, "seat": cl.seat})
 		r.broadcastLocked()
+	case "tvprefs":
+		if cl.role == "tv" && m.Voice != nil {
+			cl.voice = *m.Voice
+		}
+	case "define":
+		// Look up the definition of a word that has been played (never anything else, so this can't be used as a
+		// general dictionary proxy). The TVs get it to announce; the asker gets it to show (and speak if no TV will).
+		if r.m == nil || m.Move == nil || (cl.seat < 0 && cl.role != "player") {
+			return
+		}
+		log := r.m.eng.Log()
+		i := *m.Move
+		if i < 0 || i >= len(log) || log[i].Type != "play" || len(log[i].Words) == 0 {
+			return
+		}
+		if !r.defLimit.allow() {
+			r.errTo(cl, "Too many lookups — wait a moment")
+			return
+		}
+		mv := log[i]
+		mv.Player = r.order[mv.Player]
+		lex, gameNo, by := r.m.eng.Lexicon, r.gameNo, ""
+		if cl.seat >= 0 && r.seats[cl.seat] != nil {
+			by = r.seats[cl.seat].Name
+		}
+		go r.define(cl, lex, gameNo, i, mv, by)
 	case "linktv":
 		// A phone asks the TV showing `code` (another room, e.g. the TV app's idle lobby) to show this game.
 		// The TV gets this room's TV key; the phone learns nothing about the TV's room.
@@ -900,6 +930,38 @@ var botLevelViews = func() []map[string]string {
 	}
 	return out
 }()
+
+// define runs outside the room lock (it may call out to the dictionary), then delivers the result.
+func (r *Room) define(cl *Client, lexicon string, gameNo, idx int, mv MoveLog, by string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	d, err := defs.Define(ctx, lexicon, mv.Words[0])
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.gameNo != gameNo || !r.clients[cl] {
+		return
+	}
+	if err != nil {
+		r.errTo(cl, err.Error())
+		return
+	}
+	ev := map[string]any{"t": "event", "kind": "define", "move": idx, "player": mv.Player, "word": d.Word, "pos": mv.Pos,
+		"score": mv.Score, "senses": d.Senses, "lexicon": lexicon, "by": by}
+	tvVoice := false
+	for c := range r.clients {
+		if c.role == "tv" {
+			sendJSON(c, ev)
+			tvVoice = tvVoice || c.voice
+		}
+	}
+	reply := map[string]any{"t": "define", "tvVoice": tvVoice}
+	for k, v := range ev {
+		if k != "t" {
+			reply[k] = v
+		}
+	}
+	sendJSON(cl, reply)
+}
 
 func (r *Room) eventLocked(ev map[string]any) {
 	for c := range r.clients {

@@ -130,7 +130,8 @@ If you want HTTPS at home, here are the options, best first:
 - **Mobile data:** a phone that drops off Wi-Fi onto mobile data can't reach a LAN-only server. It reconnects by
   itself when it's back on Wi-Fi.
 - **Internet is only needed** to download the word lists on first start (or use `-fetch-only` on another machine, as
-  above), and for Cast. Fonts, QR codes and sounds are all served or generated locally.
+  above), for Cast, and for **word definitions** (looked up online when someone asks; without internet the
+  phone just says the dictionary can't be reached). Fonts, QR codes and sounds are all served or generated locally.
 - **Clock:** game clocks are timed on the server. A Pi without a real-time clock syncs the time over the network at
   boot (`systemd-timesyncd`); without internet, restarting the Pi in the middle of a timed game may confuse room
   expiry times, but not move timing.

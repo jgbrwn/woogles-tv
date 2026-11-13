@@ -138,6 +138,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `-fetch-only` | | Download the word lists into `DATA/lexica` and exit |
 | `-demo N` | | Also create a demo game with N moves played and print TV/phone links |
 | `PUBLIC_URL` | derived from each request | Public base URL, e.g. `https://games.example.com` or `http://192.168.1.20:8420`. Used for QR codes and invite links |
+| `WT_DEFINITIONS` | on | `off` disables word definitions (double-tap a word in the scorecard). When on, the server looks up only words already played, from Woogles.io's word service (fallback: dictionaryapi.dev), with caching and rate limits |
+| `WT_DEFINE_URL` | Woogles.io | Alternative endpoint that speaks the same `DefineWords` JSON API |
 | `CAST_APP_ID` | empty | Google Cast receiver app ID; enables the Cast buttons ([CAST.md](CAST.md)) |
 | `WT_DEV=1` | off | Serve `web/` from disk instead of the embedded copy (for development) |
 

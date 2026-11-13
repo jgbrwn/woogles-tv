@@ -17,7 +17,7 @@ export const RATE_NAMES = { 0.85: 'Slow', 1: 'Normal', 1.2: 'Fast' };
 // which made the announcer fall back to the first/previous voice.
 const voiceId = (v) => `${v.name}|${v.lang}`;
 const findVoice = (list, id) => list.find((x) => voiceId(x) === id) || list.find((x) => x.voiceURI === id) || null;
-let stoppedAt = -1e9;
+let stoppedAt = -1e9, estEnd = 0, pendingSay = 0, queuedUntil = 0;
 const keep = new Set();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const nextOf = (list, v) => list[(list.indexOf(v) + 1) % list.length];
@@ -49,11 +49,34 @@ export function makeAnnouncer(prefix, defMode) {
       return this.voiceName();
     },
     voiceName() { if (!this.voice) return 'Default'; const v = this.voices().find((x) => x.id === this.voice); return v ? v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s*\(.*\)$/, '') : 'Default'; },
-    stop() { try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {} stoppedAt = performance.now(); },
+    stop() { try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {} stoppedAt = performance.now(); estEnd = 0; },
+    // Is anything being said (or about to be)?
+    busy() {
+      const b = bridge();
+      if (b) { if (typeof b.isSpeaking === 'function') { try { return b.isSpeaking() || performance.now() < stoppedAt + 300; } catch {} } return performance.now() < estEnd; }
+      const s = synth();
+      return !!(s && (s.speaking || s.pending)) || performance.now() < queuedUntil;
+    },
+    // Say it once nothing has been said for `gap` ms (e.g. a definition shouldn't talk over a move). Gives up after 90 s.
+    sayWhenQuiet(text, gap = 2000) {
+      let quietSince = null; const t0 = performance.now();
+      const tick = () => {
+        if (performance.now() - t0 > 90000) return;
+        if (this.busy() || pendingSay > 0) quietSince = null;
+        else if (quietSince === null) quietSince = performance.now();
+        else if (performance.now() - quietSince >= gap) { this.say(text, { force: true }); return; }
+        setTimeout(tick, 200);
+      };
+      tick();
+    },
+    // Announcements scheduled with a delay count as "about to speak" for sayWhenQuiet.
+    later(fn, ms) { pendingSay++; setTimeout(() => { pendingSay--; fn(); }, ms); },
     // Speak now (queued after anything already speaking). Respects the device's volume; silent when sound is off.
     say(text, { force = false } = {}) {
       if (!text || (!force && this.mode === 'off') || !sfx.enabled) return;
       const vol = sfx.gain;
+      // rough length of the speech, for busy() when the platform can't tell us
+      estEnd = Math.max(performance.now(), estEnd) + 400 + (text.length * 68) / (this.rate || 1);
       const b = bridge();
       if (b) { try { b.speak(text, this.rate, vol, this.voice || ''); } catch {} return; }
       const s = synth(); if (!s) return;
@@ -66,6 +89,7 @@ export function makeAnnouncer(prefix, defMode) {
       // so give the cancel a moment to settle first.
       const wait = 250 - (performance.now() - stoppedAt);
       const go = () => { try { s.resume(); } catch {} s.speak(u); };
+      queuedUntil = Math.max(queuedUntil, performance.now() + Math.max(0, wait) + 150);
       if (wait > 0) setTimeout(go, wait); else go();
     },
   };
@@ -155,4 +179,18 @@ export function clockSpeech(kind, n, name, own = false) {
     case 'lastmin': return `${who}one minute until you lose on time!`;
   }
   return '';
+}
+
+// "Alex played soap at 8 D, for 12 points. Soap means: to treat with a cleansing agent."
+export function definitionSpeech(ev, names, ann) {
+  const who = sayName(names[ev.player]);
+  const w = String(ev.word || '').toLowerCase();
+  const spell = ann && ann.spell === 'always' ? `, ${[...String(ev.word).toUpperCase()].join(', ')},` : '';
+  const pos = String(ev.pos || '').replace(/(\d)([A-Z])/g, '$1 $2').replace(/([A-Z])(\d)/g, '$1 $2');
+  let t = `${who} played ${w}${spell}${pos ? ' at ' + pos : ''}, for ${pts(ev.score)}. `;
+  const senses = ev.senses || [];
+  if (!senses.length) return t + `Sorry, I couldn't find a definition for ${w}.`;
+  t += `${w[0].toUpperCase() + w.slice(1)}${senses[0].pos ? ', ' + senses[0].pos + ',' : ''} means: ${senses[0].text}.`;
+  if (senses[1] && senses[1].text !== senses[0].text) t += ` It can also mean: ${senses[1].text}.`;
+  return t;
 }

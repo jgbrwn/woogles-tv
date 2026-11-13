@@ -30,6 +30,12 @@ Word lists
   HarperCollins Publishers. They are fetched from the Woogles.io repository for personal use. If
   you redistribute them (for example in a published Docker image), make sure you are allowed to.
 
+Word definitions
+  Definitions of played words are looked up on demand from Woogles.io's public word service
+  (woogles.io/api/word_service.WordService/DefineWords), with the Free Dictionary API
+  (dictionaryapi.dev) as a fallback. Nothing is stored in this repository; set WT_DEFINITIONS=off
+  to disable lookups.
+
 coder/websocket (github.com/coder/websocket), ISC License.
 skip2/go-qrcode (github.com/skip2/go-qrcode), MIT License.
 rs/zerolog (github.com/rs/zerolog), MIT License.

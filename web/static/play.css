@@ -201,3 +201,21 @@ body.watching #recent { flex-grow: 1; }
 #mbody .field select { font: inherit; font-size: 16px; font-weight: 700; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--ink); text-transform: none; letter-spacing: 0; }
 #mbody .annOpts { display: flex; flex-direction: column; gap: 12px; }
 #mbody .field { text-align: left; }
+
+/* word definitions */
+.scList li.word { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.scList li.asked { animation: asked .6s ease-out; }
+@keyframes asked { 0% { box-shadow: inset 0 0 0 2px var(--primary); background: var(--primary-soft); } 100% { box-shadow: inset 0 0 0 2px transparent; } }
+#defCard { position: fixed; left: 10px; right: 10px; top: max(10px, env(safe-area-inset-top)); z-index: 65; background: var(--card); color: var(--ink); border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(0,0,0,.4); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; border-left: 6px solid var(--primary);
+  max-width: 560px; margin: 0 auto; animation: scIn .2s ease-out; }
+#defCard.p0 { border-left-color: var(--p0); } #defCard.p1 { border-left-color: var(--p1); }
+#defCard .dw { display: flex; align-items: baseline; gap: 10px; }
+#defCard .dw b { font-family: "Roboto Mono", monospace; font-size: 22px; letter-spacing: .06em; }
+#defCard .dw span { color: var(--muted); font-size: 13px; font-weight: 700; flex: 1; }
+#defCard .dx { font-size: 16px; color: var(--muted); padding: 2px 6px; }
+#defCard ol { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.35; display: flex; flex-direction: column; gap: 3px; }
+#defCard ol:has(> li:only-child) { list-style: none; padding-left: 0; }
+#defCard i { color: var(--muted); font-size: 13px; }
+#defCard .none { margin: 0; color: var(--muted); }
+#defCard small { color: var(--muted); font-size: 12.5px; font-weight: 600; }

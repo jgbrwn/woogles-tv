@@ -1,5 +1,5 @@
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES } from './common.js';
-import { makeAnnouncer, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 const ann = makeAnnouncer('wt_ph_', 'off');
 let speechCtx = {};
@@ -46,6 +46,7 @@ function onMsg(m) {
   else if (m.t === 'error') { toast(m.msg, 'bad'); navigator.vibrate?.(80); }
   else if (m.t === 'preview') showPreview(m.preview);
   else if (m.t === 'notice') toast(m.msg, 'good');
+  else if (m.t === 'define') onDefinition(m);
   else if (m.t === 'event' && s) {
     const nm = s.seats?.[m.seat]?.name || '';
     if (m.kind === 'pause' && m.seat !== s.you) toast(`${nm} paused the clock`);
@@ -95,7 +96,7 @@ function render(st) {
     if (b) celebrateBingo(b, names()[b.player], b.player === s.you);
     if (ann.on('moves')) {
       const lines = describeForSpeech(s.log.slice(prev.log.length), s, names(), ann, speechCtx);
-      setTimeout(() => lines.forEach((l) => ann.say(l)), b ? 1300 : 400);
+      ann.later(() => lines.forEach((l) => ann.say(l)), b ? 1300 : 400);
     }
   }
   if (!prev || prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
@@ -246,7 +247,7 @@ const alertsTick = clockAlerts((seat, kind, n) => {
   else if (kind === 'overmin') { sfx.penalty(); navigator.vibrate?.(150); }
   const msg = { '5min': '5 minutes left', '1min': '1 minute left', overtime: 'Overtime: −10 points per minute', overmin: `${n} min over: −${10 * (n + 1)} so far`, lastmin: '1 minute until you lose on time!' }[kind];
   if (msg) toast(msg, kind === '5min' || kind === '1min' ? '' : 'bad');
-  if (ann.on('all')) setTimeout(() => ann.say(clockSpeech(kind, n, '', true)), 500);
+  if (ann.on('all')) ann.later(() => ann.say(clockSpeech(kind, n, '', true)), 500);
 });
 setInterval(() => { tickClocks(); if (s && s.phase === 'playing') alertsTick(s.clock, recvAt, s.gameNo); }, 250);
 
@@ -523,7 +524,7 @@ function renderOver(prev) {
   $('#over').classList.remove('hidden');
   if (prev && prev.phase === 'playing') {
     sfx.over(); navigator.vibrate?.([100, 50, 100]);
-    if (ann.on('moves')) setTimeout(() => ann.say(gameOverSpeech(s, names())), 1200);
+    if (ann.on('moves')) ann.later(() => ann.say(gameOverSpeech(s, names())), 1200);
   }
   const n = names();
   const W = watching(), me = meSeat();
@@ -665,14 +666,51 @@ function renderMoves(panel) {
   list.innerHTML = log.length ? '' : '<li class="empty">No moves yet</li>';
   log.forEach((m, i) => {
     const d = describeMove(m, n);
-    const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet' : ''));
+    const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet' : '') + (m.type === 'play' ? ' word' : ''));
+    if (m.type === 'play') li.dataset.move = i;
     const init = s.seats[m.player]?.bot ? '🤖' : esc([...(n[m.player] || '?')][0]);
     li.innerHTML = `<span class="no">${i + 1}</span><span class="av p${m.player}">${init}</span><span class="w">${esc(d.text)}${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</span>
       <span class="s">${d.score > 0 ? '+' : ''}${d.score ?? ''}</span><span class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total ?? ''}</span>`;
     list.append(li);
   });
   if (atBottom || fresh) list.scrollTop = list.scrollHeight;
+  if (log.some((m) => m.type === 'play') && !localStorage.getItem('wt_tip_define')) {
+    localStorage.setItem('wt_tip_define', '1'); setTimeout(() => toast('Tip: double-tap a word in the scorecard to see what it means'), 2500);
+  }
 }
+// ---- word definitions: double-tap a played word in either scorecard ----
+let lastTap = { li: null, at: 0 };
+function onScoreTap(e) {
+  const li = e.target.closest('li.word'); if (!li) return;
+  const now = performance.now();
+  if (lastTap.li === li && now - lastTap.at < 400) { lastTap = { li: null, at: 0 }; askDefinition(li); e.preventDefault(); }
+  else lastTap = { li, at: now };
+}
+document.querySelectorAll('.scList').forEach((l) => l.addEventListener('pointerup', onScoreTap));
+function askDefinition(li) {
+  sfx.ctx(); // unlock audio within the gesture, in case this phone ends up speaking
+  li.classList.remove('asked'); void li.offsetWidth; li.classList.add('asked');
+  navigator.vibrate?.(15);
+  ws.send({ t: 'define', move: +li.dataset.move });
+}
+let defTimer = null;
+function onDefinition(ev) {
+  const n = names(), senses = ev.senses || [];
+  const phoneCan = ann.mode !== 'off' && ann.available() && sfx.enabled;
+  let how;
+  if (ev.tvVoice) how = '🔊 The TV is reading it out';
+  else if (phoneCan) { how = '🔊 Reading it out'; ann.sayWhenQuiet(definitionSpeech(ev, n, ann), 2000); }
+  else how = '🔇 To hear definitions, turn on the announcer on the TV (OK → Announcer) or here (☰ → Sound &amp; voice)';
+  const card = $('#defCard');
+  card.className = `p${ev.player}`;
+  card.innerHTML = `<div class="dw"><b>${esc(ev.word)}</b><span>${esc(n[ev.player] || '')} · ${esc(ev.pos || '')} · ${ev.score} pts</span><button class="dx" aria-label="Close">✕</button></div>` +
+    (senses.length ? `<ol>${senses.slice(0, 3).map((x) => `<li>${x.pos ? `<i>${esc(x.pos)}</i> ` : ''}${esc(x.text)}</li>`).join('')}</ol>` : '<p class="none">No definition found for this word.</p>') +
+    `<small>${how}</small>`;
+  card.querySelector('.dx').onclick = () => card.classList.add('hidden');
+  card.classList.remove('hidden');
+  clearTimeout(defTimer); defTimer = setTimeout(() => card.classList.add('hidden'), ev.tvVoice || phoneCan ? 15000 : 12000);
+}
+
 // hide the in-flow panel when there's too little room for it to be useful
 new ResizeObserver(() => {
   const r = $('#recent'), tiny = r.clientHeight < 96;

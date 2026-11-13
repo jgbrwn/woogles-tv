@@ -91,6 +91,12 @@ spot in the rack.
   since your clock keeps running while you're away (pause it from ☰ if needed).
 - **📋 Scorecard**: shows every move (player, word, position, points, running total) over the board. Tap 📋 again to
   hide it. It never covers the button, so it toggles easily.
+- **What does that word mean?** **Double-tap any word in the scorecard** (the 📋 overlay, or the list under or beside
+  the board). A card shows its meaning, and it's read aloud: *"Alex played soap at 8 D, for 12 points. Soap, verb,
+  means: to treat with a cleansing agent."* If the TV's announcer is on, the **TV** reads it; otherwise your phone
+  does if its announcer is on (☰ → *Sound & voice*); otherwise you just see the card, with a hint. If something is
+  already being announced, the definition waits until it finishes, plus a couple of seconds. The TV shows the card
+  too. Definitions come from Woogles.io (the NWL23/CSW24 definitions), so the server needs internet access for this.
 - **🔍 Zoom**: enlarges the board; scroll around it with your finger.
 - **☰ Menu**: 🏠 *Home*, 🔤 *Unseen tiles* (everything in the bag plus your opponent's rack, with vowel/consonant counts),
   ⏸ *Pause clock*, 🎨 *Theme*, 📺 *Show on a TV*, 📡 *Cast board to TV*, 📨 *Invite / room QR*, 🏳 *Resign*,

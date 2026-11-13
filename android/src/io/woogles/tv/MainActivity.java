@@ -159,6 +159,8 @@ public class MainActivity extends Activity {
         /** JSON array of installed voices: [{name, lang, label}], English and on-device voices first. */
         @JavascriptInterface public String voices() { return voiceList(); }
         @JavascriptInterface public boolean ttsReady() { return ttsReady; }
+        /** True while speech is playing or queued (lets the page wait for a quiet moment). */
+        @JavascriptInterface public boolean isSpeaking() { return tts != null && tts.isSpeaking(); }
     }
 
     private void initTts() {
