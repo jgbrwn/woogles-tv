@@ -363,10 +363,20 @@ function overRack(x, y) {
   const b = $('#rack').getBoundingClientRect();
   return y > b.top - 24 && y < b.bottom + 40 && x > b.left - 20 && x < b.right + 20;
 }
-function rackIndexAt(x) {
-  const slots = [...document.querySelectorAll('#rack .rslot')];
+// Which rack slot the finger is over. Uses each slot's *resting* position (offsetLeft ignores the preview's
+// translateX), otherwise sliding tiles move the targets under the finger and the preview flickers back and forth.
+// A little hysteresis keeps the current target until the finger is clearly past the midpoint of a neighbour.
+function rackIndexAt(x, prev) {
+  const rackEl = $('#rack'), slots = [...rackEl.querySelectorAll('.rslot')];
+  if (!slots.length) return 0;
+  const cs = getComputedStyle(rackEl), base = rackEl.getBoundingClientRect().left + rackEl.clientLeft + parseFloat(cs.paddingLeft) - slots[0].offsetLeft;
+  const centers = slots.map((sl) => base + sl.offsetLeft + sl.offsetWidth / 2);
   let best = 0, bd = Infinity;
-  slots.forEach((sl, i) => { const b = sl.getBoundingClientRect(); const d = Math.abs(x - (b.left + b.width / 2)); if (d < bd) { bd = d; best = i; } });
+  centers.forEach((c, i) => { const d = Math.abs(x - c); if (d < bd) { bd = d; best = i; } });
+  if (prev != null && prev !== best && prev < centers.length) {
+    const w = centers.length > 1 ? centers[1] - centers[0] : 50;
+    if (Math.abs(x - centers[prev]) < w * 0.5 + w * 0.18) best = prev;
+  }
   return Math.min(best, Math.max(0, rack.length - 1));
 }
 function previewRackOrder(d) {
@@ -374,13 +384,14 @@ function previewRackOrder(d) {
   const id = d.src.from === 'rack' ? d.src.id : pending.get(d.src.key)?.id;
   const si = rack.findIndex((t) => t.id === id), ti = d.rackIdx;
   if (ti == null || si < 0 || slots.length < 2) { clearRackPreview(); return; }
-  const w = slots[1].getBoundingClientRect().left - slots[0].getBoundingClientRect().left;
+  const w = slots[1].offsetLeft - slots[0].offsetLeft; // resting spacing (ignores in-flight transforms)
   slots.forEach((sl, i) => {
     let dx = 0;
     if (i === si) dx = (ti - si) * w;
     else if (si < ti && i > si && i <= ti) dx = -w;
     else if (ti < si && i >= ti && i < si) dx = w;
-    sl.style.transform = dx ? `translateX(${dx}px)` : '';
+    const tf = dx ? `translateX(${dx}px)` : '';
+    if (sl.style.transform !== tf) sl.style.transform = tf; // don't restart the slide animation needlessly
     sl.classList.toggle('gap', i === si);
   });
 }
@@ -412,7 +423,7 @@ function attachDrag(tile, src) {
     }
     drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
     document.querySelectorAll('.drop-target').forEach((n) => n.classList.remove('drop-target'));
-    drag.rackIdx = overRack(e.clientX, e.clientY) ? rackIndexAt(e.clientX) : null;
+    drag.rackIdx = overRack(e.clientX, e.clientY) ? rackIndexAt(e.clientX, drag.rackIdx) : null;
     previewRackOrder(drag);
     const cell = drag.rackIdx == null && cellAt(e.clientX, e.clientY - 40);
     if (cell) cell.classList.add('drop-target');
