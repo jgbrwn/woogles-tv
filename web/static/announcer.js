@@ -13,6 +13,12 @@ export const SPELL_NAMES = { never: 'Never', bingos: 'Bingos', always: 'Always' 
 export const RATES = [0.85, 1, 1.2];
 export const RATE_NAMES = { 0.85: 'Slow', 1: 'Normal', 1.2: 'Fast' };
 
+// Voices are identified by name + language: voiceURI isn't unique on every platform (Android Chrome repeats it),
+// which made the announcer fall back to the first/previous voice.
+const voiceId = (v) => `${v.name}|${v.lang}`;
+const findVoice = (list, id) => list.find((x) => voiceId(x) === id) || list.find((x) => x.voiceURI === id) || null;
+let stoppedAt = -1e9;
+const keep = new Set();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const nextOf = (list, v) => list[(list.indexOf(v) + 1) % list.length];
 
@@ -31,7 +37,7 @@ export function makeAnnouncer(prefix, defMode) {
       let list = [];
       try {
         if (bridge()?.voices) list = JSON.parse(bridge().voices() || '[]').map((v) => ({ id: v.name, name: v.label || v.name, lang: v.lang }));
-        else if (synth()) list = synth().getVoices().map((v) => ({ id: v.voiceURI, name: v.name, lang: v.lang, local: v.localService }));
+        else if (synth()) list = synth().getVoices().map((v) => ({ id: voiceId(v), name: v.name, lang: v.lang, local: v.localService }));
       } catch { list = []; }
       const en = list.filter((v) => /^en/i.test(v.lang || ''));
       return en.length ? en : list;
@@ -43,7 +49,7 @@ export function makeAnnouncer(prefix, defMode) {
       return this.voiceName();
     },
     voiceName() { if (!this.voice) return 'Default'; const v = this.voices().find((x) => x.id === this.voice); return v ? v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s*\(.*\)$/, '') : 'Default'; },
-    stop() { try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {} },
+    stop() { try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {} stoppedAt = performance.now(); },
     // Speak now (queued after anything already speaking). Respects the device's volume; silent when sound is off.
     say(text, { force = false } = {}) {
       if (!text || (!force && this.mode === 'off') || !sfx.enabled) return;
@@ -53,8 +59,14 @@ export function makeAnnouncer(prefix, defMode) {
       const s = synth(); if (!s) return;
       const u = new SpeechSynthesisUtterance(text);
       u.rate = this.rate; u.volume = vol; u.lang = 'en-US';
-      if (this.voice) { const v = s.getVoices().find((x) => x.voiceURI === this.voice); if (v) { u.voice = v; u.lang = v.lang; } }
-      s.speak(u);
+      const v = this.voice ? findVoice(s.getVoices(), this.voice) : null;
+      if (v) { u.lang = v.lang; try { u.voice = v; } catch {} } // lang too: some engines pick by language
+      keep.add(u); u.onend = u.onerror = () => keep.delete(u); // Chrome can drop utterances that get garbage-collected
+      // Speaking right after cancel() is unreliable on mobile Chrome (it may be swallowed or keep the old voice),
+      // so give the cancel a moment to settle first.
+      const wait = 250 - (performance.now() - stoppedAt);
+      const go = () => { try { s.resume(); } catch {} s.speak(u); };
+      if (wait > 0) setTimeout(go, wait); else go();
     },
   };
   synth()?.getVoices(); // Chrome loads voices lazily

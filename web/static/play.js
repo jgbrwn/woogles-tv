@@ -615,8 +615,8 @@ function soundSheet() {
   wire('sVol', (v) => { sfx.ctx(); sfx.set(v); sfx.turn(); });
   wire('sAnn', (v) => { ann.set('mode', v); ann.stop(); if (v !== 'off') ann.say(v === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.'); });
   wire('sSpell', (v) => ann.set('spell', v));
-  wire('sRate', (v) => { ann.set('rate', +v); test(); });
-  const vs = body.querySelector('#sVoice'); if (vs) vs.onchange = () => { ann.set('voice', vs.value); test(); };
+  wire('sRate', (v) => ann.set('rate', +v));
+  const vs = body.querySelector('#sVoice'); if (vs) vs.onchange = () => { ann.stop(); ann.set('voice', vs.value); };
   body.querySelector('#sTest')?.addEventListener('click', test);
   sync();
 }
