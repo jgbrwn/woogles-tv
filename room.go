@@ -475,6 +475,16 @@ func (r *Room) engIdx(seat int) int {
 	return 1
 }
 
+// enginePlayer maps a seat to the engine's player index (seats and engine order differ when the second seat starts).
+func (r *Room) enginePlayer(seat int) int {
+	for i, s := range r.order {
+		if s == seat {
+			return i
+		}
+	}
+	return -1
+}
+
 func (r *Room) seatOnTurn() int {
 	if r.m == nil {
 		return -1
@@ -722,14 +732,19 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		}
 		sendJSON(cl, map[string]any{"t": "notice", "msg": "Sent to the TV — it should switch in a moment"})
 	case "preview":
-		// Tentative tiles are private: only the placing player's own devices see the score preview.
-		if !r.playingLocked() || cl.seat < 0 || cl.seat != r.seatOnTurn() {
+		// Tentative tiles are private: only the placing player's own devices see the score preview. Players may also
+		// preview while waiting for their turn (scored against the current board and their own rack).
+		if !r.playingLocked() || cl.seat < 0 {
+			return
+		}
+		player := r.enginePlayer(cl.seat)
+		if player < 0 {
 			return
 		}
 		p := &PreviewState{Seat: cl.seat, Tiles: m.Tiles}
 		if len(m.Tiles) > 0 {
 			tiles := append([]Tile(nil), m.Tiles...)
-			if sc, err := r.m.eng.Preview(tiles); err == nil {
+			if sc, err := r.m.eng.Preview(player, tiles); err == nil {
 				p.Score = &sc
 			} else {
 				p.Err = err.Error()

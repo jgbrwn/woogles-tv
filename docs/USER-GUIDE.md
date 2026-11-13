@@ -65,6 +65,9 @@ player goes first. **Change settings** returns to the lobby.
 - Or **drag a tile** onto any square. You can also drag placed tiles around the board.
 - **Tap a placed tile** to take it back, or drag it back onto the rack.
 - A **blank** asks which letter it should be.
+- **Plan ahead while you wait**: during your opponent's turn you can place tiles, see the score, use Back, Recall
+  and Shuffle, exactly as on your turn. Only **Play** (and Pass/Swap) wait for your turn. If your opponent's move
+  covers a square you'd used, that tile returns to your rack; the rest stay put and the score updates.
 - While you place tiles, your phone shows the **score** of the move (or why it isn't valid). Only you see it; the TV
   waits until you press **Play**.
 

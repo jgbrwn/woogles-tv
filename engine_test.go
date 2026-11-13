@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -104,5 +105,43 @@ func TestRestore(t *testing.T) {
 	}
 	if !r2.Over() || r2.Score(0) != r.Score(0) || r2.Score(1) != r.Score(1) {
 		t.Fatal("over-state restore mismatch")
+	}
+}
+
+// A waiting player can preview a move with their own tiles; it is scored against their rack, never the rack of the
+// player on turn (whose letters must not leak through errors).
+func TestPreviewWhileWaiting(t *testing.T) {
+	if err := initEngine("./data"); err != nil {
+		t.Fatal(err)
+	}
+	e, err := NewEngine("NWL23", [2]string{"A", "B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.tp.SetPlayerRack(0, "QUIZERS")
+	e.tp.SetPlayerRack(1, "CATDOGS")
+	if e.OnTurn() != 0 {
+		t.Fatal("expected player 0 on turn")
+	}
+	if sc, err := e.Preview(1, []Tile{{7, 6, "C", false}, {7, 7, "A", false}, {7, 8, "T", false}}); err != nil || sc != 10 {
+		t.Fatalf("waiting player's own CAT: %d %v", sc, err)
+	}
+	before0, before1 := e.Rack(0), e.Rack(1)
+	// letters the player on turn holds but the waiting player doesn't
+	var opp []Tile
+	for _, ch := range before0 {
+		if !strings.ContainsRune(before1, ch) && len(opp) < 2 {
+			opp = append(opp, Tile{7, 6 + len(opp), string(ch), false})
+		}
+	}
+	if len(opp) == 2 {
+		_, errOpp := e.Preview(1, opp)
+		// scored against the on-turn rack this would succeed, revealing those letters
+		if errOpp == nil {
+			t.Fatal("the waiting player's preview must not use the other player's rack")
+		}
+	}
+	if e.OnTurn() != 0 || e.Rack(0) != before0 || e.Rack(1) != before1 {
+		t.Fatal("preview must not change the game")
 	}
 }

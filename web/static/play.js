@@ -62,6 +62,9 @@ function show(id) { for (const x of ['lobby', 'game', 'noauth']) $('#' + x).clas
 
 let overDismissed = -1, wantSeat = false;
 const watching = () => s && s.you < 0;
+// Tiles can be placed (and previewed) by a seated player during the game, on their turn or while waiting to plan the
+// next move. Only Play / Pass / Swap need it to be your turn.
+const canPlace = () => !!s && s.phase === 'playing' && s.you >= 0;
 const meSeat = () => (s.you >= 0 ? s.you : 0);
 function render(st) {
   const prev = s; s = st; recvAt = performance.now();
@@ -78,7 +81,15 @@ function render(st) {
     cells.flat().forEach((c) => c.addEventListener('click', () => onCellTap(+c.dataset.r, +c.dataset.c)));
   }
   const newLog = (s.log || []).length;
-  if (newLog !== logLen) { pending.clear(); selected = null; cursor = null; anchor = null; swapMode = false; swapSet.clear(); lastPreview = null; logLen = newLog; }
+  if (newLog !== logLen) {
+    // A new move: clear tentative tiles if *we* moved (or on first load). If the opponent moved, keep the plan the
+    // waiting player was making; tiles on squares that just got filled are dropped below, and it's re-scored.
+    const theirs = logLen >= 0 && newLog > logLen && (s.log || []).slice(logLen).every((m) => m.player !== s.you);
+    if (!theirs) { pending.clear(); cursor = null; anchor = null; }
+    else if (cursor && s.board[cursor.r][cursor.c] !== '.') cursor = null;
+    selected = null; swapMode = false; swapSet.clear(); lastPreview = null; logLen = newLog;
+    if (theirs && pending.size) setTimeout(sendPreview, 50);
+  }
   // drop pending tiles on squares that became occupied
   for (const [k] of pending) { const [r, c] = k.split(',').map(Number); if (s.board[r][c] !== '.') pending.delete(k); }
   reconcileRack(s.rack || '');
@@ -290,7 +301,7 @@ function renderPending() {
     attachDrag(t, { from: 'board', key: k });
     cells[r][c].append(t);
   }
-  if (cursor && myTurn()) {
+  if (cursor && canPlace()) {
     const cur = el('div', 'cursor', cursor.vert ? '↓' : '→');
     cells[cursor.r][cursor.c].append(cur);
   }
@@ -303,10 +314,10 @@ function onTilesChanged() {
   onTilesChanged.t = setTimeout(sendPreview, 120);
 }
 function tilesPayload() { return [...pending].map(([k, p]) => { const [r, c] = k.split(',').map(Number); return { r, c, l: p.l, blank: p.blank }; }); }
-function sendPreview() { if (myTurn()) ws.send({ t: 'preview', tiles: tilesPayload() }); else showPreview(null); }
+function sendPreview() { if (canPlace() && pending.size) ws.send({ t: 'preview', tiles: tilesPayload() }); else showPreview(null); }
 function showPreview(p) {
   const n = $('#preview');
-  if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tiles' : 'Drag tiles to rearrange'; n.className = 'err'; return; }
+  if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tiles' : canPlace() ? 'Plan ahead: tap a square, then tiles' : 'Drag tiles to rearrange'; n.className = 'err'; return; }
   if (p.score != null) { n.innerHTML = `<b>${p.score}</b> points`; n.className = 'score'; }
   else { n.textContent = p.err || ''; n.className = 'err'; }
 }
@@ -329,7 +340,7 @@ function advanceCursor() {
 }
 
 async function onCellTap(r, c) {
-  if (!myTurn() || swapMode || dragJustEnded) return;
+  if (!canPlace() || swapMode || dragJustEnded) return;
   const k = r + ',' + c;
   if (pending.has(k)) { pending.delete(k); cursor = { r, c, vert: cursor?.vert ?? false }; onTilesChanged(); return; }
   if (s.board[r][c] !== '.') return;
@@ -345,7 +356,7 @@ async function onCellTap(r, c) {
 async function onRackTap(id) {
   if (swapMode) { swapSet.has(id) ? swapSet.delete(id) : swapSet.add(id); renderRack(); return; }
   if (usedIds().has(id)) return;
-  if (cursor && myTurn()) {
+  if (cursor && canPlace()) {
     if (await place(cursor.r, cursor.c, id)) { advanceCursor(); onTilesChanged(); }
     return;
   }
@@ -450,7 +461,7 @@ function attachDrag(tile, src) {
     const cell = cellAt(e.clientX, e.clientY - 40);
     const slot = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('rslot'));
     const id = d.src.from === 'rack' ? d.src.id : pending.get(d.src.key)?.id;
-    if (cell && myTurn() && !swapMode) {
+    if (cell && canPlace() && !swapMode) {
       const r = +cell.dataset.r, c = +cell.dataset.c;
       if (s.board[r][c] === '.' && !pending.has(r + ',' + c)) {
         if (d.src.from === 'board') { const p = pending.get(d.src.key); pending.delete(d.src.key); pending.set(r + ',' + c, p); }
@@ -480,7 +491,7 @@ $('#recallBtn').onclick = () => {
 };
 // Backspace: take back the last tile placed; the cursor steps back onto its square (same direction).
 function backspace() {
-  if (!myTurn() || swapMode || !pending.size) return;
+  if (!canPlace() || swapMode || !pending.size) return;
   const k = [...pending.keys()].at(-1);
   pending.delete(k);
   const [r, c] = k.split(',').map(Number);

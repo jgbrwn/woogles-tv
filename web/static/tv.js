@@ -152,13 +152,16 @@ function renderLog(s, names, prev) {
   const n = entries.length;
   const prevN = prev.gameNo === s.gameNo && prev.log ? prev.log.length : n;
   log.innerHTML = '';
-  entries.slice(-14).reverse().forEach((m, k) => {
+  // Chronological like the phone and Woogles.io: oldest at the top, newest at the bottom, scrolled to the end.
+  const shown = entries.slice(-40);
+  shown.forEach((m, k) => {
     const d = describeMove(m, names);
-    const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet ' : '') + (k === 0 && n > prevN ? 'newest' : ''));
+    const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet ' : '') + (k === shown.length - 1 && n > prevN ? 'newest ' : '') + ((n - shown.length + k) % 2 ? '' : 'alt'));
     li.innerHTML = `${avatar(names[m.player], m.player, s.seats[m.player]?.bot)}<div class="w">${esc(d.text)} ${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</div>
       <div class="s">${d.score > 0 ? '+' : ''}${d.score}</div><div class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total}</div>`;
     log.append(li);
   });
+  log.scrollTop = log.scrollHeight;
 }
 
 function showScorePop(m, squares) {

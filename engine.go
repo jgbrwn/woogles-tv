@@ -162,7 +162,9 @@ func (e *Engine) Bonuses() []string {
 }
 
 // buildMove converts loose placed tiles into a Macondo move (not yet validated for words).
-func (e *Engine) buildMove(tiles []Tile) (*move.Move, error) {
+// buildMove builds a placement for `player` (engine index); its rack is used for the leave, so a move can only use
+// that player's own tiles.
+func (e *Engine) buildMove(player int, tiles []Tile) (*move.Move, error) {
 	if len(tiles) == 0 {
 		return nil, errors.New("place some tiles first")
 	}
@@ -248,7 +250,7 @@ func (e *Engine) buildMove(tiles []Tile) (*move.Move, error) {
 	} else {
 		coords = fmt.Sprintf("%d%c", fixed+1, 'A'+start)
 	}
-	m, err := e.tp.NewPlacementMove(e.OnTurn(), coords, word.String(), false)
+	m, err := e.tp.NewPlacementMove(player, coords, word.String(), false)
 	if err != nil {
 		return nil, prettyErr(err)
 	}
@@ -256,8 +258,11 @@ func (e *Engine) buildMove(tiles []Tile) (*move.Move, error) {
 }
 
 // Preview scores a tentative placement. Returns score and whether placement is geometrically legal.
-func (e *Engine) Preview(tiles []Tile) (int, error) {
-	m, err := e.buildMove(tiles)
+// Preview scores a tentative placement for `player` (engine index), whose turn it need not be: a waiting player can
+// plan their next move. Always pass the asker's own index, never the player on turn, or errors like "not in rack"
+// would reveal the other rack.
+func (e *Engine) Preview(player int, tiles []Tile) (int, error) {
+	m, err := e.buildMove(player, tiles)
 	if err != nil {
 		return 0, err
 	}
@@ -265,7 +270,7 @@ func (e *Engine) Preview(tiles []Tile) (int, error) {
 }
 
 func (e *Engine) Play(tiles []Tile) error {
-	m, err := e.buildMove(tiles)
+	m, err := e.buildMove(e.OnTurn(), tiles)
 	if err != nil {
 		return err
 	}
