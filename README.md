@@ -41,6 +41,7 @@ closet.
 - 📋 scorecard overlay, 🔍 board zoom, unseen tiles (bag + opponent), swap, pass, blanks, pause, resign, rematch.
 - Phones, tall phones, **tablets** and landscape: the layout adapts (in landscape the board sits beside a full scorecard; tall screens show the latest moves under the board).
 - Sound & voice settings per phone: volume, clock warnings for your own clock (with vibration), and an optional announcer for games without a TV.
+- The screen stays on during a game (no dimming or auto-lock), and sleeps normally again afterwards.
 - *Your games*: every game on this phone with live status (Your turn / In progress / Finished), a filter, and removal.
 - Join as a spectator: anyone with the link who isn't seated sees the board and scores, never the racks.
 

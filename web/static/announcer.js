@@ -313,8 +313,9 @@ export function clockSpeech(kind, n, name, own = false) {
   switch (kind) {
     case '5min': return `${who}five minutes left.`;
     case '1min': return `${who}one minute left.`;
-    case 'overtime': return own ? "You're in overtime. Ten points per minute." : `${sayName(name)} is in overtime. Ten points per minute.`;
-    case 'overmin': return `${who}${n === 1 ? 'one minute' : n + ' minutes'} over. Minus ${10 * (n + 1)}.`;
+    // NASPA: 10 points for each minute or part of a minute over, so going past n minutes over starts minute n + 1.
+    case 'overtime': return own ? "You're in overtime. Minus ten points for each minute, or part of a minute." : `${sayName(name)} is in overtime. Minus ten points for each minute, or part of a minute.`;
+    case 'overmin': return `${own ? "You're" : sayName(name) + ' is'} now in minute ${n + 1} of overtime. Minus ${10 * (n + 1)}.`;
     case 'lastmin': return `${who}one minute until you lose on time!`;
   }
   return '';

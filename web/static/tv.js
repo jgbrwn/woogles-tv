@@ -1,5 +1,5 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
-  applyTheme, paintTimer, sfx, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
+  applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 
@@ -203,7 +203,8 @@ function onClockAlert(seat, kind, n) {
   if (kind === '5min' || kind === '1min') sfx.warn();
   else if (kind === 'overtime' || kind === 'lastmin') sfx.overtime();
   else if (kind === 'overmin') sfx.penalty();
-  if (kind === 'overtime') toast(`${name} is in overtime: −10 points per minute`, 'bad');
+  if (kind === 'overtime') toast(`${name} is in overtime: −10 points per minute or part of one`, 'bad');
+  else if (kind === 'overmin') toast(`${name}: overtime minute ${n + 1}, −${10 * (n + 1)}`, 'bad');
   else if (kind === 'lastmin') toast(`${name}: one minute until a loss on time`, 'bad');
   if (ann.on('all')) ann.later(() => ann.say(clockSpeech(kind, n, name)), 500);
 }
@@ -488,6 +489,5 @@ function startCastReceiver() {
   }
   startRoom(await getRoom());
   setTimeout(() => { if (sfx.enabled && !sfx.ready()) { sfx.ctx(); if (!sfx.ready()) $('#soundHint').classList.remove('hidden'); } sendPrefs(); }, 1500);
-  try { await navigator.wakeLock?.request('screen'); } catch {}
-  document.addEventListener('visibilitychange', async () => { if (!document.hidden) try { await navigator.wakeLock?.request('screen'); } catch {} });
+  keepAwake(true); // the board stays on screen
 })();

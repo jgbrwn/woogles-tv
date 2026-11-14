@@ -280,3 +280,22 @@ export function clockAlerts(onAlert) {
     for (let m = 1; m <= 9; m++) if (crossed(-m * 60000)) onAlert(seat, m === 9 ? 'lastmin' : 'overmin', m);
   };
 }
+
+// ---- keep the screen on (Screen Wake Lock API) ----
+// keepAwake(true) holds a wake lock while the page is visible; the browser drops it when the page is hidden, so it
+// is taken again on return, and retried on the next tap if the browser refused it. Unsupported browsers: no-op.
+let wakeWanted = false, wakeLock = null, wakePending = false;
+export function keepAwake(on) {
+  wakeWanted = on;
+  if (!('wakeLock' in navigator)) return;
+  if (!on) { if (wakeLock) wakeLock.release().catch(() => {}); wakeLock = null; return; }
+  if (wakeLock || wakePending || document.hidden) return;
+  wakePending = true;
+  navigator.wakeLock.request('screen').then((l) => {
+    if (!wakeWanted) { l.release().catch(() => {}); return; }
+    wakeLock = l;
+    l.addEventListener('release', () => { if (wakeLock === l) wakeLock = null; });
+  }).catch(() => {}).finally(() => { wakePending = false; });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && wakeWanted) keepAwake(true); });
+document.addEventListener('pointerdown', () => { if (wakeWanted && !wakeLock) keepAwake(true); });

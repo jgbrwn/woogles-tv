@@ -111,7 +111,8 @@ spot in the rack.
   <img src="screenshots/phone-unseen.png" width="250" alt="Unseen tiles">
 </p>
 
-Your phone buzzes when it's your turn (on phones that support vibration), and plays a short sound.
+Your phone buzzes when it's your turn (on phones that support vibration), and plays a short sound. While a game is
+in progress the phone's screen stays on (it won't dim or lock); once the game is over it goes back to normal.
 
 **Sound & voice** (☰ → *Sound & voice*, settings for this phone only)
 - **Volume**: Off, Low, Medium or High.
@@ -175,7 +176,8 @@ remote once if the TV shows *Click or press any key to enable sound*). Without o
   says which word is invalid.
 - **Clock** (optional, off by default): each player gets a time bank for the whole game, from 15 minutes to 2 hours.
   Your clock runs on your turn. NASPA overtime rules apply: going over costs **10 points per minute or part of a
-  minute**, applied at the end of the game. Going **more than 10 minutes** over ends the game immediately as a loss
+  minute**, applied at the end of the game: 0:01 to 1:00 over is −10, 1:01 to 2:00 is −20, and so on. Each time a
+  new overtime minute starts, the TV and phones say so, e.g. *"Alex is now in minute 3 of overtime. Minus 30."* Going **more than 10 minutes** over ends the game immediately as a loss
   for that player (−100 points; if needed, the opponent's score is raised to win by one). Any player can pause and
   resume the clock from ☰.
 - **Computer opponents** (Macondo's bots, the same ladder as Woogles.io):

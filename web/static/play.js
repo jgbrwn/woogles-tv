@@ -1,4 +1,4 @@
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
@@ -79,6 +79,7 @@ function render(st) {
   if (s.you >= 0) wantSeat = false;
   if (!watch && (s.you < 0 || s.phase === 'lobby')) { if (scoreOpen) toggleScorecard(false); renderLobby(); show('lobby'); $('#over').classList.add('hidden'); if (s.phase === 'lobby') { gameNo = -1; } return; }
   if (s.phase === 'over') renderOver(prev); else $('#over').classList.add('hidden');
+  keepAwake(s.phase !== 'over'); // no dimming or screen-off mid-game; normal again once it's over
   // game board (also kept updated beneath the over screen)
   if (!cells || s.gameNo !== gameNo) {
     cells = buildBoard($('#board'), s.bonuses);
@@ -261,7 +262,7 @@ const alertsTick = clockAlerts((seat, kind, n) => {
   if (kind === '5min' || kind === '1min') { sfx.warn(); navigator.vibrate?.([80, 60, 80]); }
   else if (kind === 'overtime' || kind === 'lastmin') { sfx.overtime(); navigator.vibrate?.([200, 80, 200]); }
   else if (kind === 'overmin') { sfx.penalty(); navigator.vibrate?.(150); }
-  const msg = { '5min': '5 minutes left', '1min': '1 minute left', overtime: 'Overtime: −10 points per minute', overmin: `${n} min over: −${10 * (n + 1)} so far`, lastmin: '1 minute until you lose on time!' }[kind];
+  const msg = { '5min': '5 minutes left', '1min': '1 minute left', overtime: 'Overtime: −10 points per minute or part of one', overmin: `Overtime minute ${n + 1}: −${10 * (n + 1)}`, lastmin: '1 minute until you lose on time!' }[kind];
   if (msg) toast(msg, kind === '5min' || kind === '1min' ? '' : 'bad');
   if (ann.on('all') && !tvTalks()) ann.later(() => ann.say(clockSpeech(kind, n, '', true)), 500);
 });
