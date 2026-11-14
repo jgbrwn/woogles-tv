@@ -63,11 +63,12 @@ tts/fetch-models.sh
 ```sh
 docker compose -f tts/docker-compose.yml up -d   # engine on 127.0.0.1:8431, restarts with Docker
 sudo systemctl enable docker                     # so Docker (and the engine) start at boot
-sudo systemctl edit woogles-tv                   # add:  [Service]  Environment=WT_TTS_URL=http://127.0.0.1:8431
+sudo nano /opt/woogles-tv/woogles-tv.env         # uncomment  WT_TTS_URL=http://127.0.0.1:8431
 sudo systemctl restart woogles-tv
 ```
 
-(Or put `WT_TTS_URL=http://127.0.0.1:8431` in the file the unit's `EnvironmentFile=` points to.)
+(That's the settings file the unit reads; if you don't have it yet, copy
+[`deploy/woogles-tv.env.example`](../deploy/woogles-tv.env.example) there first.)
 
 **B. Docker Compose:** uncomment `WT_TTS_URL: http://tts:8431` in `docker-compose.yml`, then
 

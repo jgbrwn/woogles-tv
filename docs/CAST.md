@@ -22,8 +22,9 @@ The Cast buttons appear only when the server has a `CAST_APP_ID`; without one, W
 2. **Add New Application → Custom Receiver.** Name it, e.g., `Woogles-TV`.
    Receiver Application URL: `https://your-server/cast`
 3. Copy the **Application ID** (8 characters) and give it to the server as `CAST_APP_ID`:
-   - systemd: `sudo systemctl edit woogles-tv` → `[Service]` `Environment=CAST_APP_ID=ABCD1234`, or put
-     `CAST_APP_ID=ABCD1234` in the unit's `EnvironmentFile`, then restart.
+   - systemd: put `CAST_APP_ID=ABCD1234` in `/opt/woogles-tv/woogles-tv.env` (start from
+     [`deploy/woogles-tv.env.example`](../deploy/woogles-tv.env.example)), or `sudo systemctl edit woogles-tv` →
+     `[Service]` `Environment=CAST_APP_ID=ABCD1234`; then restart.
    - Docker: `-e CAST_APP_ID=ABCD1234` (or in `docker-compose.yml`).
 4. While the app is **unpublished**, it only runs on devices you register: **Add New Device** with the Cast device's
    serial number (on Google TV: Settings → System → About → Status, or on the device's label), then reboot the device

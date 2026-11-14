@@ -24,6 +24,7 @@ both, and always runs in Docker, because its speech engine is a separate program
 | File | Used by | What it does |
 |---|---|---|
 | [`deploy/woogles-tv.service`](../deploy/woogles-tv.service) | Option A | systemd unit for the game server binary |
+| [`deploy/woogles-tv.env.example`](../deploy/woogles-tv.env.example) | Option A (also `docker run --env-file`) | Every optional setting, commented out, with a short explanation. Copy it to `/opt/woogles-tv/woogles-tv.env` |
 | [`Dockerfile`](../Dockerfile) | Option B | Builds the **game server** image only (binary + word lists). The speech engine is a ready-made image, so it has no Dockerfile here |
 | [`docker-compose.yml`](../docker-compose.yml) | Option B | Runs the game server; with `--profile tts`, also the speech engine |
 | [`tts/docker-compose.yml`](../tts/docker-compose.yml) | Option A + server voice | Runs **only** the speech engine, on `127.0.0.1:8431`, next to a game server that isn't in Docker. It is also where the engine's settings (image, limits) are defined; the main `docker-compose.yml` reuses them |
@@ -60,7 +61,8 @@ sudo chown -R woogles:woogles /opt/woogles-tv/data
 sudo -u woogles /opt/woogles-tv/woogles-tv -data /opt/woogles-tv/data -fetch-only   # download the word lists now
 
 sudo cp deploy/woogles-tv.service /etc/systemd/system/
-sudo systemctl edit woogles-tv      # optional: add  [Service]  Environment=PUBLIC_URL=https://games.example.com
+sudo install -m 600 deploy/woogles-tv.env.example /opt/woogles-tv/woogles-tv.env
+sudo nano /opt/woogles-tv/woogles-tv.env   # optional: uncomment PUBLIC_URL and anything else you need
 sudo systemctl enable --now woogles-tv
 journalctl -u woogles-tv -f         # logs
 ```
@@ -76,7 +78,7 @@ change `-addr`. A reverse proxy is usually the better choice (see below).
 ```sh
 tts/fetch-models.sh                              # once: ~300 MB of model and voices into tts/models/
 docker compose -f tts/docker-compose.yml up -d   # the speech engine alone, on 127.0.0.1:8431
-sudo systemctl edit woogles-tv                   # add:  [Service]  Environment=WT_TTS_URL=http://127.0.0.1:8431
+sudo nano /opt/woogles-tv/woogles-tv.env         # uncomment  WT_TTS_URL=http://127.0.0.1:8431
 sudo systemctl restart woogles-tv                # the log should say "server speech on"
 ```
 

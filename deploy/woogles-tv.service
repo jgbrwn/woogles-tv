@@ -4,7 +4,8 @@
 #   sudo cp woogles-tv /opt/woogles-tv/ && sudo cp -r data/letterdistributions data/strategy /opt/woogles-tv/data/
 #   sudo chown -R woogles:woogles /opt/woogles-tv/data
 #   sudo cp deploy/woogles-tv.service /etc/systemd/system/ && sudo systemctl enable --now woogles-tv
-# Adjust paths, PUBLIC_URL and the port to taste. See docs/DEPLOY.md.
+#   sudo install -m 600 deploy/woogles-tv.env.example /opt/woogles-tv/woogles-tv.env   # optional settings
+# Adjust paths and the port to taste. See docs/DEPLOY.md.
 [Unit]
 Description=Woogles-TV living-room crossword game server
 After=network-online.target
@@ -16,9 +17,10 @@ User=woogles
 Group=woogles
 WorkingDirectory=/opt/woogles-tv
 ExecStart=/opt/woogles-tv/woogles-tv -addr :8420 -data /opt/woogles-tv/data
-# The URL phones use to reach the server (encoded in the TV's QR code). Omit to derive it from requests.
-#Environment=PUBLIC_URL=https://woogles-tv.example.com
-# Optional settings such as CAST_APP_ID=... (see docs/CAST.md):
+# Optional settings (PUBLIC_URL, definitions, Cast, the announcer's server voice) go in this file; every one is listed
+# with a short explanation in deploy/woogles-tv.env.example:
+#   sudo install -m 600 deploy/woogles-tv.env.example /opt/woogles-tv/woogles-tv.env
+# The leading "-" means the file may be missing.
 EnvironmentFile=-/opt/woogles-tv/woogles-tv.env
 Restart=always
 RestartSec=2
