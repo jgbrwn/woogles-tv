@@ -22,6 +22,11 @@
  .tiles span { position: relative; width: 40px; height: 40px; }
  .tiles .tile { inset: 0; }
  small a { color: var(--primary); }
+ .way { text-align: left; font-size: 15px; line-height: 1.5; color: var(--muted); }
+ .way b { color: var(--ink); }
+ .way a { color: var(--primary); font-weight: 700; font-size: 14px; }
+ .url { display: block; margin: 6px 0 2px; padding: 8px 10px; border-radius: 8px; background: var(--card2); border: 1px solid var(--line);
+   font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
  .look { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: 14px; }
  .look .seg { width: 210px; }
  .g { position: relative; } .g .x { width: 30px; height: 30px; border-radius: 99px; color: var(--muted); font-size: 16px; font-weight: 900; display: grid; place-items: center; }
@@ -58,10 +63,14 @@
     <button class="btn primary">Join</button>
     <p id="err"></p>
   </form>
-  <div class="panel">
-    <h2>The TV</h2>
+  <div class="panel" id="tvPanel">
+    <h2>Put it on the TV</h2>
+    <div class="way"><b>📺 Smart TV with a web browser</b> (LG, Samsung, Fire TV, any TV with a browser): open the TV's
+      built-in web browser and go to<span class="url" id="tvUrl">/tv</span></div>
+    <div class="way" id="apkWay"><b>🤖 Android TV / Google TV</b> (Onn, Chromecast with Google TV, Shield): install the
+      app from<span class="url" id="apkUrl">/app/woogles-tv.apk</span><a href="/app">How to install it</a></div>
+    <div class="way"><b>💻 A computer plugged into the TV</b>: open the board here and go full-screen.</div>
     <a class="btn" href="/tv">📺 Open the TV board here</a>
-    <a class="btn ghost" href="/app">Android TV / Google TV app</a>
   </div>
   <button class="btn hidden" id="installBtn" type="button">📲 Install Woogles-TV on this phone</button>
   <div class="look"><span class="muted">Appearance</span><div class="seg" id="lookSeg"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>

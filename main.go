@@ -139,7 +139,11 @@ func main() {
 		w.Write([]byte(h))
 	})
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig(), "music": musicConfig()})
+		// publicUrl: the address TVs and phones should use (PUBLIC_URL, else this request's); apk: whether
+		// /app/woogles-tv.apk is there to download.
+		_, apkErr := os.Stat(*apk)
+		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig(), "music": musicConfig(),
+			"publicUrl": baseURL(r), "apk": apkErr == nil})
 	})
 	mux.HandleFunc("GET /manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := fs.ReadFile(sub, "manifest.webmanifest")

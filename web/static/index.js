@@ -1,6 +1,13 @@
 import { toast } from './common.js';
 import { castAvailable, castRoom } from './cast.js';
 const q = new URLSearchParams(location.search);
+// The addresses to type on a TV, from the server's public URL (PUBLIC_URL), so they can be read off or copied.
+fetch('/api/config').then((r) => r.json()).then((c) => {
+  const base = (c.publicUrl || location.origin).replace(/\/+$/, '');
+  document.getElementById('tvUrl').textContent = base + '/tv';
+  document.getElementById('apkUrl').textContent = base + '/app/woogles-tv.apk';
+  document.getElementById('apkWay').classList.toggle('hidden', !c.apk);
+}).catch(() => { document.getElementById('tvUrl').textContent = location.origin + '/tv'; });
 const input = document.getElementById('code');
 if (q.get('code')) input.value = q.get('code').toUpperCase();
 input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z]/g, ''); });
