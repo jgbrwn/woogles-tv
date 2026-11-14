@@ -215,6 +215,28 @@ function onClockAlert(seat, kind, n) {
   if (ann.on('all')) ann.later(() => ann.say(clockSpeech(kind, n, name)), 500);
 }
 
+// ---- clock: the time of day next to the TV code, in this TV's own time zone ----
+// A setting of this TV (not the room): Off, 12 hr or 24 hr. The default follows the device's own convention.
+const CLOCK_MODES = ['off', '12', '24'], CLOCK_NAMES = { off: 'Off', 12: '12 hr', 24: '24 hr' };
+let clockMode = (() => {
+  try { const m = localStorage.getItem('wt_clock'); if (CLOCK_MODES.includes(m)) return m; } catch {}
+  try { return /h1[12]/.test(new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hourCycle) ? '12' : '24'; } catch { return '24'; }
+})();
+function paintClock() {
+  const c = $('#clock');
+  c.classList.toggle('hidden', clockMode === 'off');
+  if (clockMode === 'off') return;
+  const d = new Date(), m = String(d.getMinutes()).padStart(2, '0'), h = d.getHours();
+  const html = clockMode === '24' ? `${String(h).padStart(2, '0')}:${m}` : `${h % 12 || 12}:${m}<small>${h < 12 ? 'AM' : 'PM'}</small>`;
+  if (c.innerHTML !== html) c.innerHTML = html;
+}
+function cycleClock() {
+  clockMode = CLOCK_MODES[(CLOCK_MODES.indexOf(clockMode) + 1) % CLOCK_MODES.length];
+  try { localStorage.setItem('wt_clock', clockMode); } catch {}
+  paintClock(); $('#mClock').textContent = CLOCK_NAMES[clockMode];
+}
+paintClock(); setInterval(paintClock, 1000);
+
 // ---- options menu (works with a TV remote: arrows + OK) ----
 let menuIdx = 0, menuPage = 'main';
 const MENU_TITLES = { main: 'Options', ann: 'Announcer', music: 'Music' };
@@ -232,6 +254,7 @@ function showMenuPage(page, focusAct) {
 function menuBack() { if (menuPage === 'main') closeMenu(); else showMenuPage('main', 'page-' + menuPage); }
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
+  $('#mClock').textContent = CLOCK_NAMES[clockMode];
   paintSoundMenu();
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
@@ -300,6 +323,7 @@ function menuAct(act) {
     const next = th[(th.indexOf(state.settings.theme) + 1) % th.length];
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
+  } else if (act === 'clock') { cycleClock();
   } else if (act === 'sound') {
     sfx.cycle(); paintSoundMenu(); paintMusicMenu(); music.update(); sfx.turn();
   } else if (act === 'music' || act === 'station' || act === 'musicvol') {

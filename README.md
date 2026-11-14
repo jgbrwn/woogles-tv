@@ -23,7 +23,7 @@ closet.
 
 **At the TV**
 - A big, readable 15×15 board with coordinates, the last move highlighted, tiles that drop in, and score pop-ups.
-- Player cards with scores, the player on turn, an optional chess clock, tiles left in the bag, and a running scorecard.
+- Player cards with scores, the player on turn, an optional chess clock, tiles left in the bag, and a running scorecard, plus the time of day (12 or 24 hr, or off).
 - Full-screen **BINGO!** celebration with confetti and a fanfare.
 - **Spoken announcer**: "Bingo! Alex plays QUIXOTIC… for 98 points", lead changes, the bag running low, clock warnings and the result, with a choice of voice, speed and spelling words out.
   Optionally in a **natural server voice** ([Pocket TTS](docs/TTS.md), 15 voices) that streams to any TV that can play sound,

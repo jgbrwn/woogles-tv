@@ -134,13 +134,17 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (theme, volume, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
+| **OK** | Opens the options menu (theme, volume, clock, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
 | **Back** | Closes a menu. In the app, press Back twice to exit |
 | **Hold OK** or **Menu** (app only) | Native app menu: reload, change server URL, reset, exit |
 
 Browsers on a computer: Enter opens the menu, the arrow keys move, Esc closes.
+
+**Time of day.** During a game, a clock next to the TV code (bottom right) shows the time in the TV's own time zone.
+**OK** → **Clock** switches between 12 hr, 24 hr and Off. It starts in the format the TV (or browser) normally uses, and
+the choice is kept on that TV.
 
 ### Sound and the announcer
 

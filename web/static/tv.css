@@ -65,6 +65,13 @@ body.tv.mouse { cursor: default; }
 #joinMini { flex: none; margin-left: auto; text-align: right; display: flex; align-items: center; gap: 1.4vh; color: var(--muted); font-size: 1.6vh; font-weight: 700; }
 #joinMini img { width: 8vh; height: 8vh; background: white; border-radius: .8vh; padding: .4vh; }
 #joinMini .code { font-size: 2.2vh; }
+/* the time of day, in the space under the "TV code" label; this TV's own time zone and setting */
+#joinMini .codeRow { display: flex; align-items: center; justify-content: space-between; gap: 1.6vh; margin-top: .4vh; }
+#clock { font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 2.2vh; letter-spacing: .04em; color: var(--ink); line-height: 1;
+  font-variant-numeric: tabular-nums; padding: .5vh 1vh; border: .22vh solid color-mix(in srgb, var(--primary) 55%, transparent); border-radius: .8vh;
+  background: color-mix(in srgb, var(--primary) 10%, transparent); box-shadow: 0 0 1.2vh color-mix(in srgb, var(--primary) 18%, transparent); }
+#clock small { font-size: .62em; margin-left: .35em; color: var(--muted); letter-spacing: .08em; }
+#clock.hidden { display: none; }
 
 /* floating score pop */
 #scorePop { position: fixed; z-index: 8; pointer-events: none; transform: translate(-50%, -50%); font-weight: 900; font-size: 6vh; color: #fff;

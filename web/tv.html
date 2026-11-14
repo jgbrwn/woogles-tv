@@ -26,7 +26,7 @@
     </div>
     <div id="footRow">
       <div id="npMini" class="np hidden"><img alt=""><div class="npt"><b></b><span class="ar"></span></div></div>
-      <div id="joinMini"><div><div>TV code · scan to join or watch</div><b class="code"></b></div><img id="qrMini" alt=""></div>
+      <div id="joinMini"><div><div>TV code · scan to join or watch</div><div class="codeRow"><span id="clock" class="hidden"></span><b class="code"></b></div></div><img id="qrMini" alt=""></div>
     </div>
   </aside>
 </main>
@@ -71,6 +71,7 @@
     <!-- main page; the announcer and music settings have pages of their own so the menu fits on any TV -->
     <button class="mitem" data-page="main" data-act="theme">Theme: <b id="mTheme"></b></button>
     <button class="mitem" data-page="main" data-act="sound">Volume: <b id="mSound"></b></button>
+    <button class="mitem" data-page="main" data-act="clock">Clock: <b id="mClock"></b></button>
     <button class="mitem" data-page="main" data-act="page-ann" id="mAnnEntry">Announcer: <b id="mAnnSum"></b><span class="more">›</span></button>
     <button class="mitem hidden" data-page="main" data-act="page-music" id="mMusicEntry">Music: <b id="mMusicSum"></b><span class="more">›</span></button>
     <button class="mitem" data-page="main" data-act="games">Games on this TV…</button>
