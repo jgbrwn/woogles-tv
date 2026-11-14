@@ -18,6 +18,7 @@ services:
       PUBLIC_URL: ""   # e.g. https://woogles-tv.example.com
       # CAST_APP_ID: ABCD1234   # optional, see docs/CAST.md
       # WT_TTS_URL: http://tts:8431   # server voice, needs the tts profile
+      # WT_STATS_TOKEN: ...   # GET /api/stats with a Bearer token, see docs/DEPLOY.md (Stats)
       # WT_TTS_VOICES: cosette,caro_davy,anna,azelma,charles,eve,fantine,jane,marius,mary,michael,paul,peter_yearsley,stuart_bell,vera
     volumes:
       - rooms:/app/data/rooms     # saved rooms/games (survive upgrades)

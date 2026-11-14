@@ -18,6 +18,7 @@
 | `room.go` | Rooms, seats, clients, game lifecycle, NASPA clock, persistence, expiry, state broadcasting |
 | `engine.go` | Thin wrapper around Macondo: build/validate/preview moves, play/pass/exchange, move log, unseen tiles, bots, history save/restore |
 | `tts.go` | Optional server voice: `/api/tts` checks credentials and limits, streams audio from the local speech engine, caches clips |
+| `stats.go` | Optional stats: rooms, games and connections right now, plus lifetime counters saved in `data/rooms/stats/`; served on a local admin port and/or a token-protected `/api/stats` |
 | `security.go` | Token-bucket rate limits, client IP, security headers / CSP |
 | `demo.go` | `-demo N`: seeds a game in progress for screenshots and trying the UI |
 | `web/` | Pages (`index.html` home, `tv.html`, `play.html` phone, `app.html` APK page), `static/*.js|css`, PWA manifest + service worker |

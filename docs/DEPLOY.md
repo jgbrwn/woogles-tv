@@ -9,6 +9,7 @@ database. Anything that can run a Linux/macOS/Windows binary or a Docker contain
 - [Option B: Docker / Docker Compose](#option-b-docker--docker-compose)
 - [HTTPS and reverse proxies](#https-and-reverse-proxies)
 - [Configuration](#configuration)
+- [Stats](#stats)
 - [Data, backups and upgrades](#data-backups-and-upgrades)
 - [Pointing the TV app and Cast at your server](#pointing-the-tv-app-and-cast-at-your-server)
 - [Security checklist](#security-checklist)
@@ -183,6 +184,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `CAST_APP_ID` | empty | Google Cast receiver app ID; enables the Cast buttons ([CAST.md](CAST.md)) |
 | `WT_TTS_URL` | empty (off) | Speech engine for the announcer's server voice, e.g. `http://127.0.0.1:8431` ([TTS.md](TTS.md)) |
 | `WT_TTS_VOICES` | 15 voices, Cosette first | Server voices offered, in menu order; the first is the default ([TTS.md](TTS.md)) |
+| `-admin` / `WT_ADMIN_ADDR` | off | Address for the stats listener, e.g. `127.0.0.1:8421`: `GET /stats` there. Keep it on `127.0.0.1` ([Stats](#stats)) |
+| `WT_STATS_TOKEN` | off | Turns on `GET /api/stats` on the public site, for requests with `Authorization: Bearer <token>`. At least 24 characters ([Stats](#stats)) |
 | `WT_DEV=1` | off | Serve `web/` from disk instead of the embedded copy (for development) |
 
 `GET /healthz` returns `ok` for load-balancer and container health checks.
@@ -191,9 +194,45 @@ Built-in limits (in `room.go` / `main.go`): 500 rooms, 16 connections per room, 
 10 code lookups per minute per IP, plus a global budget for code lookups and *Show on TV*. Idle rooms are removed after
 3 days, or 7 days with an unfinished game.
 
+## Stats
+
+The server can report what's going on: rooms (in lobby, playing, paused, over; active in the last 15 minutes and
+24 hours), games in progress against a bot or a person, connected TVs, players and spectators, and lifetime counters
+(games started and how they ended, moves, bingos, connections, server-voice and definition requests, and how often
+each rate limit turned someone away). It reports counts only: no room codes, keys or player names.
+
+Lifetime counters are saved every 30 seconds and on shutdown in `data/rooms/stats/counters.json`, so they survive
+restarts and upgrades (and, with Docker, live in the existing rooms volume). `sinceRestart` in the report shows the
+same counters for the current process. Delete the file to start counting again.
+
+It's off by default. Two ways to turn it on; use either or both:
+
+**A local admin port** (simplest; nothing to keep secret):
+
+```sh
+WT_ADMIN_ADDR=127.0.0.1:8421     # in the env file, or -admin 127.0.0.1:8421
+curl -s localhost:8421/stats | jq
+ssh -L 8421:localhost:8421 your-server   # then open http://localhost:8421/stats on your computer
+```
+
+The listener is separate from the game's and has only `/stats`. Keep it on `127.0.0.1`: anyone who can reach the
+port can read it. With Docker, the address inside the container must be `0.0.0.0:8421`; publish it to the host's
+loopback only (`ports: ["127.0.0.1:8421:8421"]`), never to the network.
+
+**A token on the public site** (to check from anywhere, e.g. a phone or an uptime monitor):
+
+```sh
+WT_STATS_TOKEN=$(openssl rand -hex 24)   # put the value in the env file
+curl -s -H "Authorization: Bearer $WT_STATS_TOKEN" https://games.example.com/api/stats | jq
+```
+
+Without `WT_STATS_TOKEN` the route doesn't exist (404). A wrong token gets a 401, and repeated wrong tokens are
+slowed down. Tokens shorter than 24 characters are refused (the route stays off and the log says why).
+
 ## Data, backups and upgrades
 
-- **Backups:** copy `data/rooms/` (small JSON files, one per room). Everything else can be re-downloaded or rebuilt.
+- **Backups:** copy `data/rooms/` (small JSON files, one per room, plus the lifetime stats in `stats/`). Everything
+  else can be re-downloaded or rebuilt.
 - **Upgrades:** build the new binary, replace it, restart. Rooms and games in progress are saved on every change and
   restored on start; phones and TVs reconnect by themselves within a few seconds.
   ```sh
@@ -221,6 +260,7 @@ expiry. When deploying:
 - Serve it over **HTTPS** if it's reachable from the internet.
 - Run it as an **unprivileged user** (the provided systemd unit and the Docker image already do).
 - If you bind it to all interfaces behind a proxy, consider `-addr 127.0.0.1:8420` so nobody can bypass the proxy.
+- If you turn on [stats](#stats), keep the admin port on `127.0.0.1` and use a long random `WT_STATS_TOKEN`.
 - If you modify it and offer it to others, the AGPL requires you to **publish your modified source**. Update the
   GitHub links in `web/index.html`, `web/tv.html`, `web/app.html` and `web/play.html` to point at your fork.
 
@@ -228,7 +268,9 @@ expiry. When deploying:
 
 - **exe.dev** (the author's setup): `go build`, install `deploy/woogles-tv.service` with the paths changed to your
   home directory, and the default port **8420** is served at `https://<vm>.exe.xyz/` with TLS and the forwarded
-  headers already set. Set `PUBLIC_URL=https://<vm>.exe.xyz`.
+  headers already set. Set `PUBLIC_URL=https://<vm>.exe.xyz`. For [stats](#stats), `WT_ADMIN_ADDR=127.0.0.1:8421`
+  is enough: exe.dev forwards ports 3000–9999 to people with access to the VM only, so
+  `https://<vm>.exe.xyz:8421/stats` works for you and nobody else, with no token.
 - **Fly.io / Render / Railway / any container platform:** deploy the Dockerfile, expose port 8420, mount a small
   volume at `/app/data/rooms`, and set `PUBLIC_URL`. Run **a single instance**: rooms live in one process's memory,
   so don't scale horizontally without sticky routing by room.

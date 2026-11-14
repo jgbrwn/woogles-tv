@@ -71,13 +71,16 @@ func (d *definer) Define(ctx context.Context, lexicon, word string) (Definition,
 	}
 	word = strings.ToUpper(word)
 	key := lexicon + ":" + word
+	stats.DefLookups.Add(1)
 	d.mu.Lock()
 	if c, ok := d.cache[key]; ok && (len(c.d.Senses) > 0 || time.Since(c.at) < 10*time.Minute) {
 		d.mu.Unlock()
+		stats.DefCacheHits.Add(1)
 		return c.d, nil
 	}
 	d.mu.Unlock()
 	if !d.limit.allow() {
+		stats.LimitDefine.Add(1)
 		return Definition{}, errors.New("Too many lookups — try again in a minute")
 	}
 	def := Definition{Word: word}
@@ -89,6 +92,7 @@ func (d *definer) Define(ctx context.Context, lexicon, word string) (Definition,
 		if s, err2 := d.dictionaryAPI(ctx, word); err2 == nil && len(s) > 0 {
 			def.Senses, def.Source = s, "dictionaryapi"
 		} else if err != nil && err2 != nil {
+			stats.DefFailures.Add(1)
 			return def, errors.New("Couldn't reach the dictionary — try again later")
 		}
 	}

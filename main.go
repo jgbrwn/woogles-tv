@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coder/websocket"
@@ -63,6 +65,7 @@ func main() {
 	data := flag.String("data", "./data", "macondo data path (lexica etc.); rooms are saved in DATA/rooms")
 	apk := flag.String("apk", "./android/out/woogles-tv.apk", "Android TV APK to serve at /app/woogles-tv.apk")
 	demo := flag.Int("demo", 0, "seed a demo game with this many moves played and print TV/phone links (for trying the UI)")
+	admin := flag.String("admin", os.Getenv("WT_ADMIN_ADDR"), "local address for the stats listener (GET /stats), e.g. 127.0.0.1:8421; off if empty (default $WT_ADMIN_ADDR)")
 	fetchOnly := flag.Bool("fetch-only", false, "download the word lists into DATA/lexica and exit (for offline installs and Docker builds)")
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
@@ -95,6 +98,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	loadStats(filepath.Join(*data, "rooms"))
 	initTTS()
 	go reapRooms()
 	go clockWatch()
@@ -159,6 +163,7 @@ func main() {
 	// TV creates a room. The response holds the TV's private key.
 	mux.HandleFunc("POST /api/rooms", func(w http.ResponseWriter, r *http.Request) {
 		if !createLimit.allow(clientIP(r)) {
+			stats.LimitNewRoom.Add(1)
 			writeJSON(w, 429, map[string]string{"error": "too many new rooms, slow down"})
 			return
 		}
@@ -212,9 +217,13 @@ func main() {
 	})
 	// Server speech for the announcer (tts.go). Streams audio; only the room's TV or a seated player may use it.
 	mux.HandleFunc("POST /api/tts", handleTTS)
+	if h := publicStatsHandler(); h != nil {
+		mux.HandleFunc("GET /api/stats", h)
+	}
 	// Manual join by typing the room code shown on the TV. Rate limited against guessing.
 	mux.HandleFunc("POST /api/join", func(w http.ResponseWriter, r *http.Request) {
 		if !joinLimit.allow(clientIP(r)) || !globalJoin.allow() {
+			stats.LimitCodeQuery.Add(1)
 			writeJSON(w, 429, map[string]string{"error": "Too many tries — wait a minute and try again"})
 			return
 		}
@@ -281,6 +290,15 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    16 << 10,
 	}
+	startAdmin(*admin)
+	// Save the lifetime counters on the way out (systemd and Docker stop with SIGTERM).
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
+	go func() {
+		<-sig
+		saveStats()
+		os.Exit(0)
+	}()
 	slog.Info("listening", "addr", *addr)
 	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("serve", "err", err)

@@ -199,6 +199,8 @@ func createRoom(base string) (*Room, error) {
 	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8),
 		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better"}, lastUsed: time.Now(), baseURL: base}
 	rooms[code] = r
+	stats.RoomsCreated.Add(1)
+	raisePeak(&stats.PeakRooms, int64(len(rooms)))
 	r.mu.Lock()
 	r.saveLocked()
 	r.mu.Unlock()
@@ -408,6 +410,8 @@ func (r *Room) serve(ctx context.Context, c *websocket.Conn, role string, seat i
 	r.lastUsed = time.Now()
 	r.broadcastLocked()
 	r.mu.Unlock()
+	statsClientJoined()
+	defer statsClientLeft()
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -443,6 +447,7 @@ func (r *Room) serve(ctx context.Context, c *websocket.Conn, role string, seat i
 			break
 		}
 		if !cl.bucket.allow() {
+			stats.LimitMessages.Add(1)
 			continue // flood protection
 		}
 		var m inMsg
@@ -656,12 +661,19 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		}
 		r.gameNo++
 		r.preview = nil
+		stats.GamesStarted.Add(1)
+		if r.seats[0].Bot || r.seats[1].Bot {
+			stats.GamesVsBot.Add(1)
+		}
 		r.eventLocked(map[string]any{"t": "event", "kind": "start"})
 		r.broadcastLocked()
 		r.maybeBotLocked()
 	case "end": // abandon current game, back to lobby
 		if cl.seat < 0 || r.m == nil {
 			return
+		}
+		if r.playingLocked() {
+			stats.GamesAbandoned.Add(1)
 		}
 		r.m = nil
 		r.preview = nil
@@ -676,6 +688,7 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		}
 		w := 1 - cl.seat
 		r.m.Winner, r.m.EndReason = &w, "resign"
+		statsGameOver("resign")
 		r.preview = nil
 		r.eventLocked(map[string]any{"t": "event", "kind": "resign", "seat": cl.seat})
 		r.broadcastLocked()
@@ -704,6 +717,7 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			return
 		}
 		if !r.defLimit.allow() {
+			stats.LimitDefine.Add(1)
 			r.errTo(cl, "Too many lookups — wait a moment")
 			return
 		}
@@ -721,6 +735,7 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			return
 		}
 		if !r.linkLimit.allow() || !globalJoin.allow() {
+			stats.LimitCodeQuery.Add(1)
 			r.errTo(cl, "Too many tries — wait a minute")
 			return
 		}
@@ -788,6 +803,16 @@ func (r *Room) handle(cl *Client, m inMsg) {
 // afterMoveLocked advances the clock, finalizes the game if it ended, and notifies everyone.
 func (r *Room) afterMoveLocked(kind string, seat int) {
 	r.preview = nil
+	stats.Moves.Add(1)
+	if kind == "bot" {
+		stats.BotMoves.Add(1)
+	}
+	if ev := r.m.eng.tp.History().Events; len(ev) > 0 && ev[len(ev)-1].IsBingo {
+		stats.Bingos.Add(1)
+	}
+	if r.m.eng.Over() {
+		statsGameOver("")
+	}
 	if c := r.m.Clock; c != nil {
 		c.charge(time.Now())
 		if r.m.eng.Over() {
@@ -826,6 +851,7 @@ func (r *Room) timeLossLocked(loser int) {
 		r.m.Extra = append(r.m.Extra, MoveLog{Player: winner, Type: "adjust", Score: d + 1})
 	}
 	r.m.Winner, r.m.EndReason = &winner, "time"
+	statsGameOver("time")
 	r.preview = nil
 	r.eventLocked(map[string]any{"t": "event", "kind": "timeout", "seat": loser})
 	r.broadcastLocked()

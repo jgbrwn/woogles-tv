@@ -173,20 +173,25 @@ func handleTTS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := ttsKey(tts.model, voice, text)
+	stats.TTSRequests.Add(1)
 	if pcm := tts.cache.get(key); pcm != nil {
+		stats.TTSCacheHits.Add(1)
 		writePCMHeaders(w, "hit")
 		w.Write(pcm)
 		return
 	}
 	if !room.ttsAllow() || !tts.global.allow() {
+		stats.LimitTTS.Add(1)
 		writeJSON(w, 429, map[string]string{"error": "too many announcements"})
 		return
 	}
 	if err := tts.stream(r.Context(), w, key, voice, text); err != nil {
 		if errors.Is(err, errTTSBusy) {
+			stats.TTSBusy.Add(1)
 			writeJSON(w, 503, map[string]string{"error": "speech engine busy"})
 		} else {
 			slog.Warn("tts", "err", err)
+			stats.TTSErrors.Add(1)
 			writeJSON(w, 502, map[string]string{"error": "speech engine unavailable"})
 		}
 	}
@@ -307,6 +312,12 @@ type pcmCache struct {
 	size  int
 	order *list.List
 	items map[string]*list.Element
+}
+
+func (c *pcmCache) megabytes() float64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return float64(c.size) / (1 << 20)
 }
 
 type pcmEntry struct {
