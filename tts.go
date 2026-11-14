@@ -35,6 +35,10 @@ const (
 	ttsCacheItem  = 2 << 20
 )
 
+// Voices whose recording has no breath before the first word: the model starts mid-sound and the first consonant is
+// lost ("Jon" heard as "on"). A leading comma, which isn't spoken, makes them take a short breath (60-90 ms) first.
+var ttsBreathFirst = map[string]bool{"cosette": true, "marius": true}
+
 var defaultTTSVoices = "cosette,caro_davy,anna,azelma,charles,eve,fantine,jane,marius,mary,michael,paul,peter_yearsley,stuart_bell,vera"
 
 type ttsVoice struct {
@@ -215,6 +219,9 @@ func (s *ttsService) stream(ctx context.Context, w http.ResponseWriter, key, voi
 	}
 	defer func() { <-s.slots }()
 
+	if ttsBreathFirst[voice] {
+		text = ", " + text
+	}
 	body, _ := json.Marshal(map[string]any{"model": s.model, "voice": voice, "input": text,
 		"response_format": "pcm", "stream_format": "audio", "seed": ttsSeed})
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)

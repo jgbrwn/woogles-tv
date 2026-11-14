@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -17,6 +18,9 @@ func fakeEngine(t *testing.T, calls *int32) *httptest.Server {
 		atomic.AddInt32(calls, 1)
 		var req map[string]any
 		json.NewDecoder(r.Body).Decode(&req)
+		if in, _ := req["input"].(string); (req["voice"] == "cosette") != strings.HasPrefix(in, ", ") {
+			t.Errorf("voice %v got input %q: only cosette/marius get the leading comma", req["voice"], in)
+		}
 		if r.URL.Path != "/v1/audio/speech" || req["response_format"] != "pcm" || req["stream_format"] != "audio" || req["seed"] == nil {
 			t.Errorf("unexpected engine request %s %v", r.URL.Path, req)
 		}

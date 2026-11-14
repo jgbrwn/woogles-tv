@@ -29,6 +29,9 @@ It's optional. Without it, the announcer uses the device's own speech, as before
   a TV's optical out, soundbars) take a moment to wake up and would swallow the first sound ("Jon" heard as "on").
   So the first announcement after silence starts with 0.3 s of inaudible noise (about −80 dB; not digital zero,
   which some outputs treat as nothing playing). Change `SERVER_LEAD` in `announcer.js` if your speakers need longer.
+- **Voices that start too abruptly:** Cosette and Marius were recorded with no breath before the first word, so
+  they would start mid-sound and drop the first consonant. The server puts a comma (not spoken) in front of their
+  sentences, which gives them a short breath first (`ttsBreathFirst` in `tts.go`).
 - Speaking speed: Pocket TTS can't change its speed, so *Slow* and *Fast* play the audio at 0.9× and 1.12×,
   which shifts the pitch a little.
 
