@@ -85,6 +85,8 @@ in progress against STEEBot and prints a TV link and a phone link.
 docker compose up -d              # builds the image (word lists included) and serves :8420
 ```
 
+Want the natural announcer voice too? See [docs/TTS.md](docs/TTS.md): it's one extra Docker service either way.
+
 ## Documentation
 
 | | |

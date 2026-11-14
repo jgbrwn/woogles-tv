@@ -1,7 +1,14 @@
-# Server voice for the announcer: audio.cpp serving Kyutai's Pocket TTS (see docs/TTS.md).
-#   tts/fetch-models.sh                         # once: downloads the model (~130 MB) and voices (~165 MB)
-#   docker compose -f tts/docker-compose.yml up -d
+# The speech engine for the announcer's server voice: audio.cpp serving Kyutai's Pocket TTS (docs/TTS.md).
+#
+# Use this file when the game server is NOT in Docker (binary / systemd, docs/DEPLOY.md option A):
+#   tts/fetch-models.sh                              # once: model (~130 MB) and voices (~165 MB) into tts/models/
+#   docker compose -f tts/docker-compose.yml up -d   # engine on 127.0.0.1:8431
 # then run Woogles-TV with WT_TTS_URL=http://127.0.0.1:8431
+#
+# If the game server runs with the main docker-compose.yml instead, don't use this file directly: use
+# `docker compose --profile tts up -d` there. That reuses the service below (minus the port), so the image and
+# limits are defined only here.
+#
 # The port is published on 127.0.0.1 only: the speech engine must not be reachable from the internet.
 services:
   tts:

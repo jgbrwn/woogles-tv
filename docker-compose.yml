@@ -1,6 +1,10 @@
-# docker compose up -d   →  http://<host>:8420/
-# With the server voice for the announcer (docs/TTS.md): run tts/fetch-models.sh once, uncomment WT_TTS_URL below,
-# then: docker compose --profile tts up -d
+# Everything in Docker (docs/DEPLOY.md option B).
+#   docker compose up -d                       → the game server on http://<host>:8420/
+# With the announcer's server voice (docs/TTS.md), which adds the speech engine as a second service:
+#   tts/fetch-models.sh                        # once, first
+#   uncomment WT_TTS_URL below, then: docker compose --profile tts up -d
+# The Dockerfile builds only the game server; the speech engine is a ready-made image, defined in
+# tts/docker-compose.yml (that file on its own is for game servers that are not in Docker).
 services:
   woogles-tv:
     build: .
@@ -18,19 +22,13 @@ services:
     volumes:
       - rooms:/app/data/rooms     # saved rooms/games (survive upgrades)
   tts:
+    # Optional server voice for the announcer. Defined once in tts/docker-compose.yml (image, limits, config);
+    # here it only joins this project, under the "tts" profile, without publishing a port: woogles-tv reaches it
+    # over the Compose network at http://tts:8431.
     profiles: ["tts"]
-    # audio.cpp CPU image serving Pocket TTS, pinned. Not published on any port: only woogles-tv talks to it.
-    image: ghcr.io/0xshug0/audio.cpp@sha256:21781641b8926762a88ac6f6d4f3b9a1399a2bc0d1de2374092f90c0d7626112
-    restart: unless-stopped
-    command: ["server", "--config", "/app/server.json", "--backend", "cpu"]
-    volumes:
-      - ./tts/models:/models:ro
-      - ./tts/server.json:/app/server.json:ro
-    cpus: 1.5
-    mem_limit: 1g
-    read_only: true
-    tmpfs: ["/tmp:size=256m"]   # audio.cpp unpacks model metadata here
-    security_opt: ["no-new-privileges:true"]
-    cap_drop: ["ALL"]
+    extends:
+      file: tts/docker-compose.yml
+      service: tts
+    ports: !reset []
 volumes:
   rooms:

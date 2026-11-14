@@ -16,6 +16,19 @@ database. Anything that can run a Linux/macOS/Windows binary or a Docker contain
 
 For a Raspberry Pi or other machine on your home network, also read [LOCAL-NETWORK.md](LOCAL-NETWORK.md).
 
+### Which files are for what
+
+Pick **one** way to run the game server. The announcer's natural server voice ([TTS.md](TTS.md)) is optional in
+both, and always runs in Docker, because its speech engine is a separate program.
+
+| File | Used by | What it does |
+|---|---|---|
+| [`deploy/woogles-tv.service`](../deploy/woogles-tv.service) | Option A | systemd unit for the game server binary |
+| [`Dockerfile`](../Dockerfile) | Option B | Builds the **game server** image only (binary + word lists). The speech engine is a ready-made image, so it has no Dockerfile here |
+| [`docker-compose.yml`](../docker-compose.yml) | Option B | Runs the game server; with `--profile tts`, also the speech engine |
+| [`tts/docker-compose.yml`](../tts/docker-compose.yml) | Option A + server voice | Runs **only** the speech engine, on `127.0.0.1:8431`, next to a game server that isn't in Docker. It is also where the engine's settings (image, limits) are defined; the main `docker-compose.yml` reuses them |
+| [`tts/server.json`](../tts/server.json), [`tts/fetch-models.sh`](../tts/fetch-models.sh) | Both, with server voice | The engine's config, and the script that downloads its model and voices into `tts/models/` |
+
 ## Requirements
 
 - **To build:** Go 1.27 or newer, or Docker. No C toolchain is needed (`CGO_ENABLED=0` works), and it cross-compiles to any
@@ -58,6 +71,18 @@ capabilities, a memory cap). Only `/opt/woogles-tv/data` is writable.
 To run it on port 80/443 directly instead of behind a proxy, add `AmbientCapabilities=CAP_NET_BIND_SERVICE` and
 change `-addr`. A reverse proxy is usually the better choice (see below).
 
+**Optional server voice** (needs Docker just for the speech engine; details in [TTS.md](TTS.md)):
+
+```sh
+tts/fetch-models.sh                              # once: ~300 MB of model and voices into tts/models/
+docker compose -f tts/docker-compose.yml up -d   # the speech engine alone, on 127.0.0.1:8431
+sudo systemctl edit woogles-tv                   # add:  [Service]  Environment=WT_TTS_URL=http://127.0.0.1:8431
+sudo systemctl restart woogles-tv                # the log should say "server speech on"
+```
+
+Make sure Docker itself starts at boot (`sudo systemctl enable docker`), or the engine won't come back after a
+reboot. Until it does, the announcer uses the TVs' and phones' own voices.
+
 ## Option B: Docker / Docker Compose
 
 The [`Dockerfile`](../Dockerfile) builds a static binary on `golang:1.27`, **downloads the word lists at build
@@ -74,6 +99,19 @@ docker run -d --name woogles-tv --restart unless-stopped -p 8420:8420 \
 - Only `/app/data/rooms` needs a volume (saved games). Everything else is in the image.
 - Multi-arch images (e.g. for a Pi): `docker buildx build --platform linux/amd64,linux/arm64 -t you/woogles-tv --push .`
 - Extra flags can go after the image name; for example, `docker run … woogles-tv -demo 10` seeds a demo game.
+
+**Optional server voice** ([TTS.md](TTS.md)): the speech engine is a second service in the same
+`docker-compose.yml`, switched on with the `tts` profile. It has no published port; the game server reaches it at
+`http://tts:8431`.
+
+```sh
+tts/fetch-models.sh                    # once: ~300 MB of model and voices into tts/models/ (run this first)
+# in docker-compose.yml, uncomment:  WT_TTS_URL: http://tts:8431
+docker compose --profile tts up -d     # game server + speech engine
+```
+
+Needs Docker Compose 2.24 or newer. Keep `--profile tts` on later `docker compose` commands (or set
+`COMPOSE_PROFILES=tts`), or they'll leave the engine out.
 
 ## HTTPS and reverse proxies
 

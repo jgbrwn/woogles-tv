@@ -30,22 +30,49 @@ It's optional. Without it, the announcer uses the device's own speech, as before
 
 ## Setup
 
-Needs Docker and about 300 MB of disk for the model and voices, and ~400 MB of RAM while running.
+Needs Docker, about 300 MB of disk for the model and voices, and ~400 MB of RAM while running. The speech engine
+always runs in Docker (a ready-made [audio.cpp](https://github.com/0xShug0/audio.cpp) image, pinned by digest);
+the game server can run either way. Use the case that matches how you run Woogles-TV:
+
+| You run the game server… | Compose file for the speech engine | `WT_TTS_URL` |
+|---|---|---|
+| **A. as a binary / with systemd** ([DEPLOY.md](DEPLOY.md#option-a-binary--systemd)) | [`tts/docker-compose.yml`](../tts/docker-compose.yml): the engine alone, on `127.0.0.1:8431` | `http://127.0.0.1:8431` |
+| **B. with Docker Compose** ([DEPLOY.md](DEPLOY.md#option-b-docker--docker-compose)) | the main [`docker-compose.yml`](../docker-compose.yml), `tts` profile: no port, on the Compose network | `http://tts:8431` |
+
+Both start the same engine with the same settings: they're defined once in `tts/docker-compose.yml`, and the main
+`docker-compose.yml` reuses them (`extends`). The root `Dockerfile` builds only the game server.
+
+First, in both cases, download the model (~130 MB) and the 26 English voices (~165 MB) into `tts/models/`:
 
 ```sh
-tts/fetch-models.sh                              # once: model (~130 MB) + 26 English voices (~165 MB)
-docker compose -f tts/docker-compose.yml up -d   # engine on 127.0.0.1:8431 only, restarts with Docker
+tts/fetch-models.sh
 ```
 
-Then start Woogles-TV with `WT_TTS_URL=http://127.0.0.1:8431` (systemd: add it to the unit's `EnvironmentFile`)
-and restart it. The log says `server speech on … voices=15 default=cosette`.
+**A. Binary / systemd:**
 
-**All in Docker:** run `tts/fetch-models.sh`, uncomment `WT_TTS_URL: http://tts:8431` in `docker-compose.yml`, then
-`docker compose --profile tts up -d`.
+```sh
+docker compose -f tts/docker-compose.yml up -d   # engine on 127.0.0.1:8431, restarts with Docker
+sudo systemctl enable docker                     # so Docker (and the engine) start at boot
+sudo systemctl edit woogles-tv                   # add:  [Service]  Environment=WT_TTS_URL=http://127.0.0.1:8431
+sudo systemctl restart woogles-tv
+```
 
-The image is pinned by digest in both compose files. audio.cpp changes quickly; update the digest deliberately and
-listen to a few announcements afterwards. (Its prebuilt binaries need glibc 2.43, e.g. Ubuntu 26.04; the Docker
-image avoids that.)
+(Or put `WT_TTS_URL=http://127.0.0.1:8431` in the file the unit's `EnvironmentFile=` points to.)
+
+**B. Docker Compose:** uncomment `WT_TTS_URL: http://tts:8431` in `docker-compose.yml`, then
+
+```sh
+docker compose --profile tts up -d
+```
+
+Keep `--profile tts` on later commands, or set `COMPOSE_PROFILES=tts`. Needs Docker Compose 2.24 or newer.
+
+**Check it:** the game server's log says `server speech on … voices=15 default=cosette`, and the TV's options menu
+shows the voice names (Cosette, Caro Davy, …). If the engine is down, the log shows `WARN tts` lines and the
+announcer uses each device's own voice instead.
+
+audio.cpp changes quickly; update the pinned digest in `tts/docker-compose.yml` deliberately and listen to a few
+announcements afterwards. (Its prebuilt binaries need glibc 2.43, e.g. Ubuntu 26.04; the Docker image avoids that.)
 
 ## Configuration
 

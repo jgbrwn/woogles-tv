@@ -8,3 +8,4 @@ android/out
 android/*.keystore
 deploy/*.env
 docs
+tts/models
