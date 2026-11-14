@@ -25,6 +25,10 @@ It's optional. Without it, the announcer uses the device's own speech, as before
   settings. After two failures in a row it uses the device for a minute before trying the server again.
 - A fixed random seed makes each voice sound the same every time, and finished clips (clock warnings, "The bag is
   empty.", menu samples) are cached in memory (48 MB).
+- **Lead-in:** Pocket TTS starts speaking on its very first sample. After a quiet spell, many audio outputs (HDMI,
+  a TV's optical out, soundbars) take a moment to wake up and would swallow the first sound ("Jon" heard as "on").
+  So the first announcement after silence starts with 0.3 s of inaudible noise (about −80 dB; not digital zero,
+  which some outputs treat as nothing playing). Change `SERVER_LEAD` in `announcer.js` if your speakers need longer.
 - Speaking speed: Pocket TTS can't change its speed, so *Slow* and *Fast* play the audio at 0.9× and 1.12×,
   which shifts the pitch a little.
 

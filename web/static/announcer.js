@@ -18,6 +18,8 @@ export const RATE_NAMES = { 0.85: 'Slow', 1: 'Normal', 1.2: 'Fast' };
 // The server voice can't change its speed, so playback is sped up or slowed down instead; that also shifts the
 // pitch, so keep the steps gentle.
 const SERVER_RATE = { 0.85: 0.9, 1: 1, 1.2: 1.12 };
+// Lead-in before the first server-voice sound after a quiet spell, in seconds (see srvStream).
+const SERVER_LEAD = 0.3;
 
 // Voices are identified by name + language: voiceURI isn't unique on every platform (Android Chrome repeats it),
 // which made the announcer fall back to the first/previous voice.
@@ -90,13 +92,21 @@ async function srvStream(job, gen) {
   const flush = (force) => {
     // Play in pieces of at least 0.1 s (fewer, longer buffers play more smoothly).
     if (!pendingLen || (!force && pendingLen < rate / 10) || gen !== srv.gen) return;
-    const buf = c.createBuffer(1, pendingLen, rate), ch = buf.getChannelData(0);
-    let o = 0;
+    // Pocket TTS starts speaking on its very first sample. After a quiet spell, the audio output (the browser's
+    // sink, HDMI, a TV's optical out, a soundbar) needs a moment to wake up and would swallow the first sound
+    // ("Jon" heard as "on"). So the first piece after silence starts with a short lead-in of inaudible noise
+    // (about -80 dB: not digital zero, which some outputs treat as "nothing playing") and a 5 ms fade-in.
+    const idle = srv.playHead < c.currentTime - 0.05;
+    const lead = idle ? Math.round(rate * SERVER_LEAD) : 0;
+    const buf = c.createBuffer(1, lead + pendingLen, rate), ch = buf.getChannelData(0);
+    for (let i = 0; i < lead; i++) ch[i] = (Math.random() * 2 - 1) * 1e-4;
+    let o = lead;
     for (const p of pending) { ch.set(p, o); o += p.length; }
+    if (idle) for (let i = 0, n = Math.min(rate / 200, pendingLen); i < n; i++) ch[lead + i] *= i / n;
     pending = []; pendingLen = 0;
     const src = c.createBufferSource();
     src.buffer = buf; src.playbackRate.value = speed; src.connect(out);
-    const at = Math.max(srv.playHead, c.currentTime + 0.06); // small lead so the first piece isn't clipped
+    const at = Math.max(srv.playHead, c.currentTime + 0.06);
     src.start(at);
     srv.playHead = at + buf.duration / speed;
     srv.sources.add(src); src.onended = () => srv.sources.delete(src);
