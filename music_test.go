@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -123,5 +127,54 @@ func TestMusicSettings(t *testing.T) {
 	r.handle(watcher, inMsg{T: "settings", Music: "off"})                              // spectators can't change it
 	if r.settings.Music != "breaks" || r.settings.MusicVol != "high" || r.settings.Station != 1 {
 		t.Errorf("settings: %+v", r.settings)
+	}
+}
+
+// Many TVs on different stations: each station's stream is read once per 20 s, however many TVs ask at once.
+func TestNowPlayingManyTVs(t *testing.T) {
+	var hits [2]atomic.Int32
+	mk := func(i int, title string) *httptest.Server {
+		inner := icyServer(t, "StreamTitle='"+title+"';")
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits[i].Add(1)
+			req, _ := http.NewRequest("GET", inner.URL, nil) // pass through to the fake ICY stream, counting reads
+			req.Header.Set("Icy-MetaData", "1")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+			w.Header().Set("icy-metaint", resp.Header.Get("icy-metaint"))
+			io.Copy(w, resp.Body)
+		}))
+		t.Cleanup(srv.Close)
+		return srv
+	}
+	a, b := mk(0, "A - One"), mk(1, "B - Two")
+	musicStations = []musicStation{{"A", a.URL}, {"B", b.URL}}
+	musicNow = []*nowEntry{{}, {}}
+	musicNowPlaying = true
+	t.Cleanup(func() { musicStations, musicNow = nil, nil })
+
+	var wg sync.WaitGroup
+	var wrong atomic.Int32
+	for tv := 0; tv < 100; tv++ {
+		wg.Add(1)
+		go func(s int) {
+			defer wg.Done()
+			rec := httptest.NewRecorder()
+			handleMusicNow(rec, httptest.NewRequest("GET", fmt.Sprintf("/api/music/now?s=%d", s), nil))
+			want := []string{`"song":"One"`, `"song":"Two"`}[s]
+			if !strings.Contains(rec.Body.String(), want) {
+				wrong.Add(1)
+			}
+		}(tv % 2)
+	}
+	wg.Wait()
+	if wrong.Load() != 0 {
+		t.Errorf("%d TVs got another station's title", wrong.Load())
+	}
+	if hits[0].Load() != 1 || hits[1].Load() != 1 {
+		t.Errorf("stream reads: A %d, B %d (want 1 each)", hits[0].Load(), hits[1].Load())
 	}
 }
