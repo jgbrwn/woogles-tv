@@ -688,8 +688,9 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		r.eventLocked(map[string]any{"t": "event", "kind": m.T, "seat": cl.seat})
 		r.broadcastLocked()
 	case "tvprefs":
-		if cl.role == "tv" && m.Voice != nil {
+		if cl.role == "tv" && m.Voice != nil && cl.voice != *m.Voice {
 			cl.voice = *m.Voice
+			r.broadcastLocked() // phones stay quiet while a TV announces (see tvVoiceLocked)
 		}
 	case "define":
 		// Look up the definition of a word that has been played (never anything else, so this can't be used as a
@@ -929,6 +930,16 @@ func (r *Room) summaryFor(tvKey, key, token string) (*Summary, int, bool) {
 	return sm, seat, true
 }
 
+// tvVoiceLocked: is a connected TV announcing this game? Phones then leave the announcing to it, unless they opt in.
+func (r *Room) tvVoiceLocked() bool {
+	for c := range r.clients {
+		if c.role == "tv" && c.voice {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Room) tvCount() int {
 	n := 0
 	for c := range r.clients {
@@ -1027,7 +1038,7 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 	}
 	st := map[string]any{
 		"t": "state", "code": r.Code, "phase": phase, "settings": r.settings,
-		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes, "bots": botLevelViews, "tvs": r.tvCount(),
+		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes, "bots": botLevelViews, "tvs": r.tvCount(), "tvVoice": r.tvVoiceLocked(),
 		"seats": seats, "you": cl.seat, "role": cl.role, "gameNo": r.gameNo, "joinUrl": r.joinURL(),
 	}
 	if r.m != nil {

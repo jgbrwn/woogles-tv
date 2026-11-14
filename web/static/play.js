@@ -4,6 +4,9 @@ sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
 const ann = makeAnnouncer('wt_ph_', 'off', () => { const t = localStorage.getItem(tokKey); return t && s && s.you >= 0 ? { code, token: t } : null; });
 let speechCtx = {};
+// While a TV in this game is announcing, the phone leaves the talking to it, unless "Announce on this phone too" is on.
+const withTV = () => localStorage.getItem('wt_ph_withtv') === '1';
+const tvTalks = () => !!(s && s.tvVoice) && !withTV();
 import { confetti } from './confetti.js';
 import { castAvailable, castRoom, castSession, NS } from './cast.js';
 
@@ -68,6 +71,7 @@ const watching = () => s && s.you < 0;
 const canPlace = () => !!s && s.phase === 'playing' && s.you >= 0;
 const meSeat = () => (s.you >= 0 ? s.you : 0);
 function render(st) {
+  queueMicrotask(paintTvNote);
   const prev = s; s = st; recvAt = performance.now();
   applyTheme(s.settings.theme);
   const watch = s.you < 0 && s.phase !== 'lobby' && !wantSeat;
@@ -106,7 +110,7 @@ function render(st) {
   if (prev && prev.gameNo === s.gameNo && prev.log && s.log.length > prev.log.length) {
     const b = s.log.slice(prev.log.length).find((m) => m.type === 'play' && m.bingo);
     if (b) celebrateBingo(b, names()[b.player], b.player === s.you);
-    if (ann.on('moves')) {
+    if (ann.on('moves') && !tvTalks()) {
       const lines = describeForSpeech(s.log.slice(prev.log.length), s, names(), ann, speechCtx);
       ann.later(() => lines.forEach((l) => ann.say(l)), b ? 1300 : 400);
     }
@@ -259,7 +263,7 @@ const alertsTick = clockAlerts((seat, kind, n) => {
   else if (kind === 'overmin') { sfx.penalty(); navigator.vibrate?.(150); }
   const msg = { '5min': '5 minutes left', '1min': '1 minute left', overtime: 'Overtime: −10 points per minute', overmin: `${n} min over: −${10 * (n + 1)} so far`, lastmin: '1 minute until you lose on time!' }[kind];
   if (msg) toast(msg, kind === '5min' || kind === '1min' ? '' : 'bad');
-  if (ann.on('all')) ann.later(() => ann.say(clockSpeech(kind, n, '', true)), 500);
+  if (ann.on('all') && !tvTalks()) ann.later(() => ann.say(clockSpeech(kind, n, '', true)), 500);
 });
 setInterval(() => { tickClocks(); if (s && s.phase === 'playing') alertsTick(s.clock, recvAt, s.gameNo); }, 250);
 
@@ -536,7 +540,7 @@ function renderOver(prev) {
   $('#over').classList.remove('hidden');
   if (prev && prev.phase === 'playing') {
     sfx.over(); navigator.vibrate?.([100, 50, 100]);
-    if (ann.on('moves')) ann.later(() => ann.say(gameOverSpeech(s, names())), 1200);
+    if (ann.on('moves') && !tvTalks()) ann.later(() => ann.say(gameOverSpeech(s, names())), 1200);
   }
   const n = names();
   const W = watching(), me = meSeat();
@@ -618,6 +622,12 @@ function goHome() {
 $('#homeBtn').onclick = goHome;
 const soundIcon = () => (sfx.level === 'off' ? '🔇' : sfx.level === 'low' ? '🔈' : '🔊');
 // Sound & voice settings (this phone only)
+// The line under "Announce on this phone too", kept current while the sheet is open.
+function tvNote() {
+  if (!s?.tvVoice) return 'If a TV in this game is announcing, this phone stays quiet (moves, clock and definitions) unless this is on.';
+  return withTV() ? 'The TV is announcing this game too, so you\'ll hear both.' : 'The TV is announcing this game, so this phone stays quiet.';
+}
+function paintTvNote() { const n = document.querySelector('#sTvNote'); if (n) n.textContent = tvNote(); }
 function soundSheet() {
   const seg = (id, opts, names, cur) => `<div class="seg" id="${id}">${opts.map((o) => `<button data-v="${o}" class="${String(o) === String(cur) ? 'on' : ''}">${names[o]}</button>`).join('')}</div>`;
   const can = ann.available(), server = ann.hasServer(), dvoices = ann.hasDevice() ? ann.deviceVoices() : [];
@@ -627,6 +637,7 @@ function soundSheet() {
     <div class="field">Volume ${seg('sVol', SOUND_LEVELS, SOUND_NAMES, sfx.level)}</div>
     ${can ? `<div class="field">Announcer ${seg('sAnn', ANN_MODES, ANN_MODE_NAMES, ann.mode)}<small class="muted">Reads out each move, the score and clock warnings. Handy when there's no TV.</small></div>
     <div class="annOpts">
+      <div class="field"><label class="chk"><input type="checkbox" id="sWithTV" ${withTV() ? 'checked' : ''}> Announce on this phone too</label><small class="muted" id="sTvNote">${tvNote()}</small></div>
       <div class="field">Spell out words ${seg('sSpell', SPELL_MODES, SPELL_NAMES, ann.spell)}</div>
       <div class="field">Speaking speed ${seg('sRate', RATES, RATE_NAMES, ann.rate)}</div>
       ${server ? `<div class="field">Voice <select id="sVoice">${opts(ann.serverVoices(), sv && sv.id)}</select></div>` : ''}
@@ -644,6 +655,7 @@ function soundSheet() {
   wire('sSpell', (v) => ann.set('spell', v));
   wire('sRate', (v) => ann.set('rate', +v));
   const vs = body.querySelector('#sVoice'); if (vs) vs.onchange = () => { ann.stop(); ann.set('voice', vs.value); };
+  const wt = body.querySelector('#sWithTV'); if (wt) wt.onchange = () => { localStorage.setItem('wt_ph_withtv', wt.checked ? '1' : '0'); if (!wt.checked && s?.tvVoice) ann.stop(); paintTvNote(); };
   const bs = body.querySelector('#sBackup'); if (bs) bs.onchange = () => { ann.stop(); ann.set('backup', bs.value); };
   body.querySelector('#sTest')?.addEventListener('click', test);
   body.querySelector('#sTestB')?.addEventListener('click', (e) => { e.preventDefault(); ann.stop(); ann.sayOnDevice('This is the backup voice. Stee Bot plays zoea, for 34 points.'); });
@@ -714,9 +726,12 @@ let defTimer = null;
 function onDefinition(ev) {
   const n = names(), senses = ev.senses || [];
   const phoneCan = ann.mode !== 'off' && ann.available() && sfx.enabled;
+  const here = phoneCan && (!ev.tvVoice || withTV());
   let how;
-  if (ev.tvVoice) how = '🔊 The TV is reading it out';
-  else if (phoneCan) { how = '🔊 Reading it out'; ann.sayWhenQuiet(definitionSpeech(ev, n, ann), 2000); }
+  if (here) ann.sayWhenQuiet(definitionSpeech(ev, n, ann), 2000);
+  if (ev.tvVoice && here) how = '🔊 Reading it out here and on the TV';
+  else if (ev.tvVoice) how = '🔊 The TV is reading it out';
+  else if (here) how = '🔊 Reading it out';
   else how = '🔇 To hear definitions, turn on the announcer on the TV (OK → Announcer) or here (☰ → Sound &amp; voice)';
   const card = $('#defCard');
   card.className = `p${ev.player}`;

@@ -96,8 +96,9 @@ spot in the rack.
   hide it. It never covers the button, so it toggles easily.
 - **What does that word mean?** **Double-tap any word in the scorecard** (the 📋 overlay, or the list under or beside
   the board). A card shows its meaning, and it's read aloud: *"Alex played soap at 8 D, for 12 points. Soap, verb,
-  means: to treat with a cleansing agent."* If the TV's announcer is on, the **TV** reads it; otherwise your phone
-  does if its announcer is on (☰ → *Sound & voice*); otherwise you just see the card, with a hint. If something is
+  means: to treat with a cleansing agent."* If the TV's announcer is on, the **TV** reads it (your phone joins in only
+  if it has *Announce on this phone too* ticked). Otherwise your phone reads it if its announcer is on (☰ → *Sound &
+  voice*), or you just see the card, with a hint. If something is
   already being announced, the definition waits until it finishes, plus a couple of seconds. The TV shows the card
   too. Definitions come from Woogles.io (the NWL23/CSW24 definitions), so the server needs internet access for this.
 - **🔍 Zoom**: enlarges the board; scroll around it with your finger.
@@ -118,6 +119,9 @@ Your phone buzzes when it's your turn (on phones that support vibration), and pl
   seconds, an alarm when you go into overtime, and a tone each time another overtime minute (another −10) starts.
 - **Announcer** (off by default on phones): reads out the moves like the TV does. Useful when you play with no TV.
   Choose *Moves* (just the plays) or *Everything* (plus lead changes, the bag, clock warnings and the result).
+  While a TV in the game has its announcer on, the phone **stays quiet** and leaves the talking to the TV (moves,
+  clock warnings, the result and definitions; sounds and vibration still work). Tick **Announce on this phone too**
+  to hear both. The line under it says whether the TV is announcing right now.
 - **Voice**: when the server has a voice set up ([TTS.md](TTS.md)), pick any of its voices; this phone remembers its
   choice. **Backup voice** is the phone's own voice, used if the server voice can't be reached (*Test it* plays a
   sample). Without a server voice, *Voice* lists the phone's own voices.
@@ -153,6 +157,9 @@ In the options menu (press **OK**):
 | **Backup voice** | Shown when there's a server voice and the TV has its own speech: the TV's voice to use if the server voice can't be reached |
 | **Spell out words** | Never, Bingos (default), Always |
 | **Speaking speed** | Slow, Normal, Fast |
+
+While the TV's announcer is on, phones in the game don't announce (unless a phone ticks *Announce on this phone
+too* in its Sound & voice settings), so you don't hear everything twice.
 
 With a server voice, the announcer works in any TV browser that plays sound (LG webOS too; press a button on the
 remote once if the TV shows *Click or press any key to enable sound*). Without one, it needs the Android TV app

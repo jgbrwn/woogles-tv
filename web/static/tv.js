@@ -223,6 +223,7 @@ function paintSoundMenu() {
   const can = ann.available();
   $('#mAnnItem').classList.toggle('hidden', !can);
   $('#mAnn').textContent = ANN_MODE_NAMES[ann.mode];
+  $('#mAnnNote').classList.toggle('hidden', ann.mode === 'off' || !sfx.enabled);
   document.querySelectorAll('#menu .annOpt').forEach((b) => b.classList.toggle('hidden', !can || ann.mode === 'off' || !sfx.enabled));
   $('#mVoice').textContent = ann.hasServer() ? ann.voiceName() : ann.backupName();
   // With server voices, the device voice is only the backup; without them it is the voice.
@@ -256,7 +257,7 @@ function menuAct(act) {
 }
 document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('click', () => menuAct(b.dataset.act)));
 document.addEventListener('keydown', (e) => {
-  sfx.ctx(); $('#soundHint').classList.add('hidden');
+  sfx.ctx(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300);
   if (pendingSwitch) {
     const yes = $('#switchYes'), no = $('#switchNo');
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const t = document.activeElement === yes ? no : yes; t.focus(); yes.classList.toggle('focus', t === yes); no.classList.toggle('focus', t === no); e.preventDefault(); }
@@ -285,7 +286,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menuAct(it[menuIdx].dataset.act); }
   else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); closeMenu(); }
 });
-document.addEventListener('pointerdown', () => { sfx.ctx(); $('#soundHint').classList.add('hidden'); });
+document.addEventListener('pointerdown', () => { sfx.ctx(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
 document.addEventListener('mousemove', () => { document.body.classList.add('mouse'); clearTimeout(mouseT); mouseT = setTimeout(() => document.body.classList.remove('mouse'), 3000); });
 
@@ -380,7 +381,14 @@ function focusGames() {
 }
 
 // Tell the room whether this TV will speak, so a phone asking for a definition knows whether to speak it itself.
-function sendPrefs() { ws?.send({ t: 'tvprefs', voice: ann.mode !== 'off' && ann.available() && sfx.enabled }); }
+// Tell the server whether this TV will actually speak; phones in the game stay quiet while it does.
+// The server voice needs unlocked audio (a key press on some TVs); device speech doesn't.
+let sentVoice = null;
+function sendPrefs(force) {
+  const voice = ann.mode !== 'off' && sfx.enabled && (ann.hasDevice() || (ann.hasServer() && sfx.ready()));
+  if (!ws || (!force && voice === sentVoice)) return;
+  sentVoice = voice; ws.send({ t: 'tvprefs', voice });
+}
 
 // A phone double-tapped a word in its scorecard: show the definition, and say it once the TV is quiet.
 let defTimer = null;
@@ -429,7 +437,7 @@ function startRoom(room) {
       else if (m.kind === 'define') showDefinition(m);
     }
   }, (ok, fails) => {
-    if (ok) sendPrefs();
+    if (ok) sendPrefs(true);
     $('#conn').classList.toggle('hidden', ok);
     if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });
@@ -479,7 +487,7 @@ function startCastReceiver() {
     return;
   }
   startRoom(await getRoom());
-  setTimeout(() => { if (sfx.enabled && !sfx.ready()) { sfx.ctx(); if (!sfx.ready()) $('#soundHint').classList.remove('hidden'); } }, 1500);
+  setTimeout(() => { if (sfx.enabled && !sfx.ready()) { sfx.ctx(); if (!sfx.ready()) $('#soundHint').classList.remove('hidden'); } sendPrefs(); }, 1500);
   try { await navigator.wakeLock?.request('screen'); } catch {}
   document.addEventListener('visibilitychange', async () => { if (!document.hidden) try { await navigator.wakeLock?.request('screen'); } catch {} });
 })();

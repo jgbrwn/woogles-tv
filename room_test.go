@@ -129,3 +129,30 @@ func TestSummaryNeedsCredential(t *testing.T) {
 		t.Fatal("join key should allow a summary")
 	}
 }
+
+func TestTVVoiceInState(t *testing.T) {
+	r := newTestRoom(t)
+	phone := &Client{role: "player", seat: 0, send: make(chan []byte, 8)}
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 8)}
+	r.mu.Lock()
+	r.clients[phone], r.clients[tv] = true, true
+	quiet := r.stateFor(phone)["tvVoice"]
+	r.mu.Unlock()
+	if quiet != false {
+		t.Fatalf("tvVoice before the TV announces = %v", quiet)
+	}
+	v := true
+	r.handle(tv, inMsg{T: "tvprefs", Voice: &v})
+	select {
+	case <-phone.send: // the phone is told straight away
+	default:
+		t.Fatal("no state broadcast after the TV's announcer changed")
+	}
+	r.mu.Lock()
+	on := r.stateFor(phone)["tvVoice"]
+	r.mu.Unlock()
+	if on != true {
+		t.Fatalf("tvVoice after the TV announces = %v", on)
+	}
+	r.handle(phone, inMsg{T: "tvprefs", Voice: &v}) // only TVs may set it
+}

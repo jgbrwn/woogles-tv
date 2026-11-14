@@ -110,6 +110,7 @@ body.tv.mouse { cursor: default; }
 
 .menuCard { background: var(--card); border-radius: 2vh; padding: 3vh; min-width: 60vh; display: flex; flex-direction: column; gap: 1vh; box-shadow: 0 2vh 8vh rgba(0,0,0,.3); }
 .mitem { text-align: left; padding: 1.8vh 2.4vh; border-radius: 1.2vh; font-size: 2.6vh; font-weight: 700; background: var(--card2); border: .3vh solid transparent; }
+.msub { display: block; margin-top: .4vh; font-size: 1.9vh; font-weight: 600; color: var(--muted); }
 .mitem:focus, .mitem.focus { outline: none; border-color: var(--primary); background: var(--primary-soft); }
 
 #soundHint { position: fixed; left: 50%; bottom: 2vh; transform: translateX(-50%); background: var(--card); color: var(--muted); padding: 1vh 2vh; border-radius: 1vh; font-weight: 700; z-index: 30; box-shadow: var(--shadow); }

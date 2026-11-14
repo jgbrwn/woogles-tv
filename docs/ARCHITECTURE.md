@@ -49,7 +49,8 @@ and also why you should only share a game's link with people you're happy to hav
 
 Client → server (`t` field): `join` (seat, name), `leave`, `addbot`, `removebot`, `settings`, `start`, `end`, `resign`,
 `pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code),
-`define` (move number: look up that play's word), `tvprefs` (TV only: whether its announcer will speak).
+`define` (move number: look up that play's word), `tvprefs` (TV only: whether its announcer will speak; players' `state` carries `tvVoice` so phones can stay quiet
+while a TV announces).
 
 The announcer's optional server voice is plain HTTP, not WebSocket: `POST /api/tts` with the room code, the TV key or
 a seat token, the sentence and a voice streams back 16-bit 24 kHz PCM from a local speech engine. See [TTS.md](TTS.md).
