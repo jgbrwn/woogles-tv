@@ -67,21 +67,28 @@
 
 <div id="menu" class="overlay hidden">
   <div class="menuCard">
-    <div class="cardTitle">Options</div>
-    <button class="mitem" data-act="theme">Theme: <b id="mTheme"></b></button>
-    <button class="mitem" data-act="sound">Volume: <b id="mSound"></b></button>
-    <button class="mitem" data-act="ann" id="mAnnItem">Announcer: <b id="mAnn"></b><small class="msub" id="mAnnNote">Phones in the game stay quiet while the TV announces</small></button>
-    <button class="mitem annOpt" data-act="voice">Voice: <b id="mVoice"></b></button>
-    <button class="mitem hidden" data-act="backup" id="mBackupItem">Backup voice: <b id="mBackup"></b></button>
-    <button class="mitem annOpt" data-act="spell">Spell out words: <b id="mSpell"></b></button>
-    <button class="mitem annOpt" data-act="rate">Speaking speed: <b id="mRate"></b></button>
-    <button class="mitem musicOpt hidden" data-act="music" id="mMusicItem">Music: <b id="mMusic"></b><small class="msub" id="mMusicNote"></small></button>
-    <button class="mitem musicOpt hidden" data-act="station" id="mStationItem">Station: <b id="mStation"></b></button>
-    <button class="mitem musicOpt hidden" data-act="musicvol" id="mMusicVolItem">Music volume: <b id="mMusicVol"></b></button>
-    <button class="mitem" data-act="games">Games on this TV…</button>
-    <button class="mitem" data-act="newroom">New game (new QR code)</button>
-    <button class="mitem hidden" data-act="app" id="mApp">App settings (server URL)</button>
-    <button class="mitem" data-act="close">Close</button>
+    <div class="cardTitle" id="menuTitle">Options</div>
+    <!-- main page; the announcer and music settings have pages of their own so the menu fits on any TV -->
+    <button class="mitem" data-page="main" data-act="theme">Theme: <b id="mTheme"></b></button>
+    <button class="mitem" data-page="main" data-act="sound">Volume: <b id="mSound"></b></button>
+    <button class="mitem" data-page="main" data-act="page-ann" id="mAnnEntry">Announcer: <b id="mAnnSum"></b><span class="more">›</span></button>
+    <button class="mitem hidden" data-page="main" data-act="page-music" id="mMusicEntry">Music: <b id="mMusicSum"></b><span class="more">›</span></button>
+    <button class="mitem" data-page="main" data-act="games">Games on this TV…</button>
+    <button class="mitem" data-page="main" data-act="newroom">New game (new QR code)</button>
+    <button class="mitem hidden" data-page="main" data-act="app" id="mApp">App settings (server URL)</button>
+    <button class="mitem" data-page="main" data-act="close">Close</button>
+    <!-- announcer page -->
+    <button class="mitem" data-page="ann" data-act="ann" id="mAnnItem">Announcer: <b id="mAnn"></b><small class="msub" id="mAnnNote">Phones in the game stay quiet while the TV announces</small></button>
+    <button class="mitem annOpt" data-page="ann" data-act="voice">Voice: <b id="mVoice"></b></button>
+    <button class="mitem hidden" data-page="ann" data-act="backup" id="mBackupItem">Backup voice: <b id="mBackup"></b></button>
+    <button class="mitem annOpt" data-page="ann" data-act="spell">Spell out words: <b id="mSpell"></b></button>
+    <button class="mitem annOpt" data-page="ann" data-act="rate">Speaking speed: <b id="mRate"></b></button>
+    <button class="mitem" data-page="ann" data-act="back">‹ Back</button>
+    <!-- music page -->
+    <button class="mitem" data-page="music" data-act="music" id="mMusicItem">Music: <b id="mMusic"></b><small class="msub" id="mMusicNote"></small></button>
+    <button class="mitem" data-page="music" data-act="station" id="mStationItem">Station: <b id="mStation"></b></button>
+    <button class="mitem" data-page="music" data-act="musicvol" id="mMusicVolItem">Music volume: <b id="mMusicVol"></b></button>
+    <button class="mitem" data-page="music" data-act="back">‹ Back</button>
   </div>
 </div>
 <div id="castWait" class="overlay hidden">

@@ -216,20 +216,33 @@ function onClockAlert(seat, kind, n) {
 }
 
 // ---- options menu (works with a TV remote: arrows + OK) ----
-let menuIdx = 0;
-const menuItems = () => [...document.querySelectorAll('#menu .mitem:not(.hidden)')];
+let menuIdx = 0, menuPage = 'main';
+const MENU_TITLES = { main: 'Options', ann: 'Announcer', music: 'Music' };
+const menuItems = () => [...document.querySelectorAll(`#menu .mitem[data-page="${menuPage}"]:not(.hidden)`)];
+// Shows one page of the menu; focusAct picks the item to focus (else the first).
+function showMenuPage(page, focusAct) {
+  menuPage = page;
+  document.querySelectorAll('#menu .mitem').forEach((b) => b.classList.toggle('offpage', b.dataset.page !== page));
+  $('#menuTitle').textContent = MENU_TITLES[page];
+  const it = menuItems();
+  menuIdx = Math.max(0, focusAct ? it.findIndex((b) => b.dataset.act === focusAct) : 0);
+  focusMenu();
+}
+// Back / Escape: from a sub-page to the main menu (on the entry it came from), from the main menu out.
+function menuBack() { if (menuPage === 'main') closeMenu(); else showMenuPage('main', 'page-' + menuPage); }
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
   paintSoundMenu();
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
-  $('#menu').classList.remove('hidden'); menuIdx = 0; focusMenu();
+  $('#menu').classList.remove('hidden'); showMenuPage('main');
 }
 function paintSoundMenu() {
   sendPrefs();
   $('#mSound').textContent = SOUND_NAMES[sfx.level];
   const can = ann.available();
-  $('#mAnnItem').classList.toggle('hidden', !can);
+  $('#mAnnEntry').classList.toggle('hidden', !can);
+  $('#mAnnSum').textContent = ANN_MODE_NAMES[ann.mode];
   $('#mAnn').textContent = ANN_MODE_NAMES[ann.mode];
   $('#mAnnNote').classList.toggle('hidden', ann.mode === 'off' || !sfx.enabled);
   document.querySelectorAll('#menu .annOpt').forEach((b) => b.classList.toggle('hidden', !can || ann.mode === 'off' || !sfx.enabled));
@@ -244,7 +257,8 @@ function paintSoundMenu() {
 const MUSIC_NOTES = { always: 'Quieter during play, and softer still while the announcer talks', breaks: 'In the lobby, while the clock is paused, and after the game', off: '' };
 function paintMusicMenu() {
   const sts = musicStations(), ms = musicSettings(state.settings), on = sts.length > 0 && !!state.settings;
-  $('#mMusicItem').classList.toggle('hidden', !on);
+  $('#mMusicEntry').classList.toggle('hidden', !on);
+  $('#mMusicSum').textContent = MUSIC_MODE_NAMES[ms.mode];
   $('#mStationItem').classList.toggle('hidden', !on || ms.mode === 'off' || sts.length < 2);
   $('#mMusicVolItem').classList.toggle('hidden', !on || ms.mode === 'off');
   if (!on) return;
@@ -302,6 +316,9 @@ function menuAct(act) {
   } else if (act === 'backup') { ann.cycleBackup(); ann.stop(); paintSoundMenu(); ann.sayOnDevice("This is the backup voice, used if the server voice can't be reached."); }
   else if (act === 'spell') { ann.cycleSpell(); paintSoundMenu(); ann.stop(); ann.say(ann.spell === 'never' ? 'Words will not be spelled out.' : `Zoea. Z, O, E, A.`); }
   else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays, quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
+  else if (act === 'page-ann') showMenuPage('ann');
+  else if (act === 'page-music') showMenuPage('music');
+  else if (act === 'back') menuBack();
   else if (act === 'games') openGames(); else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
   else closeMenu();
 }
@@ -334,7 +351,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown') { menuIdx = (menuIdx + 1) % it.length; focusMenu(); e.preventDefault(); }
   else if (e.key === 'ArrowUp') { menuIdx = (menuIdx - 1 + it.length) % it.length; focusMenu(); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menuAct(it[menuIdx].dataset.act); }
-  else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); closeMenu(); }
+  else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); menuBack(); }
 });
 document.addEventListener('pointerdown', () => { sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
@@ -492,6 +509,10 @@ function startRoom(room) {
     if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });
 }
+
+// A /tv#room=…&tv=… link opened in a tab already showing the TV only changes the hash, which doesn't reload the
+// page: reload so getRoom() picks the new room up.
+window.addEventListener('hashchange', () => { if (/room=.+&tv=/.test(location.hash)) location.reload(); });
 
 // A phone that started its own game asked to be shown on this TV (it typed our TV code).
 let pendingSwitch = null;

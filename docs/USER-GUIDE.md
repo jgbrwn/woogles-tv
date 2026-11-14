@@ -134,7 +134,7 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (theme, volume, announcer, music, Games on this TV, New game) |
+| **OK** | Opens the options menu (theme, volume, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
 | **Back** | Closes a menu. In the app, press Back twice to exit |
@@ -148,7 +148,7 @@ The TV plays sounds for each move, bingos, the end of the game, and clock warnin
 and 1 minute left, a 10-second countdown, an overtime alarm, and a tone for each extra overtime minute).
 
 The **announcer** speaks the game aloud: *"Bingo! Alex plays, quixotic. Q, U, I, X, O, T, I, C, for 98 points."*
-In the options menu (press **OK**):
+In the options menu (press **OK**, then **Announcer ›**; Volume is on the main menu):
 
 | Option | Choices |
 |---|---|
@@ -169,7 +169,7 @@ remote once if the TV shows *Click or press any key to enable sound*). Without o
 ### Background music
 
 If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)), the TV can play music under the
-game, with the song and artist (and often the album cover) on screen. Choose in the TV menu, or on a phone (☰ →
+game, with the song and artist (and often the album cover) on screen. Choose in the TV menu (**OK** → **Music ›**), or on a phone (☰ →
 *Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
 
 ![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v2.png)
