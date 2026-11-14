@@ -170,7 +170,10 @@ remote once if the TV shows *Click or press any key to enable sound*). Without o
 
 If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)), the TV can play music under the
 game, with the song and artist (and often the album cover) on screen. Choose in the TV menu, or on a phone (☰ →
-*Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting:
+*Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
+
+![The TV during a game, with Radio Paradise playing](screenshots/tv-game-music.png)
+
 
 | Option | Choices |
 |---|---|
