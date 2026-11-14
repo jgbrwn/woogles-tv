@@ -121,6 +121,7 @@ type Room struct {
 	deleted   bool
 	linkLimit *tokenBucket
 	defLimit  *tokenBucket // word definition lookups
+	ttsLimit  *tokenBucket // server speech (tts.go), created on first use
 }
 
 var globalJoin = newTokenBucket(5, 100) // 300/minute across everyone: code lookups + TV links

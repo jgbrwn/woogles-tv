@@ -141,6 +141,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `WT_DEFINITIONS` | on | `off` disables word definitions (double-tap a word in the scorecard). When on, the server looks up only words already played, from Woogles.io's word service (fallback: dictionaryapi.dev), with caching and rate limits |
 | `WT_DEFINE_URL` | Woogles.io | Alternative endpoint that speaks the same `DefineWords` JSON API |
 | `CAST_APP_ID` | empty | Google Cast receiver app ID; enables the Cast buttons ([CAST.md](CAST.md)) |
+| `WT_TTS_URL` | empty (off) | Speech engine for the announcer's server voice, e.g. `http://127.0.0.1:8431` ([TTS.md](TTS.md)) |
+| `WT_TTS_VOICES` | 15 voices, Cosette first | Server voices offered, in menu order; the first is the default ([TTS.md](TTS.md)) |
 | `WT_DEV=1` | off | Serve `web/` from disk instead of the embedded copy (for development) |
 
 `GET /healthz` returns `ok` for load-balancer and container health checks.

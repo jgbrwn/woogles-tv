@@ -226,6 +226,8 @@ export const sfx = {
     return actx;
   },
   ready() { return actx && actx.state === 'running'; },
+  // The master volume node, for other audio (the announcer's server voice) to play through.
+  out() { return this.ctx() ? master : null; },
   tone(freq, dur = 0.12, { type = 'sine', vol = 0.18, at = 0, slide = 0 } = {}) {
     if (!this.enabled) return;
     const c = this.ctx(); if (!c) return;

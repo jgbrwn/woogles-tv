@@ -1,4 +1,6 @@
 # docker compose up -d   →  http://<host>:8420/
+# With the server voice for the announcer (docs/TTS.md): run tts/fetch-models.sh once, uncomment WT_TTS_URL below,
+# then: docker compose --profile tts up -d
 services:
   woogles-tv:
     build: .
@@ -8,10 +10,27 @@ services:
       - "8420:8420"
     environment:
       # The URL phones use to reach this server; it is what the QR code on the TV encodes.
-      # Leave unset to derive it from each request (fine behind a proxy that sets X-Forwarded-Host/Proto).
-      # PUBLIC_URL: https://woogles-tv.example.com
+      # Leave empty to derive it from each request (fine behind a proxy that sets X-Forwarded-Host/Proto).
+      PUBLIC_URL: ""   # e.g. https://woogles-tv.example.com
       # CAST_APP_ID: ABCD1234   # optional, see docs/CAST.md
+      # WT_TTS_URL: http://tts:8431   # server voice, needs the tts profile
+      # WT_TTS_VOICES: cosette,caro_davy,anna,azelma,charles,eve,fantine,jane,marius,mary,michael,paul,peter_yearsley,stuart_bell,vera
     volumes:
       - rooms:/app/data/rooms     # saved rooms/games (survive upgrades)
+  tts:
+    profiles: ["tts"]
+    # audio.cpp CPU image serving Pocket TTS, pinned. Not published on any port: only woogles-tv talks to it.
+    image: ghcr.io/0xshug0/audio.cpp@sha256:21781641b8926762a88ac6f6d4f3b9a1399a2bc0d1de2374092f90c0d7626112
+    restart: unless-stopped
+    command: ["server", "--config", "/app/server.json", "--backend", "cpu"]
+    volumes:
+      - ./tts/models:/models:ro
+      - ./tts/server.json:/app/server.json:ro
+    cpus: 1.5
+    mem_limit: 1g
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]   # audio.cpp unpacks model metadata here
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
 volumes:
   rooms:

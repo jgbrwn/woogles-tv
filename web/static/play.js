@@ -1,7 +1,8 @@
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES } from './common.js';
-import { makeAnnouncer, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
-const ann = makeAnnouncer('wt_ph_', 'off');
+// A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
+const ann = makeAnnouncer('wt_ph_', 'off', () => { const t = localStorage.getItem(tokKey); return t && s && s.you >= 0 ? { code, token: t } : null; });
 let speechCtx = {};
 import { confetti } from './confetti.js';
 import { castAvailable, castRoom, castSession, NS } from './cast.js';
@@ -619,14 +620,17 @@ const soundIcon = () => (sfx.level === 'off' ? '🔇' : sfx.level === 'low' ? '�
 // Sound & voice settings (this phone only)
 function soundSheet() {
   const seg = (id, opts, names, cur) => `<div class="seg" id="${id}">${opts.map((o) => `<button data-v="${o}" class="${String(o) === String(cur) ? 'on' : ''}">${names[o]}</button>`).join('')}</div>`;
-  const can = ann.available(), voices = can ? ann.voices() : [];
+  const can = ann.available(), server = ann.hasServer(), dvoices = ann.hasDevice() ? ann.deviceVoices() : [];
+  const sv = ann.serverVoice();
+  const opts = (list, cur, def) => `${def ? `<option value="">${esc(def)}</option>` : ''}${list.map((v) => `<option value="${esc(v.id)}" ${v.id === cur ? 'selected' : ''}>${esc(v.name)}${v.lang ? ' · ' + esc(v.lang) : ''}</option>`).join('')}`;
   openModal(`<h3>Sound &amp; voice</h3><p class="muted" style="margin:0">Settings for this phone. The TV has its own (hold OK on the remote).</p>
     <div class="field">Volume ${seg('sVol', SOUND_LEVELS, SOUND_NAMES, sfx.level)}</div>
     ${can ? `<div class="field">Announcer ${seg('sAnn', ANN_MODES, ANN_MODE_NAMES, ann.mode)}<small class="muted">Reads out each move, the score and clock warnings. Handy when there's no TV.</small></div>
     <div class="annOpts">
       <div class="field">Spell out words ${seg('sSpell', SPELL_MODES, SPELL_NAMES, ann.spell)}</div>
       <div class="field">Speaking speed ${seg('sRate', RATES, RATE_NAMES, ann.rate)}</div>
-      ${voices.length > 1 ? `<div class="field">Voice <select id="sVoice"><option value="">Default</option>${voices.map((v) => `<option value="${esc(v.id)}" ${v.id === ann.voice ? 'selected' : ''}>${esc(v.name)}${v.lang ? ' · ' + esc(v.lang) : ''}</option>`).join('')}</select></div>` : ''}
+      ${server ? `<div class="field">Voice <select id="sVoice">${opts(ann.serverVoices(), sv && sv.id)}</select></div>` : ''}
+      ${dvoices.length > 1 ? `<div class="field">${server ? 'Backup voice' : 'Voice'} <select id="sBackup">${opts(dvoices, ann.backup, 'Default')}</select>${server ? '<small class="muted">This phone\'s own voice, used if the server voice can\'t be reached. <a href="#" id="sTestB" style="color:inherit">Test it</a></small>' : ''}</div>` : ''}
       <button class="btn" id="sTest">▶ Test the announcer</button>
     </div>` : '<small class="muted">Spoken announcements aren\'t supported by this browser.</small>'}`);
   const body = $('#mbody');
@@ -640,7 +644,9 @@ function soundSheet() {
   wire('sSpell', (v) => ann.set('spell', v));
   wire('sRate', (v) => ann.set('rate', +v));
   const vs = body.querySelector('#sVoice'); if (vs) vs.onchange = () => { ann.stop(); ann.set('voice', vs.value); };
+  const bs = body.querySelector('#sBackup'); if (bs) bs.onchange = () => { ann.stop(); ann.set('backup', bs.value); };
   body.querySelector('#sTest')?.addEventListener('click', test);
+  body.querySelector('#sTestB')?.addEventListener('click', (e) => { e.preventDefault(); ann.stop(); ann.sayOnDevice('This is the backup voice. Stee Bot plays zoea, for 34 points.'); });
   sync();
 }
 function linkPrompt() {

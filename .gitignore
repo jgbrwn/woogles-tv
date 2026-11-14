@@ -13,3 +13,5 @@ deploy/*.env
 android/build/
 android/out/
 android/*.keystore
+# server voice models (tts/fetch-models.sh)
+/tts/models/

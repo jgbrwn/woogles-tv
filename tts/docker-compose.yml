@@ -1,0 +1,22 @@
+# Server voice for the announcer: audio.cpp serving Kyutai's Pocket TTS (see docs/TTS.md).
+#   tts/fetch-models.sh                         # once: downloads the model (~130 MB) and voices (~165 MB)
+#   docker compose -f tts/docker-compose.yml up -d
+# then run Woogles-TV with WT_TTS_URL=http://127.0.0.1:8431
+# The port is published on 127.0.0.1 only: the speech engine must not be reachable from the internet.
+services:
+  tts:
+    # audio.cpp CPU image, pinned (the project moves fast). Update deliberately and re-test.
+    image: ghcr.io/0xshug0/audio.cpp@sha256:21781641b8926762a88ac6f6d4f3b9a1399a2bc0d1de2374092f90c0d7626112
+    restart: unless-stopped
+    command: ["server", "--config", "/app/server.json", "--backend", "cpu"]
+    ports:
+      - "127.0.0.1:8431:8431"
+    volumes:
+      - ./models:/models:ro
+      - ./server.json:/app/server.json:ro
+    cpus: 1.5          # leave room for the game server and its bots
+    mem_limit: 1g
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]   # audio.cpp unpacks model metadata here
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]

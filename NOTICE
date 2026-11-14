@@ -46,6 +46,12 @@ Fonts (self-hosted in web/static/fonts)
   Fjalla One, Copyright Sorkin Type Co, SIL Open Font License 1.1.
   Roboto Mono, Copyright Google LLC, open font license (Apache 2.0 / SIL OFL 1.1, see Google Fonts).
 
+Server voice (optional, see docs/TTS.md)
+  audio.cpp (github.com/0xShug0/audio.cpp), Copyright 2026 ShugoAI LLC, Apache License 2.0, runs
+  as a separate Docker container. Pocket TTS by Kyutai (huggingface.co/kyutai/pocket-tts),
+  CC-BY-4.0, in the GGUF packaging published by audio.cpp (huggingface.co/audio-cpp/audio.cpp-gguf).
+  The model is downloaded by tts/fetch-models.sh and is not included in this repository.
+
 Google Cast
   The Cast sender and receiver SDKs are loaded from Google at runtime (only when CAST_APP_ID is set)
   and are subject to Google's terms.

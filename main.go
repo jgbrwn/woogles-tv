@@ -95,6 +95,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	initTTS()
 	go reapRooms()
 	go clockWatch()
 
@@ -133,7 +134,7 @@ func main() {
 		w.Write([]byte(h))
 	})
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]string{"castAppId": os.Getenv("CAST_APP_ID")})
+		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig()})
 	})
 	mux.HandleFunc("GET /manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := fs.ReadFile(sub, "manifest.webmanifest")
@@ -209,6 +210,8 @@ func main() {
 		}
 		writeJSON(w, 200, out)
 	})
+	// Server speech for the announcer (tts.go). Streams audio; only the room's TV or a seated player may use it.
+	mux.HandleFunc("POST /api/tts", handleTTS)
 	// Manual join by typing the room code shown on the TV. Rate limited against guessing.
 	mux.HandleFunc("POST /api/join", func(w http.ResponseWriter, r *http.Request) {
 		if !joinLimit.allow(clientIP(r)) || !globalJoin.allow() {

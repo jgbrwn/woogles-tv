@@ -1,5 +1,8 @@
-// Spoken announcements ("Alex plays ZOEA for 34"). Uses the Android TV app's native text-to-speech when present
-// (window.WooglesTV.speak — Android's WebView has no Web Speech API), otherwise the browser's speechSynthesis.
+// Spoken announcements ("Alex plays ZOEA for 34").
+// 1. Server voice (when the server has WT_TTS_URL set): the sentence is sent to /api/tts and the audio streams back
+//    and plays through Web Audio as it arrives. Works on any TV browser that can play sound, e.g. LG webOS.
+// 2. Fallback: the Android TV app's native text-to-speech (window.WooglesTV.speak — Android's WebView has no Web
+//    Speech API), otherwise the browser's speechSynthesis, in the "backup voice" chosen in the settings.
 // Settings are per device, stored in localStorage under a prefix ('wt_tv_' on the TV, 'wt_ph_' on phones).
 import { sfx } from './common.js';
 
@@ -12,6 +15,9 @@ export const SPELL_MODES = ['never', 'bingos', 'always'];
 export const SPELL_NAMES = { never: 'Never', bingos: 'Bingos', always: 'Always' };
 export const RATES = [0.85, 1, 1.2];
 export const RATE_NAMES = { 0.85: 'Slow', 1: 'Normal', 1.2: 'Fast' };
+// The server voice can't change its speed, so playback is sped up or slowed down instead; that also shifts the
+// pitch, so keep the steps gentle.
+const SERVER_RATE = { 0.85: 0.9, 1: 1, 1.2: 1.12 };
 
 // Voices are identified by name + language: voiceURI isn't unique on every platform (Android Chrome repeats it),
 // which made the announcer fall back to the first/previous voice.
@@ -22,18 +28,132 @@ const keep = new Set();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const nextOf = (list, v) => list[(list.indexOf(v) + 1) % list.length];
 
-export function makeAnnouncer(prefix, defMode) {
+// ---- server voice ----
+let ttsConf = null; // {voices: [{id, name}], sampleRate}; the first voice is the server's default
+const confReady = fetch('/api/config').then((r) => r.json()).then((c) => { if (c?.tts?.voices?.length) ttsConf = c.tts; }).catch(() => {});
+export const announcerReady = confReady;
+
+const srv = {
+  jobs: [],          // sentences waiting to be fetched, in order
+  running: false,    // a fetch/stream is in progress
+  ctrl: null,        // AbortController of the current fetch
+  playHead: 0,       // AudioContext time when the audio scheduled so far ends
+  sources: new Set(),
+  fails: 0, offUntil: 0, // after repeated failures, use device speech for a while
+  gen: 0,            // bumped by stop() so stale work is dropped
+};
+const srvOk = () => !!ttsConf && performance.now() >= srv.offUntil;
+
+function srvFailed() {
+  srv.fails++;
+  if (srv.fails >= 2) { srv.offUntil = performance.now() + 60000; srv.fails = 0; }
+}
+
+// Plays queued jobs one after another. Each job's audio is scheduled right after the previous job's, and the next
+// fetch starts as soon as the previous one has finished downloading (the server generates faster than real time).
+async function srvPump() {
+  if (srv.running) return;
+  srv.running = true;
+  try {
+    while (srv.jobs.length) {
+      const job = srv.jobs.shift(), gen = srv.gen;
+      let ok = false;
+      try { ok = await srvStream(job, gen); } catch { ok = false; }
+      if (gen !== srv.gen) continue; // stopped meanwhile
+      if (ok) srv.fails = 0;
+      else {
+        srvFailed();
+        // Speak it on the device instead, once the server audio already scheduled has finished.
+        const c = sfx.ctx(), wait = c ? Math.max(0, (srv.playHead - c.currentTime) * 1000) : 0;
+        pendingSay++;
+        setTimeout(() => { pendingSay--; if (gen === srv.gen) job.fallback(); }, wait);
+      }
+    }
+  } finally { srv.running = false; }
+}
+
+// Fetches one sentence and schedules its audio chunk by chunk. Resolves true if any audio played.
+async function srvStream(job, gen) {
+  const c = sfx.ctx(), out = sfx.out();
+  if (!c || !out || c.state !== 'running') return false;
+  const ctrl = new AbortController(); srv.ctrl = ctrl;
+  const firstByte = setTimeout(() => ctrl.abort(), 5000); // a slow start means late speech: use the device instead
+  let res;
+  try {
+    res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ ...job.creds, text: job.text, voice: job.voice }) });
+  } catch { clearTimeout(firstByte); return false; }
+  if (!res.ok) { clearTimeout(firstByte); return false; }
+  const rate = Number(res.headers.get('X-Sample-Rate')) || ttsConf?.sampleRate || 24000;
+  const speed = SERVER_RATE[job.rate] || 1;
+  let carry = null, pending = [], pendingLen = 0, played = false;
+  const flush = (force) => {
+    // Play in pieces of at least 0.1 s (fewer, longer buffers play more smoothly).
+    if (!pendingLen || (!force && pendingLen < rate / 10) || gen !== srv.gen) return;
+    const buf = c.createBuffer(1, pendingLen, rate), ch = buf.getChannelData(0);
+    let o = 0;
+    for (const p of pending) { ch.set(p, o); o += p.length; }
+    pending = []; pendingLen = 0;
+    const src = c.createBufferSource();
+    src.buffer = buf; src.playbackRate.value = speed; src.connect(out);
+    const at = Math.max(srv.playHead, c.currentTime + 0.06); // small lead so the first piece isn't clipped
+    src.start(at);
+    srv.playHead = at + buf.duration / speed;
+    srv.sources.add(src); src.onended = () => srv.sources.delete(src);
+    played = true;
+  };
+  const take = (bytes) => {
+    if (carry) { const b = new Uint8Array(carry.length + bytes.length); b.set(carry); b.set(bytes, carry.length); bytes = b; carry = null; }
+    if (bytes.length % 2) { carry = bytes.slice(-1); bytes = bytes.subarray(0, bytes.length - 1); }
+    if (!bytes.length) return;
+    const n = bytes.length / 2, f = new Float32Array(n), dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+    for (let i = 0; i < n; i++) f[i] = dv.getInt16(i * 2, true) / 32768;
+    pending.push(f); pendingLen += n;
+    flush(false);
+  };
+  try {
+    if (res.body && res.body.getReader) {
+      const rd = res.body.getReader();
+      for (;;) {
+        const { done, value } = await rd.read();
+        clearTimeout(firstByte);
+        if (done || gen !== srv.gen) break;
+        take(value);
+      }
+    } else { // older browsers: wait for the whole clip
+      take(new Uint8Array(await res.arrayBuffer())); clearTimeout(firstByte);
+    }
+  } catch { clearTimeout(firstByte); /* aborted or the connection dropped: keep whatever already played */ }
+  flush(true);
+  if (srv.ctrl === ctrl) srv.ctrl = null;
+  return played;
+}
+
+export function makeAnnouncer(prefix, defMode, creds = () => null) {
   const get = (k, d) => localStorage.getItem(prefix + k) ?? d;
   const A = {
-    mode: get('mode', defMode), spell: get('spell', 'bingos'), rate: +get('rate', 1), voice: get('voice', ''),
-    available() { return !!(bridge() || synth()); },
+    // voice: server voice id ('' = the server's default); backup: device voice for the fallback (stored under the
+    // old 'voice' key, so a voice chosen before server voices existed becomes the backup).
+    mode: get('mode', defMode), spell: get('spell', 'bingos'), rate: +get('rate', 1), voice: get('svoice', ''), backup: get('voice', ''),
+    hasServer() { return !!ttsConf && !!creds(); },
+    hasDevice() { return !!(bridge() || synth()); },
+    available() { return this.hasServer() || this.hasDevice(); },
     on(level = 'moves') { return this.mode === 'all' || (this.mode === 'moves' && level === 'moves'); },
-    set(k, v) { this[k] = v; localStorage.setItem(prefix + k, String(v)); },
+    set(k, v) { this[k] = v; localStorage.setItem(prefix + (k === 'voice' ? 'svoice' : k === 'backup' ? 'voice' : k), String(v)); },
     cycleMode() { this.set('mode', nextOf(ANN_MODES, this.mode)); return this.mode; },
     cycleSpell() { this.set('spell', nextOf(SPELL_MODES, this.spell)); return this.spell; },
     cycleRate() { this.set('rate', nextOf(RATES, this.rate)); return this.rate; },
-    // English voices, best first. Each: {id, name}
-    voices() {
+    // Server voices in menu order (the first is the default). Each: {id, name}
+    serverVoices() { return ttsConf ? ttsConf.voices : []; },
+    serverVoice() { const vs = this.serverVoices(); return vs.find((v) => v.id === this.voice) || vs[0] || null; },
+    voiceName() { return this.serverVoice()?.name || 'Default'; },
+    cycleVoice() {
+      const vs = this.serverVoices(); if (!vs.length) return '';
+      this.set('voice', nextOf(vs, this.serverVoice()).id);
+      return this.voiceName();
+    },
+    // Device voices for the fallback, English first. Each: {id, name, lang}
+    deviceVoices() {
       let list = [];
       try {
         if (bridge()?.voices) list = JSON.parse(bridge().voices() || '[]').map((v) => ({ id: v.name, name: v.label || v.name, lang: v.lang }));
@@ -42,16 +162,24 @@ export function makeAnnouncer(prefix, defMode) {
       const en = list.filter((v) => /^en/i.test(v.lang || ''));
       return en.length ? en : list;
     },
-    cycleVoice() {
-      const vs = this.voices(); if (!vs.length) return '';
+    cycleBackup() {
+      const vs = this.deviceVoices(); if (!vs.length) return '';
       const ids = ['', ...vs.map((v) => v.id)];
-      this.set('voice', nextOf(ids, ids.includes(this.voice) ? this.voice : ''));
-      return this.voiceName();
+      this.set('backup', nextOf(ids, ids.includes(this.backup) ? this.backup : ''));
+      return this.backupName();
     },
-    voiceName() { if (!this.voice) return 'Default'; const v = this.voices().find((x) => x.id === this.voice); return v ? v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s*\(.*\)$/, '') : 'Default'; },
-    stop() { try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {} stoppedAt = performance.now(); estEnd = 0; },
+    backupName() { if (!this.backup) return 'Default'; const v = this.deviceVoices().find((x) => x.id === this.backup); return v ? v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s*\(.*\)$/, '') : 'Default'; },
+    stop() {
+      srv.gen++; srv.jobs = []; srv.ctrl?.abort(); srv.ctrl = null;
+      for (const s of srv.sources) { try { s.stop(); } catch {} }
+      srv.sources.clear(); srv.playHead = 0;
+      try { bridge()?.stopSpeaking?.(); synth()?.cancel(); } catch {}
+      stoppedAt = performance.now(); estEnd = 0;
+    },
     // Is anything being said (or about to be)?
     busy() {
+      const c = sfx.ready() ? sfx.ctx() : null;
+      if (srv.running || srv.jobs.length || (c && c.currentTime < srv.playHead)) return true;
       const b = bridge();
       if (b) { if (typeof b.isSpeaking === 'function') { try { return b.isSpeaking() || performance.now() < stoppedAt + 300; } catch {} } return performance.now() < estEnd; }
       const s = synth();
@@ -74,15 +202,26 @@ export function makeAnnouncer(prefix, defMode) {
     // Speak now (queued after anything already speaking). Respects the device's volume; silent when sound is off.
     say(text, { force = false } = {}) {
       if (!text || (!force && this.mode === 'off') || !sfx.enabled) return;
+      const cr = creds();
+      if (ttsConf && cr && srvOk() && sfx.ready()) {
+        const v = this.serverVoice();
+        srv.jobs.push({ text, voice: v ? v.id : '', rate: this.rate, creds: cr, fallback: () => this.sayOnDevice(text) });
+        srvPump();
+        return;
+      }
+      this.sayOnDevice(text);
+    },
+    sayOnDevice(text) {
+      if (!sfx.enabled) return;
       const vol = sfx.gain;
       // rough length of the speech, for busy() when the platform can't tell us
       estEnd = Math.max(performance.now(), estEnd) + 400 + (text.length * 68) / (this.rate || 1);
       const b = bridge();
-      if (b) { try { b.speak(text, this.rate, vol, this.voice || ''); } catch {} return; }
+      if (b) { try { b.speak(text, this.rate, vol, this.backup || ''); } catch {} return; }
       const s = synth(); if (!s) return;
       const u = new SpeechSynthesisUtterance(text);
       u.rate = this.rate; u.volume = vol; u.lang = 'en-US';
-      const v = this.voice ? findVoice(s.getVoices(), this.voice) : null;
+      const v = this.backup ? findVoice(s.getVoices(), this.backup) : null;
       if (v) { u.lang = v.lang; try { u.voice = v; } catch {} } // lang too: some engines pick by language
       keep.add(u); u.onend = u.onerror = () => keep.delete(u); // Chrome can drop utterances that get garbage-collected
       // Speaking right after cancel() is unreliable on mobile Chrome (it may be swallowed or keep the old voice),

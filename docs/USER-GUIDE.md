@@ -118,6 +118,9 @@ Your phone buzzes when it's your turn (on phones that support vibration), and pl
   seconds, an alarm when you go into overtime, and a tone each time another overtime minute (another −10) starts.
 - **Announcer** (off by default on phones): reads out the moves like the TV does. Useful when you play with no TV.
   Choose *Moves* (just the plays) or *Everything* (plus lead changes, the bag, clock warnings and the result).
+- **Voice**: when the server has a voice set up ([TTS.md](TTS.md)), pick any of its voices; this phone remembers its
+  choice. **Backup voice** is the phone's own voice, used if the server voice can't be reached (*Test it* plays a
+  sample). Without a server voice, *Voice* lists the phone's own voices.
 
 **Tablets and landscape.** On a tablet, or a phone turned sideways, the board sits on the left and the scorecard,
 rack and buttons on the right. On tall phones, the latest moves appear under the board.
@@ -146,12 +149,14 @@ In the options menu (press **OK**):
 |---|---|
 | **Volume** | Off, Low, Medium, High (applies to the announcer too) |
 | **Announcer** | *Off*; *Moves* (plays, passes, exchanges and the result); *Everything* (also the start of the game, lead changes, side words, the bag running low or empty, pauses, clock warnings, and comments on big plays) |
-| **Voice** | The voices installed on the TV (or browser). In the Android TV app these are Android's text-to-speech voices. More can be installed in the TV's settings under *Text-to-speech output* |
+| **Voice** | With a server voice set up ([TTS.md](TTS.md)): the server's voices (Cosette first, by default). Otherwise the voices installed on the TV (or browser); in the Android TV app these are Android's text-to-speech voices, and more can be installed in the TV's settings under *Text-to-speech output* |
+| **Backup voice** | Shown when there's a server voice and the TV has its own speech: the TV's voice to use if the server voice can't be reached |
 | **Spell out words** | Never, Bingos (default), Always |
 | **Speaking speed** | Slow, Normal, Fast |
 
-The announcer needs the Android TV app **version 1.0.10 or later**, or a browser with speech support (Chrome, Edge,
-Safari, Firefox). Chromecast devices don't support it.
+With a server voice, the announcer works in any TV browser that plays sound (LG webOS too; press a button on the
+remote once if the TV shows *Click or press any key to enable sound*). Without one, it needs the Android TV app
+**version 1.0.10 or later**, or a browser with speech support (Chrome, Edge, Safari, Firefox).
 
 ## 5. Rules, clocks and the computer
 
@@ -221,7 +226,7 @@ install button (see [LOCAL-NETWORK.md](LOCAL-NETWORK.md)).
 | "This link is missing its join key" | Scan the QR code again, or type the room code on the home page |
 | "No TV is showing that code" | Check the code in the TV's corner; the TV must be open and online |
 | No sound on a browser TV | Click or press a key once on the TV page |
-| The announcer is missing from the TV menu | Update the Android TV app (1.0.10+). In a browser it needs speech support. Check that **Volume** isn't Off |
+| The announcer is missing from the TV menu | Set up the server voice ([TTS.md](TTS.md)), or update the Android TV app (1.0.10+); in a browser without a server voice it needs speech support. Check that **Volume** isn't Off |
 | The announcer has a strange accent or is silent | Pick another **Voice**, or install English voice data under the TV's *Settings → Accessibility → Text-to-speech* |
 | The phone can't reach a home server | Same Wi-Fi as the server? Guest networks often block devices from reaching each other ([LOCAL-NETWORK.md](LOCAL-NETWORK.md)) |
 | No Cast button | Only Chrome on Android/desktop can cast a web page, and the server needs a Cast app ID ([CAST.md](CAST.md)) |

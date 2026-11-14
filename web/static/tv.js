@@ -1,6 +1,6 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
   applyTheme, paintTimer, sfx, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
-import { makeAnnouncer, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 
 const $ = (s) => document.querySelector(s);
@@ -9,7 +9,10 @@ const CAST = document.body.dataset.cast === '1';
 const NS = 'urn:x-cast:io.woogles.tv';
 let cells = null, prevBoard = null, gameNo = -1, state = {}, recvAt = 0, ws = null;
 sfx.load('high', 'wt_sound');
-const ann = makeAnnouncer('wt_tv_', 'all');
+let currentRoom = null;
+// The TV's own room credentials let it use the server voice (POST /api/tts).
+const ann = makeAnnouncer('wt_tv_', 'all', () => (currentRoom ? { code: currentRoom.code, tvKey: currentRoom.tvKey } : null));
+announcerReady.then(() => { if (!$('#menu').classList.contains('hidden')) paintSoundMenu(); sendPrefs(); });
 let speechCtx = {};
 const alertsTick = clockAlerts(onClockAlert);
 
@@ -221,7 +224,11 @@ function paintSoundMenu() {
   $('#mAnnItem').classList.toggle('hidden', !can);
   $('#mAnn').textContent = ANN_MODE_NAMES[ann.mode];
   document.querySelectorAll('#menu .annOpt').forEach((b) => b.classList.toggle('hidden', !can || ann.mode === 'off' || !sfx.enabled));
-  $('#mVoice').textContent = ann.voiceName();
+  $('#mVoice').textContent = ann.hasServer() ? ann.voiceName() : ann.backupName();
+  // With server voices, the device voice is only the backup; without them it is the voice.
+  const backups = ann.hasServer() && ann.hasDevice() && ann.deviceVoices().length > 0;
+  $('#mBackupItem').classList.toggle('hidden', !backups || !can || ann.mode === 'off' || !sfx.enabled);
+  $('#mBackup').textContent = ann.backupName();
   $('#mSpell').textContent = SPELL_NAMES[ann.spell];
   $('#mRate').textContent = RATE_NAMES[ann.rate] || 'Normal';
 }
@@ -238,7 +245,10 @@ function menuAct(act) {
   } else if (act === 'ann') {
     ann.cycleMode(); ann.stop(); paintSoundMenu();
     if (ann.mode !== 'off') ann.say(ann.mode === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.');
-  } else if (act === 'voice') { ann.cycleVoice(); ann.stop(); paintSoundMenu(); ann.say("Hi! I'll be your announcer."); }
+  } else if (act === 'voice') {
+    if (ann.hasServer()) ann.cycleVoice(); else ann.cycleBackup();
+    ann.stop(); paintSoundMenu(); ann.say("Hi! I'll be your announcer.");
+  } else if (act === 'backup') { ann.cycleBackup(); ann.stop(); paintSoundMenu(); ann.sayOnDevice("This is the backup voice, used if the server voice can't be reached."); }
   else if (act === 'spell') { ann.cycleSpell(); paintSoundMenu(); ann.stop(); ann.say(ann.spell === 'never' ? 'Words will not be spelled out.' : `Zoea. Z, O, E, A.`); }
   else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
   else if (act === 'games') openGames(); else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
@@ -294,7 +304,6 @@ function rememberRoom(room) {
   list.unshift({ code: room.code, tvKey: room.tvKey, at: Date.now() });
   localStorage.setItem(RECENT, JSON.stringify(list.slice(0, 10)));
 }
-let currentRoom = null;
 async function newRoomHere() {
   const r = await fetch('/api/rooms', { method: 'POST' }).catch(() => null);
   if (!r || !r.ok) { toast('Could not start a new game — try again', 'bad'); return; }

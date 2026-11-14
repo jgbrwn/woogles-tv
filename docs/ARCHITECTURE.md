@@ -17,6 +17,7 @@
 | `main.go` | Flags, HTTP routes, static files (embedded `web/`), JSON APIs, WebSocket endpoint, QR codes |
 | `room.go` | Rooms, seats, clients, game lifecycle, NASPA clock, persistence, expiry, state broadcasting |
 | `engine.go` | Thin wrapper around Macondo: build/validate/preview moves, play/pass/exchange, move log, unseen tiles, bots, history save/restore |
+| `tts.go` | Optional server voice: `/api/tts` checks credentials and limits, streams audio from the local speech engine, caches clips |
 | `security.go` | Token-bucket rate limits, client IP, security headers / CSP |
 | `demo.go` | `-demo N`: seeds a game in progress for screenshots and trying the UI |
 | `web/` | Pages (`index.html` home, `tv.html`, `play.html` phone, `app.html` APK page), `static/*.js|css`, PWA manifest + service worker |
@@ -49,6 +50,9 @@ and also why you should only share a game's link with people you're happy to hav
 Client → server (`t` field): `join` (seat, name), `leave`, `addbot`, `removebot`, `settings`, `start`, `end`, `resign`,
 `pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code),
 `define` (move number: look up that play's word), `tvprefs` (TV only: whether its announcer will speak).
+
+The announcer's optional server voice is plain HTTP, not WebSocket: `POST /api/tts` with the room code, the TV key or
+a seat token, the sentence and a voice streams back 16-bit 24 kHz PCM from a local speech engine. See [TTS.md](TTS.md).
 
 Server → client: `state` (the full view for that client: board, scores, log, clock, settings, seats, and **your rack only**),
 `define` (a played word's definition, also sent to TVs as an `event`), `event` (moves, bingos, start, time-outs for sounds and animations), `preview` (score or error for your tentative
@@ -95,6 +99,8 @@ The server is meant to sit on the open internet without accounts.
 - **Definitions:** a phone can only ask about a word already played in its game (by move number), so the server
   can't be used as an open dictionary proxy. Lookups are cached and rate limited per room and globally. The only
   data sent out is the word and the dictionary name (to Woogles.io, or dictionaryapi.dev as a fallback).
+- **Server voice:** `/api/tts` needs the TV key or a seat token, caps text at 700 characters, allows only the
+  configured voices and is rate limited per room and globally. The speech engine listens on localhost only.
 - **Process:** the systemd unit and Docker image run unprivileged with a read-only filesystem, apart from `data/`.
 
 Found a problem? See [SECURITY.md](../SECURITY.md).

@@ -26,6 +26,8 @@ closet.
 - Player cards with scores, the player on turn, an optional chess clock, tiles left in the bag, and a running scorecard.
 - Full-screen **BINGO!** celebration with confetti and a fanfare.
 - **Spoken announcer**: "Bingo! Alex plays QUIXOTIC… for 98 points", lead changes, the bag running low, clock warnings and the result, with a choice of voice, speed and spelling words out.
+  Optionally in a **natural server voice** ([Pocket TTS](docs/TTS.md), 15 voices) that streams to any TV that can play sound,
+  LG webOS included, with the device's own speech as a backup.
 - Clock warnings: chimes at 5 and 1 minute left, a 10-second countdown, and an alarm plus penalty tones in overtime.
 - Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, **Games on this TV** (switch between games in progress), new game.
 - Your tiles never appear on the TV; only submitted moves do.
@@ -92,6 +94,7 @@ docker compose up -d              # builds the image (word lists included) and s
 | [Home network / Raspberry Pi](docs/LOCAL-NETWORK.md) | Running it on your LAN: Pi setup, addresses, local DNS, HTTPS options and caveats |
 | [Android TV app](android/README.md) | Building the launcher for your own server, signing, sideloading, remote keys |
 | [Google Cast](docs/CAST.md) | Registering a Cast receiver so phones can cast the board |
+| [Server voice](docs/TTS.md) | The optional natural-sounding announcer voice (Pocket TTS via audio.cpp in Docker) |
 | [Architecture](docs/ARCHITECTURE.md) | How it works: rooms, credentials, WebSocket protocol, persistence, security model |
 | [Development](docs/DEVELOPMENT.md) | Hacking on it: dev mode, demo games, tests, code tour, adding themes |
 | [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | Ideas, how to help, reporting vulnerabilities |
