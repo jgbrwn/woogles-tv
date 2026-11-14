@@ -28,6 +28,7 @@ closet.
 - **Spoken announcer**: "Bingo! Alex plays QUIXOTIC… for 98 points", lead changes, the bag running low, clock warnings and the result, with a choice of voice, speed and spelling words out.
   Optionally in a **natural server voice** ([Pocket TTS](docs/TTS.md), 15 voices) that streams to any TV that can play sound,
   LG webOS included, with the device's own speech as a backup.
+- Optional **background music**: internet radio (e.g. Radio Paradise) under the game, with now playing and album covers on the TV, fading down whenever the announcer talks. *Always*, *Breaks* only, or *Off*.
 - Clock warnings: chimes at 5 and 1 minute left, a 10-second countdown, and an alarm plus penalty tones in overtime.
 - Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, **Games on this TV** (switch between games in progress), new game.
 - Your tiles never appear on the TV; only submitted moves do.

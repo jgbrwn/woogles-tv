@@ -32,7 +32,9 @@ const nextOf = (list, v) => list[(list.indexOf(v) + 1) % list.length];
 
 // ---- server voice ----
 let ttsConf = null; // {voices: [{id, name}], sampleRate}; the first voice is the server's default
-const confReady = fetch('/api/config').then((r) => r.json()).then((c) => { if (c?.tts?.voices?.length) ttsConf = c.tts; }).catch(() => {});
+// The server's /api/config, fetched once per page (music.js reads it too).
+export const appConfig = fetch('/api/config').then((r) => r.json()).catch(() => ({}));
+const confReady = appConfig.then((c) => { if (c?.tts?.voices?.length) ttsConf = c.tts; });
 export const announcerReady = confReady;
 
 const srv = {
@@ -195,6 +197,8 @@ export function makeAnnouncer(prefix, defMode, creds = () => null) {
       const s = synth();
       return !!(s && (s.speaking || s.pending)) || performance.now() < queuedUntil;
     },
+    // Talking, or about to (an announcement waiting on its delay): background music fades down for this.
+    soon() { return pendingSay > 0 || this.busy(); },
     // Say it once nothing has been said for `gap` ms (e.g. a definition shouldn't talk over a move). Gives up after 90 s.
     sayWhenQuiet(text, gap = 2000) {
       let quietSince = null; const t0 = performance.now();

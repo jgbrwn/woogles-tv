@@ -100,10 +100,23 @@ const castCSP = "default-src 'self'; script-src 'self' https://www.gstatic.com; 
 	"img-src 'self' data: https://www.gstatic.com; font-src 'self'; connect-src 'self' ws: wss: https://*.gstatic.com https://*.google.com; " +
 	"media-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
 
+// The policies actually sent: csp and castCSP plus the music stations' origins in media-src (see music.go).
+var cspHeader, castCSPHeader = csp, castCSP
+
+func setMediaSources(origins []string) {
+	cspHeader, castCSPHeader = csp, castCSP
+	if len(origins) == 0 {
+		return
+	}
+	extra := " " + strings.Join(origins, " ")
+	cspHeader = strings.Replace(csp, "media-src 'self' data:", "media-src 'self' data:"+extra, 1)
+	castCSPHeader = strings.Replace(castCSP, "media-src 'self' data: blob:", "media-src 'self' data: blob:"+extra, 1)
+}
+
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hd := w.Header()
-		hd.Set("Content-Security-Policy", csp)
+		hd.Set("Content-Security-Policy", cspHeader)
 		hd.Set("X-Content-Type-Options", "nosniff")
 		if r.URL.Path != "/cast" {
 			hd.Set("X-Frame-Options", "DENY")

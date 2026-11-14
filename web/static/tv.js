@@ -2,6 +2,7 @@ import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, e
   applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
+import { makeMusic, musicReady, musicStations, musicSettings, isBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -14,6 +15,10 @@ let currentRoom = null;
 const ann = makeAnnouncer('wt_tv_', 'all', () => (currentRoom ? { code: currentRoom.code, tvKey: currentRoom.tvKey } : null));
 announcerReady.then(() => { if (!$('#menu').classList.contains('hidden')) paintSoundMenu(); sendPrefs(); });
 let speechCtx = {};
+// Background music (when the server lists stations); the room's settings say when it plays.
+const music = makeMusic(ann, { onNow: (info) => { npInfo = info; paintNow(); }, onBlocked: () => $('#soundHint').classList.remove('hidden') });
+let npInfo = null;
+musicReady.then(() => { music.update(); if (!$('#menu').classList.contains('hidden')) paintMusicMenu(); });
 const alertsTick = clockAlerts(onClockAlert);
 
 // ---- room bootstrap: reuse the room saved on this TV, else create one ----
@@ -60,6 +65,7 @@ const avatar = (name, i, bot) => `<span class="avatar p${i}">${bot ? '🤖' : es
 function render(s) {
   const prev = state; state = s; recvAt = performance.now();
   applyTheme(s.settings.theme);
+  music.update(s); paintNow();
   setQR(s.joinUrl);
   const names = s.seats.map((x, i) => x.name || `Player ${i + 1}`);
   const timeTxt = s.settings.timeMin ? `${s.settings.timeMin} min each` : 'untimed';
@@ -215,6 +221,7 @@ const menuItems = () => [...document.querySelectorAll('#menu .mitem:not(.hidden)
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
   paintSoundMenu();
+  paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
   $('#menu').classList.remove('hidden'); menuIdx = 0; focusMenu();
 }
@@ -234,6 +241,43 @@ function paintSoundMenu() {
   $('#mSpell').textContent = SPELL_NAMES[ann.spell];
   $('#mRate').textContent = RATE_NAMES[ann.rate] || 'Normal';
 }
+const MUSIC_NOTES = { always: 'Quieter during play, and softer still while the announcer talks', breaks: 'In the lobby, while the clock is paused, and after the game', off: '' };
+function paintMusicMenu() {
+  const sts = musicStations(), ms = musicSettings(state.settings), on = sts.length > 0 && !!state.settings;
+  $('#mMusicItem').classList.toggle('hidden', !on);
+  $('#mStationItem').classList.toggle('hidden', !on || ms.mode === 'off' || sts.length < 2);
+  $('#mMusicVolItem').classList.toggle('hidden', !on || ms.mode === 'off');
+  if (!on) return;
+  $('#mMusic').textContent = MUSIC_MODE_NAMES[ms.mode];
+  $('#mMusicNote').textContent = !sfx.enabled && ms.mode !== 'off' ? 'Volume is off, so the music is too' : MUSIC_NOTES[ms.mode];
+  $('#mMusicNote').classList.toggle('hidden', !$('#mMusicNote').textContent);
+  $('#mStation').textContent = sts[ms.station]?.name || '';
+  $('#mMusicVol').textContent = MUSIC_VOL_NAMES[ms.vol];
+}
+// Music settings belong to the room (phones can change them too); apply locally right away.
+function setMusic(ch) {
+  state.settings = { ...state.settings, ...ch };
+  ws.send({ t: 'settings', ...ch });
+  music.update(state); paintMusicMenu();
+}
+// "Now playing": a row in the side panel during a game, part of the lobby card, a corner card while the clock is
+// paused and after the game. textContent only: titles come from the radio station.
+function paintNow() {
+  const slot = state.phase === 'lobby' || !state.phase ? '#npLobby' : isBreak(state) ? '#npBig' : '#npMini';
+  const title = npInfo ? npInfo.song || npInfo.title || '' : '';
+  for (const id of ['#npLobby', '#npBig', '#npMini']) {
+    const box = $(id), vis = !!npInfo && id === slot;
+    box.classList.toggle('hidden', !vis);
+    if (!vis) continue;
+    const img = box.querySelector('img');
+    if (npInfo.cover) { if (img.getAttribute('src') !== npInfo.cover) img.src = npInfo.cover; } else img.removeAttribute('src');
+    img.classList.toggle('hidden', !npInfo.cover);
+    box.querySelector('b').textContent = title || npInfo.station;
+    const by = npInfo.song ? npInfo.artist : '', st = box.querySelector('.st');
+    box.querySelector('.ar').textContent = st ? by : [by, npInfo.station].filter(Boolean).join(' · ');
+    if (st) st.textContent = npInfo.station;
+  }
+}
 function focusMenu() { const it = menuItems(); it.forEach((b, i) => b.classList.toggle('focus', i === menuIdx)); it[menuIdx]?.focus(); }
 function closeMenu() { $('#menu').classList.add('hidden'); }
 function menuAct(act) {
@@ -243,7 +287,12 @@ function menuAct(act) {
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
   } else if (act === 'sound') {
-    sfx.cycle(); paintSoundMenu(); sfx.turn();
+    sfx.cycle(); paintSoundMenu(); paintMusicMenu(); music.update(); sfx.turn();
+  } else if (act === 'music' || act === 'station' || act === 'musicvol') {
+    const ms = musicSettings(state.settings), next = (list, v) => list[(list.indexOf(v) + 1) % list.length];
+    if (act === 'music') setMusic({ music: next(MUSIC_MODES, ms.mode) });
+    else if (act === 'station') setMusic({ station: (ms.station + 1) % musicStations().length });
+    else setMusic({ musicVol: next(MUSIC_VOLS, ms.vol) });
   } else if (act === 'ann') {
     ann.cycleMode(); ann.stop(); paintSoundMenu();
     if (ann.mode !== 'off') ann.say(ann.mode === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.');
@@ -258,7 +307,7 @@ function menuAct(act) {
 }
 document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('click', () => menuAct(b.dataset.act)));
 document.addEventListener('keydown', (e) => {
-  sfx.ctx(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300);
+  sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300);
   if (pendingSwitch) {
     const yes = $('#switchYes'), no = $('#switchNo');
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const t = document.activeElement === yes ? no : yes; t.focus(); yes.classList.toggle('focus', t === yes); no.classList.toggle('focus', t === no); e.preventDefault(); }
@@ -287,7 +336,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menuAct(it[menuIdx].dataset.act); }
   else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); closeMenu(); }
 });
-document.addEventListener('pointerdown', () => { sfx.ctx(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
+document.addEventListener('pointerdown', () => { sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
 document.addEventListener('mousemove', () => { document.body.classList.add('mouse'); clearTimeout(mouseT); mouseT = setTimeout(() => document.body.classList.remove('mouse'), 3000); });
 

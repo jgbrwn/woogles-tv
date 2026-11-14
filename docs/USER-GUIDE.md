@@ -134,7 +134,7 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (theme, volume, announcer, Games on this TV, New game) |
+| **OK** | Opens the options menu (theme, volume, announcer, music, Games on this TV, New game) |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
 | **Back** | Closes a menu. In the app, press Back twice to exit |
@@ -165,6 +165,21 @@ too* in its Sound & voice settings), so you don't hear everything twice.
 With a server voice, the announcer works in any TV browser that plays sound (LG webOS too; press a button on the
 remote once if the TV shows *Click or press any key to enable sound*). Without one, it needs the Android TV app
 **version 1.0.10 or later**, or a browser with speech support (Chrome, Edge, Safari, Firefox).
+
+### Background music
+
+If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)), the TV can play music under the
+game, with the song and artist (and often the album cover) on screen. Choose in the TV menu, or on a phone (☰ →
+*Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting:
+
+| Option | Choices |
+|---|---|
+| **Music** | *Always* (default; a little quieter during play), *Breaks* (lobby, paused clock, after the game), *Off* |
+| **Station** | The stations the server offers |
+| **Music volume** | Low, Medium (default), High, relative to the TV's **Volume** (Volume *Off* silences the music too) |
+
+The music fades down whenever the announcer talks and comes back up afterwards. If the TV shows *Click or press any
+key to enable sound*, press a button on the remote once.
 
 ## 5. Rules, clocks and the computer
 

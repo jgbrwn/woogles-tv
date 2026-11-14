@@ -9,6 +9,8 @@ const withTV = () => localStorage.getItem('wt_ph_withtv') === '1';
 const tvTalks = () => !!(s && s.tvVoice) && !withTV();
 import { confetti } from './confetti.js';
 import { castAvailable, castRoom, castSession, NS } from './cast.js';
+import { musicReady, musicStations, musicSettings, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
+musicReady.then(() => { if (s) render(s); });
 
 const $ = (s) => document.querySelector(s);
 const code = location.pathname.split('/').pop().toUpperCase();
@@ -153,6 +155,9 @@ function renderLobby() {
   seg($('#timeSeg'), s.timeOptions.map((t) => [t, TIME_LABEL(t)]), st.timeMin, (v) => ws.send({ t: 'settings', timeMin: +v }));
   $('#timeHelp').textContent = st.timeMin ? `${st.timeMin} minutes each. Overtime costs 10 points per minute; more than 10 minutes over loses.` : 'No clock — take as long as you like.';
   renderThemes($('#themeRow'));
+  const hasMusic = musicStations().length > 0;
+  $('#musicField').classList.toggle('hidden', !hasMusic);
+  if (hasMusic) { const ms = musicSettings(st); $('#musicBtn').textContent = `🎵 ${MUSIC_MODE_NAMES[ms.mode]}${ms.mode !== 'off' ? ' · ' + musicStations()[ms.station].name : ''}`; }
   const showBots = !other.taken || other.bot;
   $('#botField').classList.toggle('hidden', !showBots);
   if (showBots) {
@@ -608,6 +613,7 @@ $('#menuBtn').onclick = () => {
     <button class="btn" data-a="invite">📨 Invite / room QR</button>
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
     <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button>
+    ${musicStations().length ? `<button class="btn" data-a="music">🎵 Music on TV: ${MUSIC_MODE_NAMES[musicSettings(s.settings).mode]}</button>` : ''}
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
     ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
     <button class="btn danger" data-a="end">✖ End game for everyone</button></div>`);
@@ -618,6 +624,7 @@ $('#menuBtn').onclick = () => {
     else if (a === 'invite') $('#inviteBtn').click();
     else if (a === 'tv') linkPrompt();
     else if (a === 'sound') soundSheet();
+    else if (a === 'music') musicSheet();
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }
@@ -673,6 +680,26 @@ function soundSheet() {
   body.querySelector('#sTestB')?.addEventListener('click', (e) => { e.preventDefault(); ann.stop(); ann.sayOnDevice('This is the backup voice. Stee Bot plays, zoea, for 34 points.'); });
   sync();
 }
+// Music on the TV: the room's settings, shared by everyone in the game (and the TV's own menu).
+const MUSIC_HELP = { always: 'Plays all the time: quieter during play, and softer still while the announcer talks.',
+  breaks: 'Plays in the lobby, while the clock is paused, and after the game.', off: 'No music.' };
+function musicSheet() {
+  const sts = musicStations(), ms = musicSettings(s.settings);
+  const seg = (id, opts, names, cur) => `<div class="seg" id="${id}">${opts.map((o) => `<button data-v="${o}" class="${o === cur ? 'on' : ''}">${names[o]}</button>`).join('')}</div>`;
+  openModal(`<h3>Music on the TV</h3><p class="muted" style="margin:0">Internet radio, played by the TV for the whole room. Phones stay quiet.</p>
+    <div class="field">When ${seg('muMode', MUSIC_MODES, MUSIC_MODE_NAMES, ms.mode)}<small class="muted" id="muHelp">${MUSIC_HELP[ms.mode]}</small></div>
+    <div class="field">Station ${sts.length > 1 ? `<select id="muStation">${sts.map((x, i) => `<option value="${i}" ${i === ms.station ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<b style="color:var(--ink);text-transform:none;letter-spacing:0;font-size:16px">${esc(sts[0].name)}</b>`}</div>
+    <div class="field">Music volume ${seg('muVol', MUSIC_VOLS, MUSIC_VOL_NAMES, ms.vol)}<small class="muted">Relative to the TV's own volume.</small></div>
+    ${s.tvs ? '' : '<small class="muted">No TV is showing this game right now.</small>'}`);
+  const body = $('#mbody');
+  const wire = (id, fn) => body.querySelector('#' + id).querySelectorAll('button').forEach((b) => b.onclick = () => {
+    b.parentNode.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); fn(b.dataset.v);
+  });
+  wire('muMode', (v) => { ws.send({ t: 'settings', music: v }); body.querySelector('#muHelp').textContent = MUSIC_HELP[v]; });
+  wire('muVol', (v) => ws.send({ t: 'settings', musicVol: v }));
+  const sel = body.querySelector('#muStation'); if (sel) sel.onchange = () => ws.send({ t: 'settings', station: +sel.value });
+}
+$('#musicBtn').onclick = musicSheet;
 function linkPrompt() {
   openModal(`<h3>Show on a TV</h3><p class="muted" style="margin:0">Type the 6-letter code shown on the TV</p>
     <form id="mLink" class="linkRow"><input id="mTvCode" maxlength="6" placeholder="TV CODE" autocomplete="off" autocapitalize="characters"><button class="btn primary">Show</button></form>`);

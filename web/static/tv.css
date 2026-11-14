@@ -147,3 +147,25 @@ body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
 #defCard i { color: var(--muted); font-size: .8em; margin-right: 1vh; }
 #defCard .none { color: var(--muted); font-size: 2.8vh; }
 #defCard small { color: var(--muted); font-size: 1.9vh; }
+
+/* background music: "now playing" (a row in the side panel during a game, in the lobby card, a corner card when paused or over) */
+.np { display: flex; align-items: center; gap: 1.4vh; min-width: 0; }
+.np img { flex: none; object-fit: cover; background: var(--card2); }
+.np .npt { display: flex; flex-direction: column; min-width: 0; }
+.np .npt > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np .ar, .np small { color: var(--muted); font-weight: 700; }
+#npMini { color: var(--ink); font-size: 1.7vh; }
+#npMini img { width: 4.6vh; height: 4.6vh; border-radius: .6vh; }
+#npMini b::before { content: "♪ "; color: var(--primary); }
+#npBig { position: fixed; left: 3vh; bottom: 3vh; z-index: 15; max-width: 60vh; background: var(--card); border-radius: 1.8vh; box-shadow: var(--shadow);
+  padding: 1.4vh 2.4vh 1.4vh 1.4vh; animation: npIn .5s ease-out; }
+#npBig img { width: 10vh; height: 10vh; border-radius: 1vh; }
+#npBig small { font-size: 1.5vh; text-transform: uppercase; letter-spacing: .12em; }
+#npBig b { font-size: 2.8vh; font-weight: 900; margin: .3vh 0; }
+#npBig .ar { font-size: 2.1vh; }
+#npLobby { margin-top: 2.4vh; padding-top: 2.4vh; border-top: .2vh solid var(--line); }
+#npLobby img { width: 7vh; height: 7vh; border-radius: .8vh; }
+#npLobby small { font-size: 1.4vh; text-transform: uppercase; letter-spacing: .12em; }
+#npLobby b { font-size: 2.4vh; font-weight: 900; }
+#npLobby .ar { font-size: 1.9vh; }
+@keyframes npIn { from { opacity: 0; transform: translateY(3vh); } }

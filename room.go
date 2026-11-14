@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,10 @@ type Settings struct {
 	TimeMin int    `json:"timeMin"`
 	Theme   string `json:"theme"`
 	Bot     string `json:"bot"` // computer opponent strength
+	// Background music on the TV (only offered when the server has WT_MUSIC_STREAMS; see music.go)
+	Music    string `json:"music"`    // always, breaks (lobby, paused clock, game over) or off
+	Station  int    `json:"station"`  // index into the server's station list
+	MusicVol string `json:"musicVol"` // low, med, high
 }
 
 // Clock is a NASPA-style chess clock: each player has a total time bank for the whole game.
@@ -197,7 +202,7 @@ func createRoom(base string) (*Room, error) {
 		code = newCode()
 	}
 	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8),
-		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better"}, lastUsed: time.Now(), baseURL: base}
+		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better", Music: MusicModes[0], MusicVol: "med"}, lastUsed: time.Now(), baseURL: base}
 	rooms[code] = r
 	stats.RoomsCreated.Add(1)
 	raisePeak(&stats.PeakRooms, int64(len(rooms)))
@@ -342,6 +347,9 @@ func loadRooms(dir string) error {
 		if r.settings.Bot == "" {
 			r.settings.Bot = "better"
 		}
+		if r.settings.Music == "" { // saved before music existed
+			r.settings.Music, r.settings.MusicVol = MusicModes[0], "med"
+		}
 		if sr.Match != nil && len(sr.History) > 0 {
 			eng, err := RestoreEngine(sr.Lexicon, sr.History)
 			if err != nil {
@@ -367,18 +375,21 @@ func loadRooms(dir string) error {
 // ---- websocket handling ----
 
 type inMsg struct {
-	T       string `json:"t"`
-	Name    string `json:"name"`
-	Seat    int    `json:"seat"`
-	Tiles   []Tile `json:"tiles"`
-	Letters string `json:"letters"`
-	Lexicon string `json:"lexicon"`
-	TimeMin *int   `json:"timeMin"`
-	Theme   string `json:"theme"`
-	Bot     string `json:"bot"`
-	Code    string `json:"code"`
-	Move    *int   `json:"move"`  // define: index into the game log
-	Voice   *bool  `json:"voice"` // tvprefs: the TV's announcer is on
+	T        string `json:"t"`
+	Name     string `json:"name"`
+	Seat     int    `json:"seat"`
+	Tiles    []Tile `json:"tiles"`
+	Letters  string `json:"letters"`
+	Lexicon  string `json:"lexicon"`
+	TimeMin  *int   `json:"timeMin"`
+	Theme    string `json:"theme"`
+	Bot      string `json:"bot"`
+	Code     string `json:"code"`
+	Move     *int   `json:"move"`  // define: index into the game log
+	Voice    *bool  `json:"voice"` // tvprefs: the TV's announcer is on
+	Music    string `json:"music"`
+	Station  *int   `json:"station"`
+	MusicVol string `json:"musicVol"`
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -613,6 +624,15 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			if t == m.Theme {
 				r.settings.Theme = t
 			}
+		}
+		if slices.Contains(MusicModes, m.Music) {
+			r.settings.Music = m.Music
+		}
+		if slices.Contains(MusicVols, m.MusicVol) {
+			r.settings.MusicVol = m.MusicVol
+		}
+		if m.Station != nil && *m.Station >= 0 && *m.Station < len(musicStations) {
+			r.settings.Station = *m.Station
 		}
 		if !r.playingLocked() && cl.seat >= 0 {
 			if m.Bot != "" {

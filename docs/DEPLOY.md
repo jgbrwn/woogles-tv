@@ -9,6 +9,7 @@ database. Anything that can run a Linux/macOS/Windows binary or a Docker contain
 - [Option B: Docker / Docker Compose](#option-b-docker--docker-compose)
 - [HTTPS and reverse proxies](#https-and-reverse-proxies)
 - [Configuration](#configuration)
+- [Background music](#background-music)
 - [Stats](#stats)
 - [Data, backups and upgrades](#data-backups-and-upgrades)
 - [Pointing the TV app and Cast at your server](#pointing-the-tv-app-and-cast-at-your-server)
@@ -184,6 +185,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `CAST_APP_ID` | empty | Google Cast receiver app ID; enables the Cast buttons ([CAST.md](CAST.md)) |
 | `WT_TTS_URL` | empty (off) | Speech engine for the announcer's server voice, e.g. `http://127.0.0.1:8431` ([TTS.md](TTS.md)) |
 | `WT_TTS_VOICES` | 15 voices, Cosette first | Server voices offered, in menu order; the first is the default ([TTS.md](TTS.md)) |
+| `WT_MUSIC_STREAMS` | empty (off) | Internet radio stations the TV can play as background music: `Name=URL` entries separated by commas ([Background music](#background-music)) |
+| `WT_MUSIC_NOWPLAYING` | on | `off` stops the server from reading song titles and covers from the streams |
 | `-admin` / `WT_ADMIN_ADDR` | off | Address for the stats listener, e.g. `127.0.0.1:8421`: `GET /stats` there. Keep it on `127.0.0.1` ([Stats](#stats)) |
 | `WT_STATS_TOKEN` | off | Turns on `GET /api/stats` on the public site, for requests with `Authorization: Bearer <token>`. At least 24 characters ([Stats](#stats)) |
 | `WT_DEV=1` | off | Serve `web/` from disk instead of the embedded copy (for development) |
@@ -193,6 +196,32 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 Built-in limits (in `room.go` / `main.go`): 500 rooms, 16 connections per room, 20 new rooms per hour per IP,
 10 code lookups per minute per IP, plus a global budget for code lookups and *Show on TV*. Idle rooms are removed after
 3 days, or 7 days with an unfinished game.
+
+## Background music
+
+The TV can play an internet radio station quietly under the game. It's off until you list stations:
+
+```sh
+WT_MUSIC_STREAMS=Radio Paradise=https://stream.radioparadise.com/aac-128,RP Mellow=https://stream.radioparadise.com/mellow-128
+```
+
+Each entry is `Name=URL` (or just a URL, named after its host), separated by commas; the first is the default.
+Use the stream's direct audio URL (the one a player like VLC opens, not the station's web page), over `https`:
+browsers block `http` audio on an `https` site. Most stations list these on a "listen" or "streams" page.
+
+Players choose in the game (☰ → *Music on TV*, or the lobby) and the TV in its menu: *Always* (the default; quieter
+during play), *Breaks* (lobby, paused clock, game over) or *Off*, plus the station and a music volume. The settings
+belong to the room. The music always fades down while the announcer talks.
+
+How it works:
+- **The TV plays the stream itself**, straight from the station, like any web radio player; the audio never passes
+  through your server, and each TV counts as one listener of the station. The station's own terms of use apply.
+  The stations' hosts are added to the pages' Content-Security-Policy (`media-src`) automatically.
+- **Now playing** comes from the stream: Icecast and Shoutcast servers (nearly all internet radio) send the current
+  title to players that ask for it (ICY metadata). The server reads it when a TV asks (at most once per 20 seconds
+  per station, a few kilobytes each time) and shows it on the TV, so any station works without setup. Stations that
+  don't send titles just show their name. Some stations, Radio Paradise among them, also send a cover image link;
+  the server fetches it (public addresses only) and serves it to the TV. `WT_MUSIC_NOWPLAYING=off` turns this off.
 
 ## Stats
 
@@ -260,6 +289,7 @@ expiry. When deploying:
 - Serve it over **HTTPS** if it's reachable from the internet.
 - Run it as an **unprivileged user** (the provided systemd unit and the Docker image already do).
 - If you bind it to all interfaces behind a proxy, consider `-addr 127.0.0.1:8420` so nobody can bypass the proxy.
+- Only list music stations you trust: their audio plays on every TV, and the server fetches their titles and covers.
 - If you turn on [stats](#stats), keep the admin port on `127.0.0.1` and use a long random `WT_STATS_TOKEN`.
 - If you modify it and offer it to others, the AGPL requires you to **publish your modified source**. Update the
   GitHub links in `web/index.html`, `web/tv.html`, `web/app.html` and `web/play.html` to point at your fork.

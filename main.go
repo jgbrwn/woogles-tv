@@ -100,6 +100,7 @@ func main() {
 	}
 	loadStats(filepath.Join(*data, "rooms"))
 	initTTS()
+	initMusic()
 	go reapRooms()
 	go clockWatch()
 
@@ -132,13 +133,13 @@ func main() {
 		h := strings.Replace(string(b), `<body class="tv">`, `<body class="tv" data-cast="1">`, 1)
 		h = strings.Replace(h, `<script type="module" src="/static/tv.js">`,
 			`<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>`+"\n"+`<script type="module" src="/static/tv.js">`, 1)
-		w.Header().Set("Content-Security-Policy", castCSP)
+		w.Header().Set("Content-Security-Policy", castCSPHeader)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Write([]byte(h))
 	})
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig()})
+		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig(), "music": musicConfig()})
 	})
 	mux.HandleFunc("GET /manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := fs.ReadFile(sub, "manifest.webmanifest")
@@ -152,6 +153,8 @@ func main() {
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Write(b)
 	})
+	mux.HandleFunc("GET /api/music/now", handleMusicNow)
+	mux.HandleFunc("GET /api/music/cover", handleMusicCover)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /app/woogles-tv.apk", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.android.package-archive")

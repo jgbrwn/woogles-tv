@@ -24,6 +24,7 @@
       <div class="cardTitle">Scorecard</div>
       <ol id="log"></ol>
     </div>
+    <div id="npMini" class="np hidden"><img alt=""><div class="npt"><b></b><span class="ar"></span></div></div>
     <div id="joinMini"><img id="qrMini" alt=""><div><div>TV code · scan to join or watch</div><b class="code"></b></div></div>
   </aside>
 </main>
@@ -41,6 +42,7 @@
       </ol>
       <div id="lobbySeats"></div>
       <p class="hint" id="lobbyHint">Waiting for players…</p>
+      <div id="npLobby" class="np hidden"><img alt=""><div class="npt"><small>Now playing · <span class="st"></span></small><b></b><span class="ar"></span></div></div>
     </div>
     <div class="lobbyRight">
       <div class="qrBox"><img id="qr" alt="QR code to join"></div>
@@ -71,6 +73,9 @@
     <button class="mitem hidden" data-act="backup" id="mBackupItem">Backup voice: <b id="mBackup"></b></button>
     <button class="mitem annOpt" data-act="spell">Spell out words: <b id="mSpell"></b></button>
     <button class="mitem annOpt" data-act="rate">Speaking speed: <b id="mRate"></b></button>
+    <button class="mitem musicOpt hidden" data-act="music" id="mMusicItem">Music: <b id="mMusic"></b><small class="msub" id="mMusicNote"></small></button>
+    <button class="mitem musicOpt hidden" data-act="station" id="mStationItem">Station: <b id="mStation"></b></button>
+    <button class="mitem musicOpt hidden" data-act="musicvol" id="mMusicVolItem">Music volume: <b id="mMusicVol"></b></button>
     <button class="mitem" data-act="games">Games on this TV…</button>
     <button class="mitem" data-act="newroom">New game (new QR code)</button>
     <button class="mitem hidden" data-act="app" id="mApp">App settings (server URL)</button>
@@ -92,6 +97,7 @@
 </div></div>
 <div id="bingo" class="hidden"></div>
 <div id="defCard" class="hidden" aria-live="polite"></div>
+<div id="npBig" class="np hidden"><img alt=""><div class="npt"><small>Now playing · <span class="st"></span></small><b></b><span class="ar"></span></div></div>
 <div id="soundHint" class="hidden">🔊 Click or press any key to enable sound</div>
 <div id="conn" class="hidden">Reconnecting…</div>
 <script type="module" src="/static/tv.js"></script>

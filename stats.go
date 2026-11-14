@@ -332,7 +332,7 @@ func statsReport() map[string]any {
 		"memoryMB":   ms.Sys >> 20,
 		"heapMB":     ms.HeapAlloc >> 20,
 	}
-	features := map[string]any{"definitions": defs != nil && defs.enabled, "cast": os.Getenv("CAST_APP_ID") != ""}
+	features := map[string]any{"definitions": defs != nil && defs.enabled, "cast": os.Getenv("CAST_APP_ID") != "", "musicStations": len(musicStations)}
 	if tts != nil {
 		features["serverVoice"] = map[string]any{"voices": len(tts.voices), "default": tts.voices[0].ID,
 			"cacheMB": tts.cache.megabytes()}
