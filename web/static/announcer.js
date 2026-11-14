@@ -278,8 +278,9 @@ export function describeForSpeech(entries, st, names, ann, ctx) {
       if (m.bingo) s += pick(['Bingo! ', 'Bingo! ', "It's a bingo! ", 'Bingo! All seven tiles! ']);
       else if (m.score >= 80) s += pick(['Huge play! ', 'Massive play! ']);
       else if (m.score >= 50) s += pick(['Big play! ', 'Nice one! ']);
-      s += `${who} plays ${sayWord(word)}`;
-      if (spell) s += `. ${spellOut(word)},`;
+      // Commas around the word give it a little pause on each side, so it stands out ("Jon plays, it, for 12").
+      s += `${who} plays, ${sayWord(word)}`;
+      s += spell ? `. ${spellOut(word)},` : ',';
       s += ` for ${pts(m.score)}.`;
       if (ann.on('all')) {
         const extra = (m.words || []).slice(1).filter((w) => w.length >= 3).map(sayWord); // 2-letter words sound like noise
@@ -331,13 +332,13 @@ export function clockSpeech(kind, n, name, own = false) {
   return '';
 }
 
-// "Alex played soap at 8 D, for 12 points. Soap means: to treat with a cleansing agent."
+// "Alex played, soap, at 8 D, for 12 points. Soap means: to treat with a cleansing agent."
 export function definitionSpeech(ev, names, ann) {
   const who = sayName(names[ev.player]);
   const w = String(ev.word || '').toLowerCase();
   const spell = ann && ann.spell === 'always' ? `, ${[...String(ev.word).toUpperCase()].join(', ')},` : '';
   const pos = String(ev.pos || '').replace(/(\d)([A-Z])/g, '$1 $2').replace(/([A-Z])(\d)/g, '$1 $2');
-  let t = `${who} played ${w}${spell}${pos ? ' at ' + pos : ''}, for ${pts(ev.score)}. `;
+  let t = `${who} played, ${w}${spell || ','}${pos ? ' at ' + pos + ',' : ''} for ${pts(ev.score)}. `;
   const senses = ev.senses || [];
   if (!senses.length) return t + `Sorry, I couldn't find a definition for ${w}.`;
   t += `${w[0].toUpperCase() + w.slice(1)}${senses[0].pos ? ', ' + senses[0].pos + ',' : ''} means: ${senses[0].text}.`;

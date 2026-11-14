@@ -95,7 +95,7 @@ spot in the rack.
 - **📋 Scorecard**: shows every move (player, word, position, points, running total) over the board. Tap 📋 again to
   hide it. It never covers the button, so it toggles easily.
 - **What does that word mean?** **Double-tap any word in the scorecard** (the 📋 overlay, or the list under or beside
-  the board). A card shows its meaning, and it's read aloud: *"Alex played soap at 8 D, for 12 points. Soap, verb,
+  the board). A card shows its meaning, and it's read aloud: *"Alex played, soap, at 8 D, for 12 points. Soap, verb,
   means: to treat with a cleansing agent."* If the TV's announcer is on, the **TV** reads it (your phone joins in only
   if it has *Announce on this phone too* ticked). Otherwise your phone reads it if its announcer is on (☰ → *Sound &
   voice*), or you just see the card, with a hint. If something is
@@ -147,7 +147,7 @@ Browsers on a computer: Enter opens the menu, the arrow keys move, Esc closes.
 The TV plays sounds for each move, bingos, the end of the game, and clock warnings for whoever is on turn (chimes at 5
 and 1 minute left, a 10-second countdown, an overtime alarm, and a tone for each extra overtime minute).
 
-The **announcer** speaks the game aloud: *"Bingo! Alex plays quixotic. Q, U, I, X, O, T, I, C, for 98 points."*
+The **announcer** speaks the game aloud: *"Bingo! Alex plays, quixotic. Q, U, I, X, O, T, I, C, for 98 points."*
 In the options menu (press **OK**):
 
 | Option | Choices |

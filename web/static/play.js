@@ -650,7 +650,7 @@ function soundSheet() {
   const wire = (id, fn) => body.querySelector('#' + id)?.querySelectorAll('button').forEach((b) => b.onclick = () => {
     b.parentNode.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); fn(b.dataset.v); sync();
   });
-  const test = () => { ann.stop(); ann.say(`Stee Bot plays zoea. Z, O, E, A. For 34 points.`, { force: true }); };
+  const test = () => { ann.stop(); ann.say(`Stee Bot plays, zoea. Z, O, E, A, for 34 points.`, { force: true }); };
   wire('sVol', (v) => { sfx.ctx(); sfx.set(v); sfx.turn(); });
   wire('sAnn', (v) => { ann.set('mode', v); ann.stop(); if (v !== 'off') ann.say(v === 'all' ? 'Announcing moves, scores and the clock.' : 'Announcing moves.'); });
   wire('sSpell', (v) => ann.set('spell', v));
@@ -659,7 +659,7 @@ function soundSheet() {
   const wt = body.querySelector('#sWithTV'); if (wt) wt.onchange = () => { localStorage.setItem('wt_ph_withtv', wt.checked ? '1' : '0'); if (!wt.checked && s?.tvVoice) ann.stop(); paintTvNote(); };
   const bs = body.querySelector('#sBackup'); if (bs) bs.onchange = () => { ann.stop(); ann.set('backup', bs.value); };
   body.querySelector('#sTest')?.addEventListener('click', test);
-  body.querySelector('#sTestB')?.addEventListener('click', (e) => { e.preventDefault(); ann.stop(); ann.sayOnDevice('This is the backup voice. Stee Bot plays zoea, for 34 points.'); });
+  body.querySelector('#sTestB')?.addEventListener('click', (e) => { e.preventDefault(); ann.stop(); ann.sayOnDevice('This is the backup voice. Stee Bot plays, zoea, for 34 points.'); });
   sync();
 }
 function linkPrompt() {

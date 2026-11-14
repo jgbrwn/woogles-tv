@@ -252,7 +252,7 @@ function menuAct(act) {
     ann.stop(); paintSoundMenu(); ann.say("Hi! I'll be your announcer.");
   } else if (act === 'backup') { ann.cycleBackup(); ann.stop(); paintSoundMenu(); ann.sayOnDevice("This is the backup voice, used if the server voice can't be reached."); }
   else if (act === 'spell') { ann.cycleSpell(); paintSoundMenu(); ann.stop(); ann.say(ann.spell === 'never' ? 'Words will not be spelled out.' : `Zoea. Z, O, E, A.`); }
-  else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
+  else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays, quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
   else if (act === 'games') openGames(); else if (act === 'app') { closeMenu(); window.WooglesTV?.openMenu(); }
   else closeMenu();
 }

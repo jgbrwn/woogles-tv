@@ -11,7 +11,7 @@ It's optional. Without it, the announcer uses the device's own speech, as before
 ```
  TV / phone page                    Woogles-TV (Go)                         speech engine (Docker, localhost)
  announcer.js writes the sentence   POST /api/tts                           audio.cpp serving Kyutai's
- "Alex plays zoea for 34 points." ─▶ checks the room credential, text,  ──▶ Pocket TTS (100M, English)
+ "Alex plays, zoea, for 34 points." ▶ checks the room credential, text,  ──▶ Pocket TTS (100M, English)
                                     voice and rate limits; small cache      /v1/audio/speech, streamed PCM
  plays each chunk via Web Audio  ◀── streams the audio back as it comes ◀──
 ```
@@ -29,9 +29,12 @@ It's optional. Without it, the announcer uses the device's own speech, as before
   a TV's optical out, soundbars) take a moment to wake up and would swallow the first sound ("Jon" heard as "on").
   So the first announcement after silence starts with 0.3 s of inaudible noise (about −80 dB; not digital zero,
   which some outputs treat as nothing playing). Change `SERVER_LEAD` in `announcer.js` if your speakers need longer.
-- **Voices that start too abruptly:** Cosette and Marius were recorded with no breath before the first word, so
-  they would start mid-sound and drop the first consonant. The server puts a comma (not spoken) in front of their
-  sentences, which gives them a short breath first (`ttsBreathFirst` in `tts.go`).
+- **Voices that start or stop too abruptly:** Cosette and Marius were recorded with no breath before the first
+  word, so they would start mid-sound and drop the first consonant, and sometimes cut off the last word. The server
+  puts a comma (not spoken) before and after their sentences, which gives them a short breath first and lets the
+  last word finish (`ttsBreathFirst` in `tts.go`).
+- **The played word** has a comma on each side ("Jon plays, it, for 12 points."), so it gets a slight pause and
+  stands out, with any voice.
 - Speaking speed: Pocket TTS can't change its speed, so *Slow* and *Fast* play the audio at 0.9× and 1.12×,
   which shifts the pitch a little.
 
