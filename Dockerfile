@@ -19,4 +19,5 @@ COPY --from=build /out/woogles-tv /app/woogles-tv
 COPY --chown=nonroot:nonroot --from=build /out/data /app/data
 VOLUME /app/data/rooms
 EXPOSE 8420
-ENTRYPOINT ["/app/woogles-tv", "-addr", ":8420", "-data", "/app/data"]
+# The Android TV app download, if a directory with woogles-tv.apk is mounted at /app/apk (see docker-compose.yml)
+ENTRYPOINT ["/app/woogles-tv", "-addr", ":8420", "-data", "/app/data", "-apk", "/app/apk/woogles-tv.apk"]

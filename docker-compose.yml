@@ -23,6 +23,7 @@ services:
       # WT_TTS_VOICES: cosette,caro_davy,anna,azelma,charles,eve,fantine,jane,marius,mary,michael,paul,peter_yearsley,stuart_bell,vera
     volumes:
       - rooms:/app/data/rooms     # saved rooms/games (survive upgrades)
+      # - ./android/out:/app/apk:ro   # the Android TV app download (/app page); see docs/DEPLOY.md
   tts:
     # Optional server voice for the announcer. Defined once in tts/docker-compose.yml (image, limits, config);
     # here it only joins this project, under the "tts" profile, without publishing a port: woogles-tv reaches it

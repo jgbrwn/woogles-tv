@@ -115,9 +115,9 @@ If you want HTTPS at home, here are the options, best first:
 - **Android TV app:** install the APK, then **hold OK** (or press Menu) → *Change server URL* →
   `http://192.168.1.20:8420` (a bare `192.168.1.20:8420` is assumed to be https, so type the `http://`).
   Or build the APK with your address baked in:
-  `WT_SERVER_URL='http://192.168.1.20:8420/tv?app=1' android/build.sh` ([android/README.md](../android/README.md)).
-  The server also offers the APK for download on its `/app` page if you place it at `android/out/woogles-tv.apk`
-  (or pass `-apk`).
+  `PUBLIC_URL=http://192.168.1.20:8420 android/build.sh` ([android/README.md](../android/README.md)).
+  The server can also offer it for download on its `/app` and home pages
+  ([DEPLOY.md](DEPLOY.md#the-android-tv-app-download)).
 - **TV browser / laptop:** open `http://192.168.1.20:8420/tv`.
 - **Cast:** only with option 1 above ([CAST.md](CAST.md)).
 

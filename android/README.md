@@ -14,13 +14,17 @@ server URL**. Or build your own with your server baked in (below).
 ## Build
 
 ```sh
-WT_SERVER_URL='https://games.example.com/tv?app=1' android/build.sh   # -> android/out/woogles-tv.apk
-WT_SERVER_URL='http://192.168.1.20:8420/tv?app=1'  android/build.sh   # home server over plain HTTP
+PUBLIC_URL=https://games.example.com android/build.sh    # -> android/out/woogles-tv.apk, opens …/tv?app=1
+PUBLIC_URL=http://192.168.1.20:8420 android/build.sh     # home server over plain HTTP
 ```
 
-`WT_SERVER_URL` is the page the app opens on first launch (the default is the author's server). To offer the APK
-from your server's `/app` page, leave it at `android/out/woogles-tv.apk` (the server's default `-apk` path) or copy
-it wherever `-apk` points.
+The app opens your server on first launch. The build takes its address from, in order: `WT_SERVER_URL` (the full
+page, e.g. `https://games.example.com/tv?app=1`); `PUBLIC_URL` from the environment; `PUBLIC_URL` in the server's
+env file (`WT_ENV_FILE`, else `deploy/woogles-tv.env` or `/opt/woogles-tv/woogles-tv.env` if readable); otherwise
+the author's server, with a warning. The last line of the build says which address it used.
+
+To offer the APK on your server's `/app` page (and the home page's *Put it on the TV*), see
+[DEPLOY.md](../docs/DEPLOY.md#the-android-tv-app-download).
 
 What you need: a JDK 17+ (`javac`, `keytool`), plus `zip`, `unzip` and `curl`
 (`sudo apt install openjdk-21-jdk-headless zip unzip curl`). If they're missing, the script

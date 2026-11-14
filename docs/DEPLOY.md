@@ -13,6 +13,7 @@ database. Anything that can run a Linux/macOS/Windows binary or a Docker contain
 - [Stats](#stats)
 - [Data, backups and upgrades](#data-backups-and-upgrades)
 - [Pointing the TV app and Cast at your server](#pointing-the-tv-app-and-cast-at-your-server)
+  - [The Android TV app download](#the-android-tv-app-download)
 - [Security checklist](#security-checklist)
 - [Platform notes](#platform-notes)
 
@@ -87,6 +88,9 @@ sudo systemctl restart woogles-tv                # the log should say "server sp
 Make sure Docker itself starts at boot (`sudo systemctl enable docker`), or the engine won't come back after a
 reboot. Until it does, the announcer uses the TVs' and phones' own voices.
 
+**Optional Android TV app download** for the `/app` page and the home page: see
+[The Android TV app download](#the-android-tv-app-download). The unit already looks for `/opt/woogles-tv/woogles-tv.apk`.
+
 ## Option B: Docker / Docker Compose
 
 The [`Dockerfile`](../Dockerfile) builds a static binary on `golang:1.27`, **downloads the word lists at build
@@ -101,6 +105,8 @@ docker run -d --name woogles-tv --restart unless-stopped -p 8420:8420 \
 ```
 
 - Only `/app/data/rooms` needs a volume (saved games). Everything else is in the image.
+- The Android TV app download is optional: put `woogles-tv.apk` in `android/out/` and uncomment the `./android/out`
+  volume in `docker-compose.yml` ([details](#the-android-tv-app-download)).
 - Multi-arch images (e.g. for a Pi): `docker buildx build --platform linux/amd64,linux/arm64 -t you/woogles-tv --push .`
 - Extra flags can go after the image name; for example, `docker run … woogles-tv -demo 10` seeds a demo game.
 
@@ -176,7 +182,7 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `-addr` | `:8420` | Listen address, e.g. `:9000` for another port, or `127.0.0.1:8420` to accept only a local proxy |
 | `PORT` | | If set (Render, Railway, Fly, Cloud Run and Heroku set it for you), the default listen address becomes `:$PORT`. `-addr` still wins |
 | `-data` | `./data` | Data directory (word lists, strategy files, `rooms/`) |
-| `-apk` | `./android/out/woogles-tv.apk` | APK served at `/app/woogles-tv.apk` (the `/app` page links to it). If the file is missing, that link returns 404 |
+| `-apk` | `./android/out/woogles-tv.apk` | Android TV app served at `/app/woogles-tv.apk` and offered on the home and `/app` pages. If the file is missing, the home page leaves it out ([details](#the-android-tv-app-download)). The systemd unit uses `/opt/woogles-tv/woogles-tv.apk`, the Docker image `/app/apk/woogles-tv.apk` |
 | `-fetch-only` | | Download the word lists into `DATA/lexica` and exit |
 | `-demo N` | | Also create a demo game with N moves played and print TV/phone links |
 | `PUBLIC_URL` | derived from each request | Public base URL, e.g. `https://games.example.com` or `http://192.168.1.20:8420`. Used for QR codes and invite links |
@@ -273,13 +279,41 @@ slowed down. Tokens shorter than 24 characters are refused (the route stays off 
 
 ## Pointing the TV app and Cast at your server
 
-- **Android TV app:** the published APK opens the author's server by default. Either build your own with your URL
-  baked in (`WT_SERVER_URL=https://games.example.com/tv?app=1 android/build.sh`, see
-  [android/README.md](../android/README.md)), or install any build and change it on the TV: **hold OK** → *Change server
-  URL*. To let people download your APK from your server's `/app` page, place it at `android/out/woogles-tv.apk` or
-  pass `-apk`.
+- **Android TV app:** build your own so it opens your server (below), or install any build and change it on the TV:
+  **hold OK** → *Change server URL*.
 - **Google Cast:** register your own receiver URL (`https://games.example.com/cast`) and set `CAST_APP_ID`
   ([CAST.md](CAST.md)).
+
+### The Android TV app download
+
+The server can offer the Android TV app for download (`/app/woogles-tv.apk`, linked from the home page and `/app`),
+so a TV can install it with the Downloader app ([android/README.md](../android/README.md#install-on-google-tv--onn-4k-stick-sideload)). It's
+optional and not part of the build: the server serves whatever file `-apk` points at, checked on each request, so
+adding or replacing it needs no restart. Without the file, the home page simply leaves the app out.
+
+Two ways to get the file:
+
+```sh
+# 1. Build it, so it opens your server (needs a JDK; the script fetches the Android tools). It reads PUBLIC_URL
+#    from the environment or the server's env file.
+PUBLIC_URL=https://games.example.com android/build.sh          # -> android/out/woogles-tv.apk
+
+# 2. Or download the ready-made release. It opens the author's server until it's changed on the TV
+#    (hold OK → Change server URL), so building is better for your own server.
+mkdir -p android/out
+curl -fsSLo android/out/woogles-tv.apk https://github.com/jgbrwn/woogles-tv/releases/latest/download/woogles-tv.apk
+```
+
+Then put it where the server looks:
+- **systemd** (the provided unit passes `-apk /opt/woogles-tv/woogles-tv.apk`):
+  `sudo install -m 644 android/out/woogles-tv.apk /opt/woogles-tv/`
+- **Docker:** uncomment `./android/out:/app/apk:ro` under `volumes:` in `docker-compose.yml`, then
+  `docker compose up -d`. With `docker run`, add `-v "$PWD/android/out:/app/apk:ro"`.
+- **Running from the repo** (`./woogles-tv` in the checkout): nothing to do; `android/out/woogles-tv.apk` is the
+  default.
+
+Rebuild or re-download it when the app changes (new GitHub releases say so); updates install over the old app if
+they're signed with the same key (`android/woogles-tv.keystore`, made on your first build; keep it).
 
 ## Security checklist
 

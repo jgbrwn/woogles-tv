@@ -16,7 +16,8 @@ Type=simple
 User=woogles
 Group=woogles
 WorkingDirectory=/opt/woogles-tv
-ExecStart=/opt/woogles-tv/woogles-tv -addr :8420 -data /opt/woogles-tv/data
+# -apk: the Android TV app offered at /app (optional; see docs/DEPLOY.md, "The Android TV app download")
+ExecStart=/opt/woogles-tv/woogles-tv -addr :8420 -data /opt/woogles-tv/data -apk /opt/woogles-tv/woogles-tv.apk
 # Optional settings (PUBLIC_URL, definitions, Cast, the announcer's server voice) go in this file; every one is listed
 # with a short explanation in deploy/woogles-tv.env.example:
 #   sudo install -m 600 deploy/woogles-tv.env.example /opt/woogles-tv/woogles-tv.env

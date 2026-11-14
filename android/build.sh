@@ -3,6 +3,7 @@
 #   aapt2 (resources + manifest) -> javac -> d8 (dex) -> zipalign -> apksigner
 # Installs the Android SDK pieces into $ANDROID_HOME (default ~/android-sdk) if missing.
 set -euo pipefail
+[[ -n "${WT_ENV_FILE:-}" ]] && WT_ENV_FILE="$(realpath "$WT_ENV_FILE")"
 cd "$(dirname "$0")"
 
 ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
@@ -16,8 +17,31 @@ VERSION_NAME="${VERSION_NAME:-1.0.$VERSION_CODE}"
 KEYSTORE="${KEYSTORE:-woogles-tv.keystore}"
 KS_PASS="${KS_PASS:-wooglestv}"
 KS_ALIAS="${KS_ALIAS:-wooglestv}"
-# Server the app opens on first launch (changeable later in the app: hold OK → Change server URL).
-WT_SERVER_URL="${WT_SERVER_URL:-https://woogles-tv.exe.xyz/tv?app=1}"
+# Server the app opens on first launch (changeable later in the app: hold OK → Change server URL). The first of:
+#   WT_SERVER_URL  the full page, e.g. https://games.example.com/tv?app=1
+#   PUBLIC_URL     your server's address, as in its settings (/tv?app=1 is added): from the environment, else from the
+#                  server's env file (WT_ENV_FILE, else deploy/woogles-tv.env or /opt/woogles-tv/woogles-tv.env)
+#   the author's server (https://woogles-tv.exe.xyz), with a warning
+URL_FROM="WT_SERVER_URL"
+if [[ -z "${WT_SERVER_URL:-}" ]]; then
+  pub="${PUBLIC_URL:-}"; URL_FROM="PUBLIC_URL"
+  if [[ -z "$pub" ]]; then
+    for f in "${WT_ENV_FILE:-}" ../deploy/woogles-tv.env /opt/woogles-tv/woogles-tv.env; do
+      [[ -n "$f" && -e "$f" ]] || continue
+      if [[ ! -r "$f" ]]; then echo "note: can't read $f (try: PUBLIC_URL=https://… android/build.sh)" >&2; continue; fi
+      pub="$(sed -n 's/^[[:space:]]*PUBLIC_URL=//p' "$f" | tail -n1 | tr -d "\"' \r")"
+      [[ -n "$pub" ]] && { URL_FROM="PUBLIC_URL in $f"; break; }
+    done
+  fi
+  if [[ -n "$pub" ]]; then
+    WT_SERVER_URL="${pub%/}/tv?app=1"
+  else
+    WT_SERVER_URL="https://woogles-tv.exe.xyz/tv?app=1"; URL_FROM="the default"
+    echo "warning: no WT_SERVER_URL or PUBLIC_URL, so the app will open the author's server ($WT_SERVER_URL)." >&2
+    echo "         For your own server: PUBLIC_URL=https://games.example.com android/build.sh" >&2
+  fi
+fi
+case "$WT_SERVER_URL" in http://*|https://*) ;; *) echo "WT_SERVER_URL/PUBLIC_URL must start with http:// or https://: $WT_SERVER_URL" >&2; exit 1;; esac
 
 BT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VER"
 JAR="$ANDROID_HOME/platforms/$PLATFORM/android.jar"
@@ -77,4 +101,4 @@ echo "== zipalign + sign"
   --min-sdk-version $MIN_SDK --out out/woogles-tv.apk "$B/aligned.apk"
 "$BT/apksigner" verify out/woogles-tv.apk
 rm -f out/woogles-tv.apk.idsig
-echo "== built android/out/woogles-tv.apk ($(du -h out/woogles-tv.apk | cut -f1), $VERSION_NAME, opens $WT_SERVER_URL)"
+echo "== built android/out/woogles-tv.apk ($(du -h out/woogles-tv.apk | cut -f1), $VERSION_NAME, opens $WT_SERVER_URL, from $URL_FROM)"
