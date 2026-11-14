@@ -325,7 +325,12 @@ function showPreview(p) {
   const n = $('#preview');
   if (!p || !p.tiles || !p.tiles.length || !pending.size) { n.textContent = myTurn() ? 'Tap a square, then tiles' : canPlace() ? 'Plan ahead: tap a square, then tiles' : 'Drag tiles to rearrange'; n.className = 'err'; return; }
   if (p.score != null) { n.innerHTML = `<b>${p.score}</b> points`; n.className = 'score'; }
-  else { n.textContent = p.err || ''; n.className = 'err'; }
+  else {
+    // "Must border a tile" / "must cover the center star" is normal while a word is still being laid out away from
+    // the board, so it only shows once every rack tile is down (Play still explains it).
+    const notYet = /border|connect|center star/i.test(p.err || '') && pending.size < rack.length;
+    n.textContent = notYet ? '' : p.err || ''; n.className = 'err';
+  }
 }
 
 async function place(r, c, id) {
@@ -525,8 +530,14 @@ $('#swapGo').onclick = () => {
 };
 $('#zoomBtn').onclick = () => document.body.classList.toggle('zoomed', $('#boardScroll').classList.toggle('zoom'));
 // ---- modal / blank picker ----
-let modalResolve = null;
-function openModal(html) { $('#mbody').innerHTML = html; $('#modal').classList.remove('hidden'); }
+let modalResolve = null, modalArmed = false;
+function openModal(html) { $('#mbody').innerHTML = html; $('#modal').classList.remove('hidden'); modalArmed = false; }
+// A tap that opens the sheet (e.g. a blank tile on the rack, handled on finger-up) is followed by the browser's own
+// click at the same spot, which would land on whatever button the sheet now shows there and pick it (a blank
+// played as "Z" without asking). So the sheet ignores clicks until a press has started inside it. Keyboard clicks
+// (detail 0) have no press and always count.
+$('#modal').addEventListener('pointerdown', () => { modalArmed = true; }, true);
+$('#modal').addEventListener('click', (e) => { if (!modalArmed && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); } }, true);
 function closeModal(v) { $('#modal').classList.add('hidden'); modalResolve?.(v); modalResolve = null; }
 $('#mclose').onclick = () => closeModal(null);
 function pickLetter() {
