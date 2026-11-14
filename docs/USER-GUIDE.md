@@ -27,7 +27,7 @@ Choose one of these:
 The TV lobby shows a **QR code** and a 6-letter **TV code**. The TV code is always the code of the game currently on
 screen. During a game it sits in the bottom-right corner, labelled *TV code*.
 
-![TV lobby](screenshots/tv-lobby.png)
+![TV lobby](screenshots/tv-lobby-v2.png)
 
 The first click or key press on a browser TV turns on sound; browsers block audio until then. The Android TV app plays
 sound straight away.
@@ -49,7 +49,7 @@ sound straight away.
 4. Invite the other player with **📨 Invite the other player** (QR code or share link), or have them scan the QR code
    that is now on the TV.
 
-![Phone lobby](screenshots/phone-lobby.png)
+![Phone lobby](screenshots/phone-lobby-v2.png)
 
 ### Rematch
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
@@ -57,7 +57,7 @@ player goes first. **Change settings** returns to the lobby.
 
 ## 3. Playing on your phone
 
-![Phone during a game](screenshots/phone-game.png)
+![Phone during a game](screenshots/phone-game-v2.png)
 
 **Placing tiles**
 - **Tap a square** to put the cursor there. Tap it again to switch between across (→) and down (↓).
@@ -107,7 +107,7 @@ spot in the rack.
   ✖ *End game for everyone*.
 
 <p>
-  <img src="screenshots/phone-scorecard.png" width="250" alt="Scorecard overlay">
+  <img src="screenshots/phone-scorecard-v2.png" width="250" alt="Scorecard overlay">
   <img src="screenshots/phone-unseen.png" width="250" alt="Unseen tiles">
 </p>
 
@@ -172,8 +172,7 @@ If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)
 game, with the song and artist (and often the album cover) on screen. Choose in the TV menu, or on a phone (☰ →
 *Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
 
-![The TV during a game, with Radio Paradise playing](screenshots/tv-game-music.png)
-
+![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v2.png)
 
 | Option | Choices |
 |---|---|
@@ -216,7 +215,7 @@ key to enable sound*, press a button on the remote once.
   OK → **Games on this TV** lists every game this TV has shown, with players, score and status. Pick one with OK to put
   it back on screen, or press ▶ and then OK twice to remove it from the list.
 
-  ![Games on this TV](screenshots/tv-games-list.png)
+  ![Games on this TV](screenshots/tv-games-list-v2.png)
 
 - **On the phone**: the home page has **Your games**, with **Active** and **Finished** tabs. A game counts as finished
   when it has ended, when you have left your seat, or after 3 days without a move ("Abandoned"). Tap a game to

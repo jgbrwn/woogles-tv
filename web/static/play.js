@@ -97,6 +97,7 @@ function render(st) {
     else if (cursor && s.board[cursor.r][cursor.c] !== '.') cursor = null;
     selected = null; swapMode = false; swapSet.clear(); lastPreview = null; logLen = newLog;
     if (theirs && pending.size) setTimeout(sendPreview, 50);
+    else if (!pending.size) showPreview(null); // don't leave the last move's points showing
   }
   // drop pending tiles on squares that became occupied
   for (const [k] of pending) { const [r, c] = k.split(',').map(Number); if (s.board[r][c] !== '.') pending.delete(k); }
