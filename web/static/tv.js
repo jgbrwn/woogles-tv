@@ -87,7 +87,7 @@ function render(s) {
   const ready = s.seats.every((x) => x.taken);
   $('#lobbyHint').textContent = ready ? `Ready! Press Start on a phone · ${s.settings.lexicon} · ${timeTxt}` : `Waiting for players… · ${s.settings.lexicon} · ${timeTxt}`;
   $('#lobbyHint').classList.toggle('ready', ready);
-  if (s.phase === 'lobby') { prevBoard = null; return; }
+  if (s.phase === 'lobby') { prevBoard = null; $('#over').classList.add('hidden'); $('#pausedBanner').classList.add('hidden'); return; } // a finished game's result doesn't follow the TV to a fresh screen
 
   if (!cells || s.gameNo !== gameNo) {
     cells = buildBoard($('#board'), s.bonuses); buildCoords($('#coordTop'), $('#coordSide'));
@@ -663,6 +663,8 @@ function startRoom(room) {
   currentRoom = room; rememberRoom(room);
   if (ws) ws.close();
   cells = null; prevBoard = null; gameNo = -1; state = { code: room.code }; $('#players').innerHTML = '';
+  $('#over').classList.add('hidden'); $('#idleNote').classList.add('hidden');
+  for (const id of ['#board', '#coordTop', '#coordSide', '#log']) { const n = $(id); if (n) n.innerHTML = ''; } // nothing of the last game behind the new one
   $('#castWait')?.classList.add('hidden');
   ws = connect({ room: room.code, role: 'tv', key: room.tvKey }, (m) => {
     if (m.t === 'state') render(m);
