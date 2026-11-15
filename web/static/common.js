@@ -4,6 +4,34 @@ export const BONUS = {'=':['tw','TRIPLE WORD','3W'], '-':['dw','DOUBLE WORD','2W
 export const COLS = 'ABCDEFGHIJKLMNO';
 export const THEME_NAMES = { 'woogles': 'Woogles', 'woogles-dark': 'Woogles Dark', 'balsa': 'Balsa', 'forest': 'Forest', 'pastel': 'Pastel', 'midnight': 'Midnight' };
 
+// Computer opponents' faces: one robot per strength, drawn in the avatar's ink with features cut in the player colour.
+// SVG rather than an emoji, so they look the same on every TV and phone. Our own drawings (AGPL, like the rest).
+const EYES = (r) => `<circle class="k" cx="9" cy="12.8" r="${r}"/><circle class="k" cx="15" cy="12.8" r="${r}"/>`;
+const BOX = '<rect x="4.5" y="7.5" width="15" height="12.5" rx="3.5"/>';
+const BOT_FACES = {
+  // BeginnerBot: a round head with a sprout, big eyes and a smile
+  beginner: '<circle cx="12" cy="14" r="7.5"/><path class="s" d="M12 6.8V4.4"/><path d="M12 4.8c0-2 1.5-3.1 3.8-3.1 0 2.1-1.5 3.1-3.8 3.1z"/>'
+    + '<circle class="k" cx="9.2" cy="13.5" r="1.8"/><circle class="k" cx="14.8" cy="13.5" r="1.8"/><path class="ks" d="M9.6 17.1a3.2 3.2 0 0 0 4.8 0"/>',
+  // BasicBot: a square head, one antenna, ears, a straight mouth
+  basic: BOX + '<path class="s" d="M12 7.5V4.8"/><circle cx="12" cy="3.6" r="1.6"/><rect x="2.3" y="11.5" width="2.4" height="4.6" rx="1.1"/>'
+    + '<rect x="19.3" y="11.5" width="2.4" height="4.6" rx="1.1"/>' + EYES(1.5) + '<path class="ks" d="M9.6 16.9h4.8"/>',
+  // BetterBot: two antennae, square eyes and a grin
+  better: BOX + '<path class="s" d="M8.6 7.6 7.1 4.6M15.4 7.6l1.5-3"/><circle cx="6.7" cy="3.7" r="1.4"/><circle cx="17.3" cy="3.7" r="1.4"/>'
+    + '<rect class="k" x="7.4" y="11.1" width="3.2" height="3.2" rx="1"/><rect class="k" x="13.4" y="11.1" width="3.2" height="3.2" rx="1"/>'
+    + '<rect class="k" x="8.3" y="16" width="7.4" height="2.1" rx="1.05"/>',
+  // STEEBot: a domed helmet with a crest and a visor
+  stee: '<path d="M4.5 12.5a7.5 7.5 0 0 1 15 0v5a2.5 2.5 0 0 1-2.5 2.5H7a2.5 2.5 0 0 1-2.5-2.5z"/><rect x="10.7" y="2.3" width="2.6" height="4" rx="1.3"/>'
+    + '<rect class="k" x="6.2" y="10.6" width="11.6" height="4.2" rx="2.1"/><circle cx="9.4" cy="12.7" r="1.05"/><circle cx="14.6" cy="12.7" r="1.05"/>'
+    + '<path class="ks" d="M10 17.6h4"/>',
+  // HastyBot: a lightning-bolt antenna, speed lines and narrowed eyes
+  hasty: '<rect x="6.5" y="7.5" width="14" height="12.5" rx="3.5"/><path d="M15.2 1.4 11.6 5.9h2.5l-1.6 2.9 4.3-4.9h-2.5z"/>'
+    + '<path class="s" d="M1.6 11.2h3M2.6 14h2.6M1.6 16.8h3"/><rect class="k" x="9.3" y="11.9" width="3.4" height="1.9" rx=".95"/>'
+    + '<rect class="k" x="14.5" y="11.9" width="3.4" height="1.9" rx=".95"/><path class="ks" d="M11.2 16.9h5"/>',
+};
+export const botFace = (level) => `<svg class="botFace" viewBox="0 0 24 24" aria-hidden="true">${BOT_FACES[level] || BOT_FACES.basic}</svg>`;
+// An avatar's contents: a bot's face, or the player's initial.
+export const avatarInner = (seat, name) => seat?.bot ? botFace(seat.level) : esc([...(name || '?')][0] || '?');
+
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export function applyTheme(t) {

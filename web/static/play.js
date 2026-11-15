@@ -1,4 +1,4 @@
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
@@ -137,7 +137,7 @@ function renderLobby() {
     const box = $('#seatBtns'); box.innerHTML = '';
     s.seats.forEach((seat, i) => {
       const b = el('button', 'seatBtn' + (seat.taken ? '' : ' open'));
-      const av = `<span class="avatar p${i}">${seat.taken ? (seat.bot ? '🤖' : esc([...seat.name][0] || '?')) : i + 1}</span>`;
+      const av = `<span class="avatar p${i}">${seat.taken ? avatarInner(seat, seat.name) : i + 1}</span>`;
       if (!seat.taken) b.innerHTML = `${av}<span>Join as Player ${i + 1}<small>Seat open</small></span>`;
       else if (!seat.connected) b.innerHTML = `${av}<span>Take over ${esc(seat.name)}'s seat<small>Their phone disconnected</small></span>`;
       else { b.innerHTML = `${av}<span>${esc(seat.name)}<small>${seat.bot ? 'Computer' : 'Playing'}</small></span>`; b.disabled = true; }
@@ -147,7 +147,7 @@ function renderLobby() {
     return;
   }
   const me = s.seats[s.you], other = s.seats[1 - s.you];
-  const av = (seat, i) => `<span class="avatar p${i}">${seat.bot ? '🤖' : esc([...(seat.name || '?')][0])}</span>`;
+  const av = (seat, i) => `<span class="avatar p${i}">${avatarInner(seat, seat.name)}</span>`;
   $('#matchup').innerHTML = `<div class="m">${av(me, s.you)}<span>${esc(me.name)} (you)</span></div><span class="vs">VS</span>` +
     (other.taken ? `<div class="m">${av(other, 1 - s.you)}<span>${esc(other.name)}</span></div>` : `<div class="m"><span class="avatar" style="background:var(--line)">?</span><span class="muted">Waiting…</span></div>`);
   const st = s.settings;
@@ -241,7 +241,8 @@ function renderHeader() {
   [[me, '#pc0'], [op, '#pc1']].forEach(([seat, id]) => {
     const card = $(id), x = s.seats[seat];
     card.className = `pc p${seat}` + (s.phase === 'playing' && s.turn === seat ? ' turn' : '');
-    card.querySelector('.avatar').textContent = x.bot ? '🤖' : ([...n[seat]][0] || '?');
+    const av = avatarInner(x, n[seat]);
+    if (card.dataset.av !== av) { card.dataset.av = av; card.querySelector('.avatar').innerHTML = av; }
     card.querySelector('.n').textContent = seat === me && !W ? 'You' : n[seat];
     card.querySelector('.v').textContent = x.score;
   });
@@ -725,6 +726,7 @@ function renderScorecard() {
 function renderMoves(panel) {
   const n = names();
   const turns = (s.log || []).filter((m) => ['play', 'pass', 'exchange'].includes(m.type)).length;
+  panel.querySelector('.scHint').classList.toggle('hidden', !(s.log || []).some((m) => m.type === 'play'));
   panel.querySelector('.scMeta').textContent = `${turns} turn${turns === 1 ? '' : 's'} · ${s.bag} in bag`;
   const list = panel.querySelector('.scList'), log = s.log || [];
   const key = `${s.gameNo}:${log.length}:${s.bag}:${n.join('|')}`;
@@ -737,15 +739,12 @@ function renderMoves(panel) {
     const d = describeMove(m, n);
     const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet' : '') + (m.type === 'play' ? ' word' : ''));
     if (m.type === 'play') li.dataset.move = i;
-    const init = s.seats[m.player]?.bot ? '🤖' : esc([...(n[m.player] || '?')][0]);
+    const init = avatarInner(s.seats[m.player], n[m.player]);
     li.innerHTML = `<span class="no">${i + 1}</span><span class="av p${m.player}">${init}</span><span class="w">${esc(d.text)}${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</span>
       <span class="s">${d.score > 0 ? '+' : ''}${d.score ?? ''}</span><span class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total ?? ''}</span>`;
     list.append(li);
   });
   if (atBottom || fresh) list.scrollTop = list.scrollHeight;
-  if (log.some((m) => m.type === 'play') && !localStorage.getItem('wt_tip_define')) {
-    localStorage.setItem('wt_tip_define', '1'); setTimeout(() => toast('Tip: double-tap a word in the scorecard to see what it means'), 2500);
-  }
 }
 // ---- word definitions: double-tap a played word in either scorecard ----
 let lastTap = { li: null, at: 0 };

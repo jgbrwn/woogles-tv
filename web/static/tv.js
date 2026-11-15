@@ -1,5 +1,5 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
-  applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES } from './common.js';
+  applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 import { makeMusic, musicReady, musicStations, musicSettings, isBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
@@ -60,7 +60,7 @@ function setQR(url) {
 }
 
 const initial = (n) => [...(n || '?').trim()][0] || '?';
-const avatar = (name, i, bot) => `<span class="avatar p${i}">${bot ? '🤖' : esc(initial(name))}</span>`;
+const avatar = (name, i, seat) => `<span class="avatar p${i}">${seat?.bot ? botFace(seat.level) : esc(initial(name))}</span>`;
 
 function render(s) {
   const prev = state; state = s; recvAt = performance.now();
@@ -73,7 +73,7 @@ function render(s) {
   // lobby
   $('#lobby').classList.toggle('hidden', s.phase !== 'lobby');
   $('#lobbySeats').innerHTML = s.seats.map((seat, i) => seat.taken
-    ? `<div class="lseat">${avatar(seat.name, i, seat.bot)} <span>${esc(seat.name)}</span> <span class="dot ${seat.connected ? 'on' : ''}"></span></div>`
+    ? `<div class="lseat">${avatar(seat.name, i, seat)} <span>${esc(seat.name)}</span> <span class="dot ${seat.connected ? 'on' : ''}"></span></div>`
     : `<div class="lseat empty"><span class="avatar">${i + 1}</span> Seat open</div>`).join('');
   const ready = s.seats.every((x) => x.taken);
   $('#lobbyHint').textContent = ready ? `Ready! Press Start on a phone · ${s.settings.lexicon} · ${timeTxt}` : `Waiting for players… · ${s.settings.lexicon} · ${timeTxt}`;
@@ -105,7 +105,8 @@ function render(s) {
     const card = pl.children[i];
     const onTurn = s.phase === 'playing' && s.turn === i;
     card.classList.toggle('turn', onTurn);
-    card.querySelector('.avatar').textContent = seat.bot ? '🤖' : initial(names[i]);
+    const av = seat.bot ? botFace(seat.level) : esc(initial(names[i]));
+    if (card.dataset.av !== av) { card.dataset.av = av; card.querySelector('.avatar').innerHTML = av; }
     card.querySelector('.name').innerHTML = `${esc(names[i])} <span class="dot ${seat.connected ? 'on' : ''}"></span>`;
     card.querySelector('.meta').innerHTML = onTurn
       ? `<span class="turnTag thinking">${seat.bot ? 'Thinking' : 'On turn'}<i></i><i></i><i></i></span>`
@@ -149,7 +150,7 @@ function render(s) {
     const loser = s.winner >= 0 ? names[1 - s.winner] : '';
     $('#reason').textContent = s.endReason === 'time' ? `${loser} went more than 10 minutes over time`
       : s.endReason === 'resign' ? `${loser} resigned` : `Final score · ${s.lexicon}`;
-    $('#finals').innerHTML = s.seats.map((seat, i) => `<div class="final${s.winner === i ? ' win' : ''}">${avatar(names[i], i, seat.bot)}
+    $('#finals').innerHTML = s.seats.map((seat, i) => `<div class="final${s.winner === i ? ' win' : ''}">${avatar(names[i], i, seat)}
       <div class="n">${esc(names[i])}</div><div class="s">${seat.score}</div>
       <div class="r">${s.endReason ? '' : seat.rack ? 'Left: ' + esc(seat.rack) : 'Went out'}</div></div>`).join('');
   }
@@ -166,7 +167,7 @@ function renderLog(s, names, prev) {
   shown.forEach((m, k) => {
     const d = describeMove(m, names);
     const li = el('li', (m.bingo ? 'bingo ' : '') + (d.quiet ? 'quiet ' : '') + (k === shown.length - 1 && n > prevN ? 'newest ' : '') + ((n - shown.length + k) % 2 ? '' : 'alt'));
-    li.innerHTML = `${avatar(names[m.player], m.player, s.seats[m.player]?.bot)}<div class="w">${esc(d.text)} ${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</div>
+    li.innerHTML = `${avatar(names[m.player], m.player, s.seats[m.player])}<div class="w">${esc(d.text)} ${d.detail ? `<span class="d">${esc(d.detail)}</span>` : ''}</div>
       <div class="s">${d.score > 0 ? '+' : ''}${d.score}</div><div class="t">${m.type === 'time' || m.type === 'adjust' ? '' : m.total}</div>`;
     log.append(li);
   });

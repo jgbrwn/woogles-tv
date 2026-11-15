@@ -95,7 +95,7 @@ spot in the rack.
 - **📋 Scorecard**: shows every move (player, word, position, points, running total) over the board. Tap 📋 again to
   hide it. It never covers the button, so it toggles easily.
 - **What does that word mean?** **Double-tap any word in the scorecard** (the 📋 overlay, or the list under or beside
-  the board). A card shows its meaning, and it's read aloud: *"Alex played, soap, at 8 D, for 12 points. Soap, verb,
+  the board; its header says so). A card shows its meaning, and it's read aloud: *"Alex played, soap, at 8 D, for 12 points. Soap, verb,
   means: to treat with a cleansing agent."* If the TV's announcer is on, the **TV** reads it (your phone joins in only
   if it has *Announce on this phone too* ticked). Otherwise your phone reads it if its announcer is on (☰ → *Sound &
   voice*), or you just see the card, with a hint. If something is
@@ -239,7 +239,9 @@ key to enable sound*, press a button on the remote once.
 ## 7. Installing the phone app (PWA)
 
 In Chrome on Android, open the home page and tap **📲 Install Woogles-TV on this phone** (or Chrome menu →
-*Install app* / *Add to Home screen*). On iPhone, Safari → Share → *Add to Home Screen*. The app has its own icon,
+*Install app* / *Add to Home screen*). iPhone and iPad browsers have no one-tap install, so there the home page
+shows the steps instead: tap **Share** (at the bottom in Safari, in the address bar in Chrome), then *Add to Home
+Screen*. The app has its own icon,
 opens full-screen, and has a **New game** shortcut when you long-press the icon.
 
 The home screen has its own **Appearance** setting (Auto follows your phone's light/dark mode, or choose Light or

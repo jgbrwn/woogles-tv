@@ -27,6 +27,9 @@
  .way a { color: var(--primary); font-weight: 700; font-size: 14px; }
  .url { display: block; margin: 6px 0 2px; padding: 8px 10px; border-radius: 8px; background: var(--card2); border: 1px solid var(--line);
    font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+ .iosInstall { text-align: left; font-size: 15px; line-height: 1.5; color: var(--muted); background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 16px 18px; }
+ .iosInstall > b:first-child { display: block; margin-bottom: 4px; } .iosInstall b { color: var(--ink); }
+ .shareIco { width: 1.2em; height: 1.2em; vertical-align: -.25em; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
  .look { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: 14px; }
  .look .seg { width: 210px; }
  .g { position: relative; } .g .x { width: 30px; height: 30px; border-radius: 99px; color: var(--muted); font-size: 16px; font-weight: 900; display: grid; place-items: center; }
@@ -73,6 +76,9 @@
     <a class="btn" href="/tv">📺 Open the TV board here</a>
   </div>
   <button class="btn hidden" id="installBtn" type="button">📲 Install Woogles-TV on this phone</button>
+  <div class="iosInstall hidden" id="iosInstall"><b>📲 Install Woogles-TV on this <span id="iosDev">iPhone</span></b>
+    Tap the Share button <svg class="shareIco" viewBox="0 0 24 24" role="img" aria-label="Share"><path d="M12 3v12M8 7l4-4 4 4M8.5 10H6.5a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5h-2"/></svg> (at the bottom in Safari, in the address bar in Chrome),
+    then <b>Add to Home Screen</b>. It then opens full-screen, like an app.</div>
   <div class="look"><span class="muted">Appearance</span><div class="seg" id="lookSeg"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
   <small class="muted">Rules, scoring &amp; dictionaries by <a href="https://github.com/domino14/macondo" rel="noopener">Macondo</a>, the engine behind <a href="https://woogles.io" rel="noopener">Woogles.io</a>. NWL23 &amp; CSW24.<br>Woogles-TV is open source (AGPL-3.0): <a href="https://github.com/jgbrwn/woogles-tv" rel="noopener">source, docs &amp; self-hosting on GitHub</a>.</small>
 </main>

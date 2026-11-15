@@ -111,6 +111,13 @@ let deferred = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('installBtn').classList.remove('hidden'); });
 $('installBtn').addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $('installBtn').classList.add('hidden'); });
 
+// iPhone and iPad browsers can't offer a one-tap install (every iOS browser runs on Safari's engine, which has no
+// install prompt), so they get the Share → Add to Home Screen steps instead. Hidden once it runs as the installed app.
+const iPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const iOS = iPad || /iPhone|iPod/.test(navigator.userAgent);
+const installed = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+if (iOS && !installed) { $('iosDev').textContent = iPad ? 'iPad' : 'iPhone'; $('iosInstall').classList.remove('hidden'); }
+
 const castBtn = document.getElementById('castBtn');
 castAvailable().then((ok) => castBtn.classList.toggle('hidden', !ok));
 castBtn.addEventListener('click', async () => {

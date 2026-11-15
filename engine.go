@@ -442,6 +442,19 @@ func botLevel(id string) BotLevel {
 	return BotLevels[2]
 }
 
+// botLevelFor is a bot seat's strength id; seats saved before levels were stored go by the bot's name.
+func botLevelFor(s *Seat) string {
+	if s.Level != "" {
+		return s.Level
+	}
+	for _, b := range BotLevels {
+		if b.Name == s.Name {
+			return b.ID
+		}
+	}
+	return ""
+}
+
 // BotMove lets a Macondo bot of the given strength pick and play a move for the player on turn.
 func (e *Engine) BotMove(code pb.BotRequest_BotCode) error {
 	if e.bot == nil || e.botCode != code {

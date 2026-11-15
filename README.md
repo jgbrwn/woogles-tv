@@ -49,7 +49,7 @@ closet.
 **Game rules & options**
 - Dictionaries: **NWL23** (NASPA Word List 2023, default) or **CSW24** (Collins Scrabble Words 2024).
 - **Void challenge**: phony words are refused with no penalty, so you just try again.
-- Computer opponents from the Woogles ladder: BeginnerBot, BasicBot, **BetterBot** (default), STEEBot, HastyBot.
+- Computer opponents from the Woogles ladder: BeginnerBot, BasicBot, **BetterBot** (default), STEEBot, HastyBot, each with a robot face of its own.
 - Optional per-player clock for the whole game (15 min to 2 h, in 15-minute steps) with **NASPA overtime**:
   −10 points per minute or part of a minute over, and more than 10 minutes over loses the game.
 - Six themes (Woogles, Woogles Dark, Balsa, Forest, Pastel, Midnight), shared by the TV and the phones.

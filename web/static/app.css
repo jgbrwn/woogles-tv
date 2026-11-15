@@ -149,6 +149,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; background: 
 .avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 900; flex-shrink: 0;
   background: var(--pc, var(--p0)); text-transform: uppercase; }
 .p0 { --pc: var(--p0); } .p1 { --pc: var(--p1); }
+.botFace { width: 78%; height: 78%; fill: currentColor; overflow: visible; }
+.botFace .s { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.botFace .k { fill: var(--pc, var(--p0)); }
+.botFace .ks { fill: none; stroke: var(--pc, var(--p0)); stroke-width: 1.6; stroke-linecap: round; }
 [data-theme="woogles-dark"] .avatar, [data-theme="forest"] .avatar, [data-theme="midnight"] .avatar { color: #1b1b1b; }
 
 /* timer pill */

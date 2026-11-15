@@ -1046,6 +1046,7 @@ type seatView struct {
 	Name      string `json:"name"`
 	Taken     bool   `json:"taken"`
 	Bot       bool   `json:"bot,omitempty"`
+	Level     string `json:"level,omitempty"` // bot strength id, for its face
 	Connected bool   `json:"connected"`
 	Score     int    `json:"score"`
 	RackCount int    `json:"rackCount"`
@@ -1071,6 +1072,9 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 	for i := 0; i < 2; i++ {
 		if s := r.seats[i]; s != nil {
 			seats[i].Name, seats[i].Taken, seats[i].Bot = s.Name, true, s.Bot
+			if s.Bot {
+				seats[i].Level = botLevelFor(s)
+			}
 		}
 		seats[i].Connected = r.seatConnected(i)
 		if r.m != nil {
