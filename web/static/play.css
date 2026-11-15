@@ -102,6 +102,9 @@ body.phone { overflow: hidden; height: 100dvh; user-select: none; -webkit-user-s
 #ovScores div.win { border-color: var(--warn); }
 #ovScores b { display: block; font-size: 32px; font-weight: 900; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* results card: See board · Change settings · Home (spectators get two) */
+.ovRow { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.ovRow .btn { padding-inline: .5em; }
 #conn { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); background: var(--bad); color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 800; z-index: 70; }
 body.phone #toasts { top: auto; bottom: 34%; }
 body.phone .toast { max-width: 90vw; text-align: center; }

@@ -577,6 +577,7 @@ function renderOver(prev) {
 }
 $('#rematchBtn').onclick = () => ws.send({ t: 'start' });
 $('#lobbyBtn').onclick = () => ws.send({ t: 'end' });
+$('#ovHomeBtn').onclick = goHome; // the finished game stays under Your games → Finished
 $('#ovBoardBtn').onclick = () => { overDismissed = s.gameNo; $('#over').classList.add('hidden'); toast('Tap ☰ for rematch', '', 2000); };
 
 function celebrateBingo(m, who, mine) {
