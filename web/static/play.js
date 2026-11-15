@@ -816,6 +816,9 @@ function showUnseen() {
 // ---- game review (post-game analysis) and the game file ----
 // Opening it starts the analysis (if it hasn't run yet) and makes this phone the driver: it steps through the moves
 // here and on the TV. The other player's phone follows along. Spectators don't get it.
+// /p/CODE?g=N (from "Your games → Finished"): open earlier game N of this room straight away; closing goes home.
+const wantGame = +new URLSearchParams(location.search).get('g') || 0;
+let rvGame = 0, rvFromList = false, rvCloseAt = 0;
 let rvLocal = false, rvHidden = false, rvTab = 'walk', rvCells = null, rvShowP = 'played', rvKeyP = '', rvPicked = false, rvAuto = 0, gcgCache = null;
 function openReview(tab = 'walk') {
   if (!s.review?.you) return;
@@ -826,12 +829,21 @@ function openReview(tab = 'walk') {
 $('#rvBtn').onclick = () => { $('#over').classList.add('hidden'); overDismissed = s.gameNo; openReview(); };
 $('#rvLastBtn').onclick = () => openReview();
 let rvAsked = 0;
-function askOpen() { rvAsked = performance.now(); ws.send({ t: 'review', op: 'open' }); setTimeout(() => s && renderReview(), 6000); }
+function askOpen() { rvAsked = performance.now(); ws.send({ t: 'review', op: 'open', game: rvGame }); setTimeout(() => s && renderReview(), 6000); }
 const rvDriver = () => !!s.review?.open && s.review.driver === s.you;
 function renderReview() {
-  const rv = s?.review, box = $('#review');
+  if (wantGame && !rvFromList && s) {
+    rvFromList = true;
+    history.replaceState(null, '', location.pathname + location.hash);
+    if (s.you < 0) toast('Only the players can look back at that game');
+    else { rvGame = wantGame; rvLocal = true; rvTab = s.analysis === false ? 'file' : 'walk'; if (rvTab === 'walk') askOpen(); }
+  }
+  // an earlier game asked for from the list: shown even before the server has opened it
+  const rv = s?.review || (rvGame && rvLocal ? { you: true, analysis: s?.analysis } : null), box = $('#review');
   $('#rvLastBtn').classList.toggle('hidden', !(rv?.you && rv.past));
   if (!rv?.you) { box.classList.add('hidden'); rvLocal = false; rvCells = null; return; }
+  rvCloseAt = rv.open && rv.closeIn != null ? Date.now() + rv.closeIn : 0;
+  $('#rvIdle').classList.toggle('hidden', !rvCloseAt); tickIdleP();
   if (!rv.open) rvHidden = false;
   const show = (rv.open && !rvHidden) || rvLocal;
   box.classList.toggle('hidden', !show);
@@ -852,11 +864,11 @@ function renderReview() {
     return;
   }
   if (!drive) {
-    $('#rvFollow span').textContent = rv.driverHere ? `Following ${names[rv.driver]}` : `${names[rv.driver]} has left the review`;
+    $('#rvFollow span').textContent = rv.driver < 0 ? 'The TV remote is going through it' : rv.driverHere ? `Following ${names[rv.driver]}` : `${names[rv.driver]} has left the review`;
     $('#rvTake').classList.toggle('hidden', rv.driverHere);
   }
   if (!rvCells) rvCells = buildBoard($('#rvBoard'), rv.bonuses, { labels: false });
-  const total = rv.marks.length, key = `${rv.pos}:${rv.step?.ev ?? ''}`;
+  const total = rv.marks.length, key = `${rv.game}:${rv.pos}:${rv.step?.ev ?? ''}`;
   if (key !== rvKeyP) { rvKeyP = key; rvShowP = 'played'; rvPicked = false; clearTimeout(rvAuto); }
   // once the analysis of this move is in, show the best move after a moment (unless the player picked a view)
   if (bestDiffers(rv) && !rvPicked && rvShowP === 'played' && !rvAuto) rvAuto = setTimeout(() => { rvAuto = 0; if (!rvPicked && bestDiffers(s.review)) { rvShowP = 'best'; renderReview(); } }, 1800);
@@ -881,7 +893,7 @@ function overviewP(rv, names) {
     const body = x.bot ? '<div class="rvNote">The computer\'s moves aren\'t analysed</div>'
       : `<div class="rvChips">${['best', 'small', 'medium', 'large'].map((v) => `<span class="chip v-${v}"><b>${y[v]}</b> ${VERDICTS[v].short}</span>`).join('')}</div>${y.missedBingo ? `<div class="rvNote">${y.missedBingo} missed bingo${y.missedBingo === 1 ? '' : 's'}</div>` : ''}`;
     return `<div class="rvPlayer"><span class="avatar p${i}">${avatarInner(x, x.name)}</span><div class="who"><div class="name">${esc(me ? 'You' : names[i])}</div>${body}</div><div class="score">${rv.finals[i]}</div></div>`;
-  }).join('')}</div><p class="rvTip">Tap <b>Start</b> to go through ${rv.marks.length === t[s.you]?.moves ? 'your' : 'the'} moves one by one. They show on the TV too.</p>`;
+  }).join('')}</div><p class="rvTip">Tap <b>Start</b> to go through ${rv.marks.length === t[s.you]?.moves ? 'your' : 'the'} moves one by one.${rv.shared === false ? ' Just on this phone, while the new game is on.' : s.tvs ? ' They show on the TV too.' : ''}</p>`;
 }
 const rvStep = (d) => { if (rvDriver()) ws.send({ t: 'review', op: 'step', pos: s.review.pos + d }); };
 $('#rvPrev').onclick = () => rvStep(-1);
@@ -895,8 +907,12 @@ $('#rvTabs').addEventListener('click', (e) => {
   renderReview();
 });
 $('#rvTake').onclick = askOpen;
+function tickIdleP() { if (rvCloseAt) { const t = Math.max(0, Math.ceil((rvCloseAt - Date.now()) / 1000)); $('#rvIdle b').textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; } }
+setInterval(tickIdleP, 1000);
+$('#rvStill').onclick = () => ws.send({ t: 'review', op: 'still' });
 $('#rvClose').onclick = () => {
   if (rvDriver()) ws.send({ t: 'review', op: 'close' }); else rvHidden = true;
+  if (rvFromList) { location.href = '/'; return; } // opened from Your games: back there
   rvLocal = false; rvCells = null; renderReview();
   if (s.phase === 'over') { overDismissed = -1; renderOver(); } // back to the results
 };
@@ -910,11 +926,12 @@ $('#rvBoard').addEventListener('touchend', (e) => {
 });
 // the game file
 async function loadGCG(force) {
-  const key = `${s.code}:${s.review?.gameNo}`;
+  const game = rvGame || (s.review?.open ? s.review.game : s.review?.gameNo) || 0;
+  const key = `${s.code}:${game}`;
   if (!force && gcgCache?.key === key) return gcgCache;
   $('#gcgText').textContent = 'Loading…';
   try {
-    const r = await fetch('/api/gcg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: s.code, token: localStorage.getItem(tokKey) || '' }) });
+    const r = await fetch('/api/gcg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: s.code, token: localStorage.getItem(tokKey) || '', game }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Couldn\'t get the game file');
     gcgCache = { key, text: await r.text(), file: r.headers.get('X-Filename') || 'woogles-tv.gcg' };
     $('#gcgText').textContent = gcgCache.text;

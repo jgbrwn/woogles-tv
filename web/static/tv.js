@@ -68,6 +68,9 @@ function render(s) {
   applyTheme(s.settings.theme);
   music.update(s); paintNow();
   setQR(s.joinUrl);
+  idleAt = Date.now();
+  paintStill(s);
+  $('#mReview').classList.toggle('hidden', !(s.review?.tvCan && !s.review?.open));
   if (s.review?.open) { renderReview(s); return; }
   if (rvOn) leaveReview();
   $('#rvHint').classList.toggle('hidden', !s.review?.analysis);
@@ -193,7 +196,7 @@ function renderReview(s) {
   $('#rvBody').innerHTML = rv.pos < 0 ? overviewHTML(rv, names, s) : stepHTML(rv, names);
   $('#rvProg').textContent = progressText(rv);
   $('#rvLine').innerHTML = timelineHTML(rv);
-  const driver = names[rv.driver];
+  const driver = names[rv.driver] || '';
   $('#rvHelp').innerHTML = rv.driverHere ? `${esc(driver)}'s phone is going through the game` : '◀ ▶ on the remote to step through · Back to finish';
   // say each move once its analysis is in, and the overview once the whole game is done
   const line = rv.pos < 0 ? (rv.done >= total && total ? overviewSpeech(rv, names, sayName) : '') : stepSpeech(rv, names, sayName);
@@ -208,6 +211,39 @@ function renderReview(s) {
     document.querySelectorAll('#rvBody .rvMove').forEach((x) => x.classList.toggle('onBoard', x.classList.contains(show)));
   }
 }
+// "Still reviewing?": nobody has moved the review on for a while; it closes when the countdown runs out.
+let stillAt = 0;
+function paintStill(s) {
+  const on = s.review?.open && s.review.closeIn != null;
+  stillAt = on ? Date.now() + s.review.closeIn : 0;
+  $('#stillAsk').classList.toggle('hidden', !on);
+  if (on) { tickStill(); if (!$('#stillAsk').dataset.said && ann.on('moves')) { $('#stillAsk').dataset.said = 1; ann.say('Still reviewing? Press OK to keep going.'); } }
+  else delete $('#stillAsk').dataset.said;
+}
+const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function tickStill() { if (stillAt) $('#stillLeft').textContent = mmss(stillAt - Date.now()); }
+setInterval(tickStill, 1000);
+$('#stillYes').addEventListener('click', () => ws.send({ t: 'review', op: 'still' }));
+
+// A finished game left on screen with nothing happening: after a while the TV gets ready for the next game (a fresh
+// QR code), as if "New game" had been picked. The game itself stays as it was, under OK → Games on this TV and the
+// players' Your games. The last minute shows a countdown; any key keeps the result up.
+const RESULT_IDLE = 20 * 60e3;
+let idleAt = Date.now();
+setInterval(() => {
+  const busy = !$('#menu').classList.contains('hidden') || !$('#gamesMenu').classList.contains('hidden') || pendingSwitch;
+  const left = RESULT_IDLE - (Date.now() - idleAt);
+  const on = !CAST && state.phase === 'over' && !state.review?.open && !busy;
+  if (!on) { $('#idleNote').classList.add('hidden'); return; }
+  if (left <= 0) {
+    $('#idleNote').classList.add('hidden'); idleAt = Date.now();
+    newRoomHere().then(() => toast('Ready for a new game — the last one is under OK → Games on this TV', '', 6000));
+    return;
+  }
+  $('#idleNote').classList.toggle('hidden', left > 60e3);
+  $('#idleNote b').textContent = mmss(left);
+}, 1000);
+
 function overviewHTML(rv, names, s) {
   const t = tally(rv);
   return `<div class="rvOver">${rv.seats.map((x, i) => {
@@ -322,6 +358,7 @@ function openMenu() {
   paintSoundMenu();
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
+  $('#mReview').classList.toggle('hidden', !(state.review?.tvCan && !state.review?.open));
   $('#menu').classList.remove('hidden'); showMenuPage('main');
 }
 function paintSoundMenu() {
@@ -409,6 +446,7 @@ function menuAct(act) {
     try { localStorage.setItem('wt_rv_speak', rvSpeakOn() ? 'off' : 'on'); } catch {}
     paintSoundMenu(); ann.stop(); if (rvSpeakOn()) ann.say('Game reviews will be read out: the best move for each turn.');
   }
+  else if (act === 'review') { closeMenu(); ws.send({ t: 'review', op: 'open' }); }
   else if (act === 'page-ann') showMenuPage('ann');
   else if (act === 'page-music') showMenuPage('music');
   else if (act === 'back') menuBack();
@@ -418,6 +456,15 @@ function menuAct(act) {
 document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('click', () => menuAct(b.dataset.act)));
 document.addEventListener('keydown', (e) => {
   sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300);
+  const idleShown = !$('#idleNote').classList.contains('hidden');
+  idleAt = Date.now();
+  if (idleShown) { e.preventDefault(); $('#idleNote').classList.add('hidden'); return; } // "press OK to stay"
+  if (!$('#stillAsk').classList.contains('hidden')) {
+    e.preventDefault();
+    if (['Enter', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) ws.send({ t: 'review', op: 'still' });
+    else if (['Escape', 'Backspace', 'GoBack'].includes(e.key)) ws.send({ t: 'review', op: 'close' });
+    return;
+  }
   if (pendingSwitch) {
     const yes = $('#switchYes'), no = $('#switchNo');
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const t = document.activeElement === yes ? no : yes; t.focus(); yes.classList.toggle('focus', t === yes); no.classList.toggle('focus', t === no); e.preventDefault(); }
@@ -454,7 +501,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menuAct(it[menuIdx].dataset.act); }
   else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); menuBack(); }
 });
-document.addEventListener('pointerdown', () => { sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
+document.addEventListener('pointerdown', () => { idleAt = Date.now(); sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
 document.addEventListener('mousemove', () => { document.body.classList.add('mouse'); clearTimeout(mouseT); mouseT = setTimeout(() => document.body.classList.remove('mouse'), 3000); });
 

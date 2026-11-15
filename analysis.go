@@ -55,6 +55,11 @@ func initAnalysis() {
 	if n, err := strconv.Atoi(os.Getenv("WT_ANALYSIS_THREADS")); err == nil && n > 0 && n <= 64 {
 		analysisThreads = n
 	}
+	// WT_REVIEW_IDLE: how long a review can sit unmoved before "Still reviewing?" (it closes 5 minutes later, or after
+	// half the idle time if that's shorter)
+	if d, err := time.ParseDuration(os.Getenv("WT_REVIEW_IDLE")); err == nil && d > 0 {
+		reviewIdle, reviewGrace = d, min(reviewGrace, d/2)
+	}
 	if analysisMode != "off" {
 		go reviewWorker()
 	}
@@ -117,13 +122,16 @@ type Cell struct {
 
 // ---- which game is reviewed ----
 
-// pastGame is the last finished game, kept when a rematch starts (or the players go back to the lobby) so its
-// review and game file stay available.
+const keepGames = 5 // finished games a room keeps (for their review and game file) once the next one starts
+
+// pastGame is a finished game, kept when a rematch starts (or the players go back to the lobby) so its review and
+// game file stay available, and it stays listed under the players' finished games.
 type pastGame struct {
 	m      *Match
 	order  [2]int
 	seats  [2]*Seat // names and bots as they were; no tokens
 	gameNo int
+	ended  time.Time
 }
 
 type savedPast struct {
@@ -133,9 +141,10 @@ type savedPast struct {
 	Order   [2]int          `json:"order"`
 	Seats   [2]*Seat        `json:"seats"`
 	GameNo  int             `json:"gameNo"`
+	Ended   time.Time       `json:"ended"`
 }
 
-// reviewGame is the game a review is about: the current one once it's over, else the last one.
+// reviewGame is a finished game a review is about: the current one once it's over, or a kept one.
 type reviewGame struct {
 	m      *Match
 	order  [2]int
@@ -144,21 +153,58 @@ type reviewGame struct {
 	past   bool
 }
 
+func (p *pastGame) review() *reviewGame {
+	return &reviewGame{m: p.m, order: p.order, seats: p.seats, gameNo: p.gameNo, past: true}
+}
+
+// reviewTargetLocked is the game the room's own review buttons are about: the current game once it's over, else
+// (back in the lobby) the last one.
 func (r *Room) reviewTargetLocked() *reviewGame {
 	if r.overLocked() {
 		return &reviewGame{m: r.m, order: r.order, seats: r.seats, gameNo: r.gameNo}
 	}
-	if r.m == nil && r.past != nil {
-		p := r.past
-		return &reviewGame{m: p.m, order: p.order, seats: p.seats, gameNo: p.gameNo, past: true}
+	if r.m == nil && len(r.games) > 0 {
+		return r.games[len(r.games)-1].review()
+	}
+	return nil
+}
+
+// gameLocked finds a finished game by number (0: the room's default, above).
+func (r *Room) gameLocked(no int) *reviewGame {
+	if no == 0 {
+		return r.reviewTargetLocked()
+	}
+	if r.overLocked() && r.gameNo == no {
+		return r.reviewTargetLocked()
+	}
+	for _, p := range r.games {
+		if p.gameNo == no {
+			return p.review()
+		}
+	}
+	return nil
+}
+
+// gameByReviewLocked finds the game an analysis belongs to (nil once it's no longer kept).
+func (r *Room) gameByReviewLocked(rv *Review) *reviewGame {
+	if r.overLocked() && r.m.Review == rv {
+		return r.reviewTargetLocked()
+	}
+	for _, p := range r.games {
+		if p.m.Review == rv {
+			return p.review()
+		}
 	}
 	return nil
 }
 
 // archiveLocked keeps the current game if it's finished (called before a rematch or going back to the lobby).
 func (r *Room) archiveLocked() {
-	r.rv = reviewSession{}
+	r.closeReviewLocked()
 	if !r.overLocked() {
+		return
+	}
+	if n := len(r.games); n > 0 && r.games[n-1].m == r.m {
 		return
 	}
 	var seats [2]*Seat
@@ -167,7 +213,16 @@ func (r *Room) archiveLocked() {
 			seats[i] = &Seat{Name: s.Name, Bot: s.Bot, Level: s.Level}
 		}
 	}
-	r.past = &pastGame{m: r.m, order: r.order, seats: seats, gameNo: r.gameNo}
+	r.games = append(r.games, &pastGame{m: r.m, order: r.order, seats: seats, gameNo: r.gameNo, ended: time.Now()})
+	if len(r.games) > keepGames {
+		r.games = r.games[len(r.games)-keepGames:]
+	}
+}
+
+// player reports whether the client had a seat (as a person) in this game. Seat tokens stay with the room, so the
+// seat's holder now is the person who played it then.
+func (g *reviewGame) player(cl *Client) bool {
+	return cl.role == "player" && cl.seat >= 0 && g.human(cl.seat)
 }
 
 func (g *reviewGame) human(seat int) bool { return g.seats[seat] != nil && !g.seats[seat].Bot }
@@ -199,12 +254,24 @@ func (g *reviewGame) steps() []int {
 
 // ---- the live walkthrough ----
 
-// reviewSession is the walkthrough in progress (not saved): who drives it and which move is on screen.
+// The review closes by itself if nobody moves it on: after reviewIdle the TV and the driving phone ask
+// "Still reviewing?", and reviewGrace later it closes (the TV goes back to the result).
+var (
+	reviewIdle  = 10 * time.Minute
+	reviewGrace = 5 * time.Minute
+)
+
+// reviewSession is a walkthrough in progress (not saved). The room has one shared session, shown on the TV, used
+// while no game is being played; while a new game is on, a player looks back at an earlier one on their phone only
+// (a private session, kept on their connection).
 type reviewSession struct {
 	open   bool
-	driver int // seat of the phone driving it
+	game   int // the game's number
+	driver int // seat of the phone driving it; -1: the TV remote
 	pos    int // index into Steps; -1 = the overview
 	view   *stepView
+	id     int       // which opening this is, for the idle timers
+	warn   time.Time // "Still reviewing?" is showing; the review closes at this time
 }
 
 type prevMove struct {
@@ -228,71 +295,184 @@ type stepView struct {
 	Played    ReviewMove `json:"played"`
 }
 
-// openReviewLocked: a seated player opens the review. The first one drives; while their phone is connected,
-// the other follows along.
-func (r *Room) openReviewLocked(cl *Client) {
-	g := r.reviewTargetLocked()
-	if !analysisOn() || g == nil || cl.seat < 0 || !g.human(cl.seat) {
+// openReviewLocked: a player (or the TV remote) opens the review of a finished game (0: the room's default one).
+// In the shared session the first one drives; while their phone is connected, the other player follows along.
+func (r *Room) openReviewLocked(cl *Client, no int) {
+	g := r.gameLocked(no)
+	if !analysisOn() || g == nil || !(g.player(cl) || cl.role == "tv" && g.human(0) || cl.role == "tv" && g.human(1)) {
 		return
 	}
-	if r.rv.open && r.rv.driver != cl.seat && r.seatConnected(r.rv.driver) {
-		sendJSON(cl, map[string]any{"t": "notice", "msg": g.names()[r.rv.driver] + " is going through the analysis — follow along here or on the TV"})
+	driver := cl.seat
+	if cl.role == "tv" {
+		driver = -1
+	}
+	private := r.playingLocked() // a new game is on: look back on this phone only
+	if private && cl.role == "tv" {
+		return
+	}
+	if !private && r.rv.open && r.rv.driver != driver && r.driverHereLocked() {
+		who := "The TV remote"
+		if r.rv.driver >= 0 {
+			who = g.names()[r.rv.driver]
+		}
+		sendJSON(cl, map[string]any{"t": "notice", "msg": who + " is going through a game review — follow along here or on the TV"})
 		return
 	}
 	if g.m.Review == nil {
 		g.m.Review = &Review{Depth: analysisMode, Steps: g.steps(), Turns: map[int]*TurnReview{}}
 	}
-	if !r.rv.open {
-		r.rv = reviewSession{open: true, pos: -1}
-	}
-	r.rv.driver = cl.seat
 	if !g.m.Review.complete() && !reviewQ.has(g.m.Review) {
 		if !reviewQ.add(r, g.m.Review) {
 			stats.LimitReview.Add(1)
-			r.rv = reviewSession{}
 			r.errTo(cl, "The analyser is busy with other games — try again in a few minutes")
 			return
 		}
 		stats.Reviews.Add(1)
 	}
-	r.setStepLocked(g, r.rv.pos)
+	if private {
+		if cl.rv == nil || !cl.rv.open || cl.rv.game != g.gameNo {
+			cl.rv = &reviewSession{open: true, game: g.gameNo, driver: cl.seat, pos: -1}
+		}
+		r.setStepLocked(cl.rv, g, cl.rv.pos)
+		sendJSON(cl, r.stateFor(cl))
+		return
+	}
+	cl.rv = nil
+	if !r.rv.open || r.rv.game != g.gameNo {
+		r.reviewIDs++
+		r.rv = reviewSession{open: true, game: g.gameNo, pos: -1, id: r.reviewIDs}
+	}
+	r.rv.driver = driver
+	r.setStepLocked(&r.rv, g, r.rv.pos)
+	r.touchReviewLocked()
 	r.broadcastLocked()
 }
 
-// canDriveLocked: the driving phone, or the TV remote once that phone has gone.
-func (r *Room) canDriveLocked(cl *Client) bool {
-	if !r.rv.open {
+// driverHereLocked: the shared session's driver is still around (a connected phone; the remote counts as gone, so a
+// phone can always take over from it).
+func (r *Room) driverHereLocked() bool {
+	d := r.rv.driver
+	if d < 0 {
 		return false
 	}
-	if cl.seat >= 0 && cl.seat == r.rv.driver {
+	g := r.gameLocked(r.rv.game)
+	return r.seatConnected(d) && g != nil && g.human(d)
+}
+
+// sessionFor is the walkthrough a client sees: their private one, else the shared one if the game was theirs (the
+// TV always sees the shared one).
+func (r *Room) sessionFor(cl *Client) (*reviewSession, *reviewGame) {
+	if cl.rv != nil && cl.rv.open {
+		if g := r.gameLocked(cl.rv.game); g != nil {
+			return cl.rv, g
+		}
+		cl.rv = nil
+	}
+	if r.rv.open {
+		if g := r.gameLocked(r.rv.game); g != nil && (cl.role == "tv" || g.player(cl)) {
+			return &r.rv, g
+		}
+	}
+	return nil, nil
+}
+
+// canDriveLocked: the phone driving it (or owning a private one), or the TV remote once no phone drives.
+func (r *Room) canDriveLocked(cl *Client, s *reviewSession) bool {
+	if s == nil || !s.open {
+		return false
+	}
+	if s != &r.rv {
+		return s == cl.rv
+	}
+	if cl.role == "player" && cl.seat >= 0 && cl.seat == s.driver {
 		return true
 	}
-	return cl.role == "tv" && !r.seatConnected(r.rv.driver)
+	return cl.role == "tv" && !r.driverHereLocked()
 }
 
 func (r *Room) reviewMsgLocked(cl *Client, m inMsg) {
+	if m.Op == "open" {
+		r.openReviewLocked(cl, m.Game)
+		return
+	}
+	s, g := r.sessionFor(cl)
+	if s == nil {
+		return
+	}
+	shared := s == &r.rv
 	switch m.Op {
-	case "open":
-		r.openReviewLocked(cl)
 	case "step":
-		g := r.reviewTargetLocked()
-		if g == nil || g.m.Review == nil || m.Pos == nil || !r.canDriveLocked(cl) {
+		if m.Pos == nil || !r.canDriveLocked(cl, s) {
 			return
 		}
-		r.setStepLocked(g, *m.Pos)
-		r.broadcastLocked()
-	case "close":
-		if r.canDriveLocked(cl) {
-			r.rv = reviewSession{}
-			r.broadcastLocked()
+		r.setStepLocked(s, g, *m.Pos)
+	case "still": // "Still reviewing?" answered: anyone who can see it
+		if !shared {
+			return
 		}
+	case "close":
+		if !r.canDriveLocked(cl, s) {
+			return
+		}
+		if !shared {
+			cl.rv = nil
+			sendJSON(cl, r.stateFor(cl))
+			return
+		}
+		r.closeReviewLocked()
+		r.broadcastLocked()
+		return
+	default:
+		return
+	}
+	if !shared {
+		sendJSON(cl, r.stateFor(cl))
+		return
+	}
+	r.touchReviewLocked()
+	r.broadcastLocked()
+}
+
+func (r *Room) closeReviewLocked() {
+	r.rv = reviewSession{}
+	if r.rvTimer != nil {
+		r.rvTimer.Stop()
+		r.rvTimer = nil
 	}
 }
 
-func (r *Room) setStepLocked(g *reviewGame, pos int) {
+// touchReviewLocked restarts the shared session's idle countdown (it was opened, moved on, or "Still reviewing?"
+// was answered).
+func (r *Room) touchReviewLocked() {
+	r.rv.warn = time.Time{}
+	if r.rvTimer != nil {
+		r.rvTimer.Stop()
+	}
+	id := r.rv.id
+	r.rvTimer = time.AfterFunc(reviewIdle, func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if !r.rv.open || r.rv.id != id || r.deleted {
+			return
+		}
+		r.rv.warn = time.Now().Add(reviewGrace)
+		r.broadcastLocked()
+		r.rvTimer = time.AfterFunc(reviewGrace, func() {
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			if !r.rv.open || r.rv.id != id || r.rv.warn.IsZero() || r.deleted {
+				return
+			}
+			r.closeReviewLocked()
+			r.broadcastLocked()
+		})
+	})
+}
+
+func (r *Room) setStepLocked(s *reviewSession, g *reviewGame, pos int) {
 	rv := g.m.Review
 	pos = max(-1, min(pos, len(rv.Steps)-1))
-	r.rv.pos, r.rv.view = pos, nil
+	s.pos, s.view = pos, nil
 	if pos < 0 {
 		return
 	}
@@ -301,7 +481,7 @@ func (r *Room) setStepLocked(g *reviewGame, pos int) {
 		slog.Warn("review step", "room", r.Code, "err", err)
 		return
 	}
-	r.rv.view = v
+	s.view = v
 }
 
 func buildStepView(g *reviewGame, ev int) (*stepView, error) {
@@ -374,32 +554,32 @@ func eventMove(evt *pb.GameEvent) ReviewMove {
 	return ReviewMove{}
 }
 
-// reviewViewLocked is the review part of a client's state: whether a review can be opened, and the walkthrough.
-// Spectators' phones get nothing; the TV shows the walkthrough while it's open.
+// reviewViewLocked is the review part of a client's state: whether a review can be opened (for the room's default
+// game), and the walkthrough the client is in. Spectators' phones get nothing; the TV shows the shared walkthrough.
 func (r *Room) reviewViewLocked(cl *Client) map[string]any {
-	g := r.reviewTargetLocked()
-	if g == nil {
-		return nil
+	var out map[string]any
+	if g := r.reviewTargetLocked(); g != nil && (g.player(cl) || cl.role == "tv") {
+		// with the analyser off (WT_ANALYSIS=off), players still get the game file
+		out = map[string]any{"available": true, "analysis": analysisOn(), "past": g.past, "gameNo": g.gameNo, "you": g.player(cl),
+			"tvCan": cl.role == "tv" && analysisOn() && (g.human(0) || g.human(1))}
 	}
-	player := cl.seat >= 0 && g.human(cl.seat)
-	if !player && cl.role != "tv" {
-		return nil
-	}
-	// with the analyser off (WT_ANALYSIS=off), players still get the game file
-	out := map[string]any{"available": true, "analysis": analysisOn(), "past": g.past, "gameNo": g.gameNo, "you": player}
-	if !r.rv.open || !analysisOn() {
+	s, g := r.sessionFor(cl)
+	if s == nil || !analysisOn() {
 		return out
+	}
+	if out == nil {
+		out = map[string]any{"available": true, "analysis": true}
 	}
 	rv := g.m.Review
 	h := g.m.eng.tp.History()
 	seats := make([]map[string]any, 2)
 	names := g.names()
 	for i := range seats {
-		s := map[string]any{"name": names[i], "bot": g.seats[i] != nil && g.seats[i].Bot}
+		x := map[string]any{"name": names[i], "bot": g.seats[i] != nil && g.seats[i].Bot}
 		if g.seats[i] != nil && g.seats[i].Bot {
-			s["level"] = botLevelFor(g.seats[i])
+			x["level"] = botLevelFor(g.seats[i])
 		}
-		seats[i] = s
+		seats[i] = x
 	}
 	marks := make([]map[string]any, len(rv.Steps))
 	for k, ev := range rv.Steps {
@@ -413,10 +593,14 @@ func (r *Room) reviewViewLocked(cl *Client) map[string]any {
 	for i := 0; i < 2; i++ {
 		finals[i] = g.m.eng.Score(g.engIdx(i)) + g.m.Adj[i]
 	}
+	shared := s == &r.rv
 	out["open"] = true
-	out["driver"] = r.rv.driver
-	out["driverHere"] = r.seatConnected(r.rv.driver) && !(g.seats[r.rv.driver] != nil && g.seats[r.rv.driver].Bot)
-	out["pos"] = r.rv.pos
+	out["game"] = g.gameNo
+	out["shared"] = shared
+	out["you"] = g.player(cl)
+	out["driver"] = s.driver
+	out["driverHere"] = !shared || r.driverHereLocked()
+	out["pos"] = s.pos
 	out["marks"] = marks
 	out["done"] = len(rv.Turns)
 	out["depth"] = rv.Depth
@@ -426,7 +610,10 @@ func (r *Room) reviewViewLocked(cl *Client) map[string]any {
 	out["lexicon"] = g.m.eng.Lexicon
 	out["bonuses"] = g.m.eng.Bonuses()
 	out["board"] = g.m.eng.Board() // the final position, for the overview
-	if v := r.rv.view; v != nil {
+	if shared && !s.warn.IsZero() {
+		out["closeIn"] = max(0, time.Until(s.warn).Milliseconds()) // "Still reviewing?"
+	}
+	if v := s.view; v != nil {
 		out["step"] = v
 		out["turn"] = rv.Turns[v.Ev]
 	}
@@ -515,8 +702,8 @@ func reviewWorker() {
 func runReview(j reviewJob) {
 	r, rv := j.r, j.rv
 	r.mu.Lock()
-	g := r.reviewTargetLocked()
-	if g == nil || g.m.Review != rv || r.deleted {
+	g := r.gameByReviewLocked(rv)
+	if g == nil || r.deleted {
 		r.mu.Unlock()
 		return
 	}
@@ -532,12 +719,11 @@ func runReview(j reviewJob) {
 	an := gameanalysis.New(macCfg, analysisConfig(), "woogles-tv")
 	for {
 		r.mu.Lock()
-		g := r.reviewTargetLocked()
-		if g == nil || g.m.Review != rv || r.deleted {
+		if r.gameByReviewLocked(rv) == nil || r.deleted {
 			r.mu.Unlock()
 			return
 		}
-		ev := nextTurn(rv, r.rv)
+		ev := nextTurn(rv, r.onScreenLocked(rv))
 		r.mu.Unlock()
 		if ev < 0 {
 			return
@@ -545,7 +731,7 @@ func runReview(j reviewJob) {
 		tr := analyseTurn(an, h, rules, ev)
 		stats.ReviewMoves.Add(1)
 		r.mu.Lock()
-		if g := r.reviewTargetLocked(); g != nil && g.m.Review == rv {
+		if r.gameByReviewLocked(rv) != nil {
 			rv.Turns[ev] = tr
 			r.broadcastLocked()
 		}
@@ -553,13 +739,25 @@ func runReview(j reviewJob) {
 	}
 }
 
+// onScreenLocked: where a walkthrough of this analysis is (the shared one first), or 0.
+func (r *Room) onScreenLocked(rv *Review) int {
+	if g := r.gameLocked(r.rv.game); r.rv.open && g != nil && g.m.Review == rv {
+		return r.rv.pos
+	}
+	for c := range r.clients {
+		if c.rv != nil && c.rv.open {
+			if g := r.gameLocked(c.rv.game); g != nil && g.m.Review == rv {
+				return c.rv.pos
+			}
+		}
+	}
+	return 0
+}
+
 // nextTurn picks the move to analyse next: the one on screen, or the first one after it not done yet,
 // else the first one not done.
-func nextTurn(rv *Review, s reviewSession) int {
-	from := 0
-	if s.open && s.pos > 0 {
-		from = s.pos
-	}
+func nextTurn(rv *Review, pos int) int {
+	from := max(pos, 0)
 	for k := 0; k < len(rv.Steps); k++ {
 		ev := rv.Steps[(from+k)%len(rv.Steps)]
 		if rv.Turns[ev] == nil {
@@ -742,9 +940,10 @@ func describedMove(desc string, score int, board []string) ReviewMove {
 
 var gcgNick = regexp.MustCompile(`[^A-Za-z0-9_\-]+`)
 
-// gcgLocked returns the reviewed game as GCG, with the players' names as they appear in the game.
-func (r *Room) gcgLocked() (string, string, error) {
-	g := r.reviewTargetLocked()
+// gcgLocked returns a finished game (0: the room's default one) as GCG, with the players' names as they appear in
+// the game.
+func (r *Room) gcgLocked(no int) (string, string, error) {
+	g := r.gameLocked(no)
 	if g == nil {
 		return "", "", fmt.Errorf("no finished game")
 	}
@@ -769,9 +968,12 @@ func (r *Room) gcgLocked() (string, string, error) {
 	return s, file, nil
 }
 
-// POST /api/gcg {code, token}: the game file, for the room's seated players only.
+// POST /api/gcg {code, token, game}: a finished game's file, for its players only.
 func handleGCG(w http.ResponseWriter, req *http.Request) {
-	var in struct{ Code, Token string }
+	var in struct {
+		Code, Token string
+		Game        int
+	}
 	if !readJSON(w, req, &in) {
 		return
 	}
@@ -786,7 +988,11 @@ func handleGCG(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	r.mu.Lock()
-	s, file, err := r.gcgLocked()
+	var s, file string
+	err := fmt.Errorf("not your game")
+	if g := r.gameLocked(in.Game); g != nil && g.human(seat) {
+		s, file, err = r.gcgLocked(in.Game)
+	}
 	r.mu.Unlock()
 	if err != nil {
 		writeJSON(w, 404, map[string]string{"error": err.Error()})

@@ -70,7 +70,7 @@
     <p id="reason" class="muted"></p>
     <div id="finals"></div>
     <p class="hint">Press <b>Rematch</b> on a phone to play again</p>
-    <p class="hint hidden" id="rvHint">📊 Go through the game move by move: tap <b>Analysis</b> on a player's phone</p>
+    <p class="hint hidden" id="rvHint">📊 Go through the game move by move: press <b>OK</b> → <b>Game review</b>, or tap <b>Analysis</b> on a player's phone</p>
   </div>
 </div>
 
@@ -78,6 +78,7 @@
   <div class="menuCard">
     <div class="cardTitle" id="menuTitle">Options</div>
     <!-- main page; the announcer and music settings have pages of their own so the menu fits on any TV -->
+    <button class="mitem hidden" data-page="main" data-act="review" id="mReview">📊 Game review</button>
     <button class="mitem" data-page="main" data-act="theme">Theme: <b id="mTheme"></b></button>
     <button class="mitem" data-page="main" data-act="sound">Volume: <b id="mSound"></b></button>
     <button class="mitem" data-page="main" data-act="clock">Clock: <b id="mClock"></b></button>
@@ -115,6 +116,12 @@
   <div class="cardTitle">Switch games?</div><p style="font-size:3vh;margin:1vh 0 3vh"><b id="switchFrom"></b> wants to show their game on this TV.</p>
   <button class="mitem focus" id="switchYes">Switch to their game</button><button class="mitem" id="switchNo">Keep this game</button>
 </div></div>
+<!-- an idle review asks before it closes; an idle result moves on to a fresh game screen -->
+<div id="stillAsk" class="overlay hidden"><div class="menuCard" style="text-align:center">
+  <div class="cardTitle">Still reviewing?</div><p style="font-size:3vh;margin:1vh 0 3vh">Press <b>OK</b> to keep going. The review closes in <b id="stillLeft"></b>.</p>
+  <button class="mitem focus" id="stillYes">Keep reviewing</button>
+</div></div>
+<div id="idleNote" class="hidden">Getting ready for a new game in <b></b> · press <b>OK</b> to stay on this one</div>
 <div id="bingo" class="hidden"></div>
 <div id="defCard" class="hidden" aria-live="polite"></div>
 <div id="npBig" class="np hidden"><img alt=""><div class="npt"><small>Now playing · <span class="st"></span></small><b></b><span class="ar"></span></div></div>

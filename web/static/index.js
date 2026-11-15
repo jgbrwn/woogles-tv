@@ -48,7 +48,11 @@ const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m 
 const IDLE = 3 * 24 * 3600e3; // in-progress games untouched this long count as abandoned
 let gameRows = [], filter = localStorage.getItem('wt_games_filter') || 'active';
 const forget = (code) => { for (const p of ['tok', 'key', 'tvkey']) localStorage.removeItem(`wt_${p}_${code}`); };
-const isDone = ({ summary: sm, seat }) => sm.phase === 'over' || seat < 0 || Date.now() - sm.updated > IDLE;
+const isDone = ({ summary: sm, seat, past }) => !!past || sm.phase === 'over' || seat < 0 || Date.now() - sm.updated > IDLE;
+// Earlier finished games in a room (kept after a rematch), each listed on its own; ✕ hides one on this phone.
+const HIDDEN = 'wt_hidden_games';
+const hiddenGames = () => { try { return new Set(JSON.parse(localStorage.getItem(HIDDEN) || '[]')); } catch { return new Set(); } };
+const hideGame = (id) => { const h = hiddenGames(); h.add(id); localStorage.setItem(HIDDEN, JSON.stringify([...h].slice(-200))); };
 
 async function loadGames() {
   const codes = new Set();
@@ -62,7 +66,12 @@ async function loadGames() {
   try { res = await (await fetch('/api/summaries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) })).json(); } catch { return; }
   // games the server no longer has (expired or removed) drop off automatically
   for (const r of res) if (r.gone) forget(r.code);
+  const hidden = hiddenGames();
   gameRows = res.filter((r) => !r.gone && !(r.summary.phase === 'lobby' && r.seat < 0));
+  for (const r of res) for (const p of (!r.gone && r.summary.past) || []) {
+    if (hidden.has(`${r.code}/${p.game}`)) continue;
+    gameRows.push({ seat: r.seat, past: p, summary: { code: r.code, phase: 'over', names: p.names, bots: p.bots, scores: p.scores, winner: p.winner, lexicon: p.lexicon, updated: p.ended } });
+  }
   drawGames();
 }
 function drawGames() {
@@ -74,18 +83,19 @@ function drawGames() {
   const rows = (filter === 'active' ? act : done).sort((a, b) =>
     (b.summary.turn === b.seat && b.seat >= 0) - (a.summary.turn === a.seat && a.seat >= 0) || b.summary.updated - a.summary.updated);
   const box = $('gamesList'); box.innerHTML = '';
-  for (const { summary: sm, seat } of rows) {
-    const a = document.createElement('a'); a.className = 'g'; a.href = '/p/' + sm.code;
+  for (const { summary: sm, seat, past } of rows) {
+    const a = document.createElement('a'); a.className = 'g'; a.href = '/p/' + sm.code + (past ? '?g=' + past.game : '');
     const nm = sm.names.map((n, i) => (i === seat ? 'You' : n || 'open seat'));
     const mine = seat >= 0 && sm.turn === seat && sm.phase === 'playing';
     const stale = sm.phase === 'playing' && Date.now() - sm.updated > IDLE;
     const tag = sm.phase === 'over' ? `<span class="tag">${seat < 0 ? 'Finished' : sm.winner === seat ? 'You won' : sm.winner === -1 ? 'Tie' : 'You lost'}</span>`
       : stale || (seat < 0 && sm.phase === 'playing') ? '<span class="tag old">Abandoned</span>'
       : mine ? '<span class="tag turn">Your turn</span>' : sm.phase === 'playing' ? '<span class="tag live">In progress</span>' : '<span class="tag">Lobby</span>';
-    a.innerHTML = `<div><div class="n">${tag}${esc(nm[0])} vs ${esc(nm[1])}</div><div class="m">${sm.lexicon} · code ${sm.code} · ${ago(sm.updated)}${seat < 0 ? ' · watching' : ''}</div></div>
+    a.innerHTML = `<div><div class="n">${tag}${esc(nm[0])} vs ${esc(nm[1])}</div><div class="m">${sm.lexicon} · code ${sm.code}${past ? ` · game ${past.game}` : ''} · ${ago(sm.updated)}${seat < 0 ? ' · watching' : ''}${past?.analysed ? ' · 📊 reviewed' : ''}</div></div>
       <div class="rt"><span class="sc">${sm.phase === 'lobby' ? '' : `${sm.scores[0]}–${sm.scores[1]}`}</span><button class="x" type="button" title="Remove from this list" aria-label="Remove">✕</button></div>`;
     a.querySelector('.x').onclick = (e) => {
       e.preventDefault(); e.stopPropagation();
+      if (past) { hideGame(`${sm.code}/${past.game}`); gameRows = gameRows.filter((r) => r.past !== past); drawGames(); return; }
       const live = sm.phase === 'playing' && seat >= 0 && !stale;
       if (live && !confirm(`Remove ${nm[0]} vs ${nm[1]} from your list?\nYou won't be able to get back into this game from this phone.`)) return;
       forget(sm.code); gameRows = gameRows.filter((r) => r.summary.code !== sm.code); drawGames();

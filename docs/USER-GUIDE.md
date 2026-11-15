@@ -10,6 +10,7 @@ Each **phone** is a private rack and the controller. You can play another person
 - [5. Rules, clocks and the computer](#5-rules-clocks-and-the-computer)
 - [6. Several games, rejoining and watching](#6-several-games-rejoining-and-watching)
 - [Game review (analysis) and the game file](#game-review-analysis-and-the-game-file)
+- [When everyone wanders off](#when-everyone-wanders-off)
 - [7. Installing the phone app (PWA)](#7-installing-the-phone-app-pwa)
 - [8. Troubleshooting](#8-troubleshooting)
 
@@ -58,8 +59,8 @@ player goes first. **Change settings** returns to the lobby. **🏠 Home** leave
 *Your games → Finished* on the home page until a rematch starts in that room.
 
 ### Game review (analysis) and the game file
-After a game, each player's phone has **📊 Analysis & game file** (on the results card and under ☰; after a rematch or
-back in the lobby, **📊 Last game: analysis & game file**). Spectators don't get it.
+After a game, each player's phone has **📊 Analysis & game file** (on the results card and under ☰; back in the lobby,
+**📊 Last game: analysis & game file**), and the TV has it under OK → **📊 Game review**. Spectators don't get it.
 
 - **Walkthrough.** Macondo, the engine behind Woogles.io, goes through the game on the server and grades every move:
   **Best move**, or a **small**, **medium** or **large mistake** (plus *missed bingo* and, in the endgame, *cost the
@@ -74,13 +75,27 @@ back in the lobby, **📊 Last game: analysis & game file**). Spectators don't g
 - **On the TV.** The walkthrough shows on the TV too, big: the move played, then the best move in green, the verdict
   and the timeline. Background music pauses. If the announcer is on, it reads out each move and what the best play
   was; turn that off with OK → **Announcer ›** → **Game review: Silent**.
-- **Who's in charge.** The first player to open it drives, on their phone and the TV. The other player's phone follows
-  along. If the driver's phone leaves, the other player can **Take over**, or the TV remote steps through (◀ ▶, Back
-  to finish).
+- **Who's in charge.** Whoever opens it drives, on their phone and the TV. The other player's phone follows along. If
+  the driver's phone leaves, the other player can **Take over**, or the TV remote steps through (◀ ▶, Back to finish).
+  Opened from the TV, the remote drives until a phone taps **Take over**.
+- **Left alone**, a review asks **Still reviewing?** (on the TV and the phones) after 10 minutes without a move. Press
+  OK on the remote or **Keep reviewing** on a phone to carry on; otherwise it closes 5 minutes later and the TV goes back
+  to the result.
 - **Game file.** The second tab downloads the game as a **GCG** file (the standard format, which Woogles.io, Macondo
   and Quackle can open), or shares or copies it. It's ready straight away, no analysis needed.
 - The analysis is saved with the game: opening it again is instant. A game that's been analysed is kept for 7 days
   (instead of 3).
+- **Earlier games.** A rematch doesn't lose the game before it: each room keeps its last 5 finished games, and each one
+  is listed on its own under *Your games → Finished* on the home page (with *game 2*, *📊 reviewed* and so on). Tapping
+  one opens its review and game file. If a new game is being played in that room, the look back is on your phone only
+  and the TV stays on the game. ✕ hides one game from the list on this phone.
+
+### When everyone wanders off
+A finished game stays on the TV for 20 minutes. If nothing happens in that time, the TV gets ready for the next game
+(a fresh QR code, as if you'd picked **New game**), after a minute's countdown at the bottom of the screen; press OK to
+keep the result up. Nothing is lost: the game is still under OK → **Games on this TV** and in each player's *Your
+games*. To play the same people again after that, start the rematch on a phone and type the TV code under **Show on
+TV**.
 
 ## 3. Playing on your phone
 

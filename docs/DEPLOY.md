@@ -195,6 +195,7 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `WT_MUSIC_STREAMS` | empty (off) | Internet radio stations the TV can play as background music: `Name=URL` entries separated by commas ([Background music](#background-music)) |
 | `WT_ANALYSIS` | `quick` | Post-game analysis ([Game review](#game-review-analysis)): `quick`, `deep` (Macondo's own settings, about 10× slower) or `off` (players still get the GCG game file) |
 | `WT_ANALYSIS_THREADS` | 1 | CPU cores one analysis may use. One game is analysed at a time, server-wide |
+| `WT_REVIEW_IDLE` | `10m` | How long a game review can sit unmoved before it asks "Still reviewing?" (it closes 5 minutes later, or after half this if shorter) |
 | `WT_MUSIC_NOWPLAYING` | on | `off` stops the server from reading song titles and covers from the streams |
 | `-admin` / `WT_ADMIN_ADDR` | off | Address for the stats listener, e.g. `127.0.0.1:8421`: `GET /stats` there. Keep it on `127.0.0.1` ([Stats](#stats)) |
 | `WT_STATS_TOKEN` | off | Turns on `GET /api/stats` on the public site, for requests with `Authorization: Bearer <token>`. At least 24 characters ([Stats](#stats)) |
@@ -219,8 +220,9 @@ nothing is sent elsewhere.
 - **Speed.** Measured on a 2-core VM: `quick` takes 1–4 s a move (about a minute for a game), `deep` 15–40 s a move
   (8–12 minutes on both cores). Moves are analysed in the order they're viewed and pushed as they finish, so the
   walkthrough starts at once. Use `deep` only with cores to spare, e.g. `WT_ANALYSIS=deep WT_ANALYSIS_THREADS=4`.
-- **Data.** The analysis lives in the game's room file. A rematch keeps the previous game (one) so it can still be
-  reviewed. Analysed games are kept 7 days.
+- **Data.** The analysis lives in the game's room file. A room keeps its last 5 finished games (after a rematch or a
+  return to the lobby), so players can still review them and get their game files from *Your games*. Rooms with an
+  analysed game are kept 7 days.
 - The GCG game file (`POST /api/gcg`) is available to the game's seated players only, even with `WT_ANALYSIS=off`.
 
 ## Background music

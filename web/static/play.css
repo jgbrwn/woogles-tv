@@ -302,3 +302,9 @@ body.watching #recent { flex-grow: 1; }
 .tile.rvPlayed { box-shadow: 0 0 0 2px var(--secondary), 0 2px 6px rgba(0,0,0,.35); z-index: 2; }
 .tile.rvBest { background: color-mix(in srgb, var(--good) 55%, var(--t-bg)); box-shadow: 0 0 0 2px var(--good), 0 2px 6px rgba(0,0,0,.35); z-index: 2; }
 #gcgDl.solo { grid-column: 1 / -1; }
+
+/* "Still reviewing?" (the shared review closes by itself when nobody moves it on) */
+#rvIdle { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: var(--card); border-top: 1px solid var(--line, rgba(127,127,127,.25)); font-weight: 700; }
+#rvIdle.hidden { display: none; }
+#rvIdle b { font-family: 'Roboto Mono', monospace; }
+#rvIdle .btn { padding: .6em 1em; white-space: nowrap; }

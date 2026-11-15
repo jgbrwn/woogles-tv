@@ -36,7 +36,8 @@ type Client struct {
 	seat   int    // -1 if not seated
 	send   chan []byte
 	bucket *tokenBucket
-	voice  bool // TV only: its announcer is on and can speak (reported by the TV)
+	voice  bool           // TV only: its announcer is on and can speak (reported by the TV)
+	rv     *reviewSession // a player's own look back at an earlier game while a new one is on (analysis.go)
 }
 
 type Seat struct {
@@ -128,8 +129,10 @@ type Room struct {
 	linkLimit *tokenBucket
 	defLimit  *tokenBucket  // word definition lookups
 	ttsLimit  *tokenBucket  // server speech (tts.go), created on first use
-	past      *pastGame     // the last finished game, kept for its review and game file (analysis.go)
-	rv        reviewSession // the review walkthrough in progress
+	games     []*pastGame   // finished games kept for their review and game file, oldest first (analysis.go)
+	rv        reviewSession // the shared review walkthrough (on the TV)
+	rvTimer   *time.Timer   // its idle countdown
+	reviewIDs int
 }
 
 var globalJoin = newTokenBucket(5, 100) // 300/minute across everyone: code lookups + TV links
@@ -286,7 +289,8 @@ type savedRoom struct {
 	Match    *Match          `json:"match,omitempty"`
 	Lexicon  string          `json:"lexicon,omitempty"` // lexicon of the current match
 	History  json.RawMessage `json:"history,omitempty"`
-	Past     *savedPast      `json:"past,omitempty"` // the last finished game (analysis.go)
+	Games    []*savedPast    `json:"games,omitempty"` // finished games kept (analysis.go)
+	Past     *savedPast      `json:"past,omitempty"`  // read only: the one finished game kept by earlier versions
 }
 
 func (r *Room) file() string { return filepath.Join(roomsDir, r.Code+".json") }
@@ -308,9 +312,9 @@ func (r *Room) saveLocked() {
 		}
 		sr.Match, sr.Lexicon, sr.History = r.m, r.m.eng.Lexicon, h
 	}
-	if p := r.past; p != nil {
+	for _, p := range r.games {
 		if h, err := p.m.eng.HistoryJSON(); err == nil {
-			sr.Past = &savedPast{Match: p.m, Lexicon: p.m.eng.Lexicon, History: h, Order: p.order, Seats: p.seats, GameNo: p.gameNo}
+			sr.Games = append(sr.Games, &savedPast{Match: p.m, Lexicon: p.m.eng.Lexicon, History: h, Order: p.order, Seats: p.seats, GameNo: p.gameNo, Ended: p.ended})
 		}
 	}
 	b, err := json.Marshal(sr)
@@ -344,7 +348,14 @@ func loadRooms(dir string) error {
 			continue
 		}
 		ttl := roomIdleTTL
-		if sr.Match != nil && (sr.Match.EndReason == "" || sr.Match.Review != nil) || sr.Past != nil && sr.Past.Match != nil && sr.Past.Match.Review != nil {
+		if sr.Past != nil {
+			sr.Games = append(sr.Games, sr.Past)
+		}
+		analysed := false
+		for _, p := range sr.Games {
+			analysed = analysed || p != nil && p.Match != nil && p.Match.Review != nil
+		}
+		if sr.Match != nil && (sr.Match.EndReason == "" || sr.Match.Review != nil) || analysed {
 			ttl = gameIdleTTL // may be finished; the reaper re-checks precisely
 		}
 		if time.Since(sr.LastUsed) > ttl {
@@ -371,10 +382,17 @@ func loadRooms(dir string) error {
 				}
 			}
 		}
-		if p := sr.Past; p != nil && p.Match != nil && len(p.History) > 0 {
+		for _, p := range sr.Games {
+			if p == nil || p.Match == nil || len(p.History) == 0 {
+				continue
+			}
 			if eng, err := RestoreEngine(p.Lexicon, p.History); err == nil {
 				p.Match.eng = eng
-				r.past = &pastGame{m: p.Match, order: p.Order, seats: p.Seats, gameNo: p.GameNo}
+				ended := p.Ended
+				if ended.IsZero() {
+					ended = sr.LastUsed
+				}
+				r.games = append(r.games, &pastGame{m: p.Match, order: p.Order, seats: p.Seats, gameNo: p.GameNo, ended: ended})
 			}
 		}
 		rooms[r.Code] = r
@@ -405,8 +423,9 @@ type inMsg struct {
 	Music    string `json:"music"`
 	Station  *int   `json:"station"`
 	MusicVol string `json:"musicVol"`
-	Op       string `json:"op"`  // review: open, step, close
-	Pos      *int   `json:"pos"` // review: the move to show (-1: the overview)
+	Op       string `json:"op"`   // review: open, step, close
+	Pos      *int   `json:"pos"`  // review: the move to show (-1: the overview)
+	Game     int    `json:"game"` // review: which finished game (0: the room's latest)
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -940,24 +959,42 @@ func (r *Room) seatConnected(seat int) bool {
 }
 
 func (r *Room) ttlLocked() time.Duration {
-	if r.playingLocked() || r.m != nil && r.m.Review != nil || r.past != nil && r.past.m.Review != nil {
-		return gameIdleTTL // analysed games are kept as long as unfinished ones
+	if r.playingLocked() || r.m != nil && r.m.Review != nil {
+		return gameIdleTTL
+	}
+	for _, p := range r.games {
+		if p.m.Review != nil {
+			return gameIdleTTL // analysed games are kept as long as unfinished ones
+		}
 	}
 	return roomIdleTTL
 }
 
 // Summary is a short status for game lists (TV "Games on this TV", phone "Your games").
 type Summary struct {
-	Code    string   `json:"code"`
-	Phase   string   `json:"phase"`
-	Names   []string `json:"names"`
-	Bots    []bool   `json:"bots"`
-	Scores  []int    `json:"scores"`
-	Turn    int      `json:"turn"`
-	Winner  *int     `json:"winner,omitempty"`
-	Lexicon string   `json:"lexicon"`
-	Moves   int      `json:"moves"`
-	Updated int64    `json:"updated"` // unix ms
+	Code    string        `json:"code"`
+	Phase   string        `json:"phase"`
+	Names   []string      `json:"names"`
+	Bots    []bool        `json:"bots"`
+	Scores  []int         `json:"scores"`
+	Turn    int           `json:"turn"`
+	Winner  *int          `json:"winner,omitempty"`
+	Lexicon string        `json:"lexicon"`
+	Moves   int           `json:"moves"`
+	Updated int64         `json:"updated"`        // unix ms
+	Past    []PastSummary `json:"past,omitempty"` // earlier finished games in this room the caller played in
+}
+
+// PastSummary is an earlier finished game in a room, for the player's "Your games → Finished".
+type PastSummary struct {
+	Game     int      `json:"game"`
+	Names    []string `json:"names"`
+	Bots     []bool   `json:"bots"`
+	Scores   []int    `json:"scores"`
+	Winner   int      `json:"winner"`
+	Lexicon  string   `json:"lexicon"`
+	Ended    int64    `json:"ended"` // unix ms
+	Analysed bool     `json:"analysed"`
 }
 
 // summaryFor returns the room's summary if the caller holds the TV key, the join key or a seat token.
@@ -974,6 +1011,10 @@ func (r *Room) summaryFor(tvKey, key, token string) (*Summary, int, bool) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.summaryForLocked(seat)
+}
+
+func (r *Room) summaryForLocked(seat int) (*Summary, int, bool) {
 	sm := &Summary{Code: r.Code, Phase: "lobby", Names: []string{"", ""}, Bots: []bool{false, false}, Scores: []int{0, 0},
 		Turn: -1, Lexicon: r.settings.Lexicon, Updated: r.lastUsed.UnixMilli()}
 	for i, st := range r.seats {
@@ -993,6 +1034,27 @@ func (r *Room) summaryFor(tvKey, key, token string) (*Summary, int, bool) {
 		} else {
 			sm.Turn = r.seatOnTurn()
 		}
+	}
+	for _, p := range r.games {
+		if seat < 0 || p.seats[seat] == nil || p.seats[seat].Bot {
+			continue
+		}
+		ps := PastSummary{Game: p.gameNo, Names: []string{"", ""}, Bots: []bool{false, false}, Lexicon: p.m.eng.Lexicon,
+			Ended: p.ended.UnixMilli(), Analysed: p.m.Review != nil && p.m.Review.complete()}
+		g := p.review()
+		nm := g.names()
+		ps.Names = nm[:]
+		for i := 0; i < 2; i++ {
+			ps.Bots[i] = p.seats[i] != nil && p.seats[i].Bot
+			ps.Scores = append(ps.Scores, p.m.eng.Score(g.engIdx(i))+p.m.Adj[i])
+		}
+		ps.Winner = -1
+		if p.m.Winner != nil {
+			ps.Winner = *p.m.Winner
+		} else if ps.Scores[0] != ps.Scores[1] {
+			ps.Winner = map[bool]int{true: 0, false: 1}[ps.Scores[0] > ps.Scores[1]]
+		}
+		sm.Past = append(sm.Past, ps)
 	}
 	return sm, seat, true
 }
@@ -1110,7 +1172,7 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 	st := map[string]any{
 		"t": "state", "code": r.Code, "phase": phase, "settings": r.settings,
 		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes, "bots": botLevelViews, "tvs": r.tvCount(), "tvVoice": r.tvVoiceLocked(),
-		"seats": seats, "you": cl.seat, "role": cl.role, "gameNo": r.gameNo, "joinUrl": r.joinURL(),
+		"seats": seats, "you": cl.seat, "role": cl.role, "gameNo": r.gameNo, "joinUrl": r.joinURL(), "analysis": analysisOn(),
 	}
 	if rv := r.reviewViewLocked(cl); rv != nil {
 		st["review"] = rv

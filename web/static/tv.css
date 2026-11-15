@@ -120,7 +120,7 @@ body.tv.mouse { cursor: default; }
 .menuCard { background: var(--card); border-radius: 2vh; padding: 3vh; min-width: 60vh; display: flex; flex-direction: column; gap: 1vh; box-shadow: 0 2vh 8vh rgba(0,0,0,.3); }
 .mitem { text-align: left; padding: 1.8vh 2.4vh; border-radius: 1.2vh; font-size: 2.6vh; font-weight: 700; background: var(--card2); border: .3vh solid transparent; }
 .msub { display: block; margin-top: .4vh; font-size: 1.9vh; font-weight: 600; color: var(--muted); }
-#menu, #gamesMenu, #switchAsk { z-index: 20; } /* above the "now playing" card */
+#menu, #gamesMenu, #switchAsk, #stillAsk { z-index: 20; } /* above the "now playing" card */
 .mitem.offpage { display: none; }
 .mitem .more { float: right; color: var(--muted); font-weight: 900; }
 .menuCard { max-height: 94vh; overflow-y: auto; } /* a last resort: the pages are short enough for a 720p TV */
@@ -239,3 +239,8 @@ body.reviewing #players, body.reviewing #bagCard, body.reviewing #logCard { disp
 /* the move on the board: what was played, then the best move */
 .tile.rvPlayed { box-shadow: 0 0 0 .35vh var(--secondary), 0 .4vh 1vh rgba(0,0,0,.35); z-index: 2; }
 .tile.rvBest { background: color-mix(in srgb, var(--good) 55%, var(--t-bg)); box-shadow: 0 0 0 .35vh var(--good), 0 .4vh 1vh rgba(0,0,0,.35); z-index: 2; }
+
+/* "Getting ready for a new game in 0:42": the last minute before an idle result moves on */
+#idleNote { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 21; background: var(--card); color: var(--ink);
+  font-size: 2.6vh; font-weight: 700; padding: 1.4vh 3vh; border-radius: 99px; box-shadow: var(--shadow); white-space: nowrap; }
+#idleNote b:first-child { font-family: 'Roboto Mono', monospace; }
