@@ -48,10 +48,14 @@ type counters struct {
 	DefLookups     atomic.Int64 `json:"defLookups"`
 	DefCacheHits   atomic.Int64 `json:"defCacheHits"`
 	DefFailures    atomic.Int64 `json:"defFailures"`
+	Reviews        atomic.Int64 `json:"reviews"`        // game analyses started
+	ReviewMoves    atomic.Int64 `json:"reviewMoves"`    // moves analysed
+	GCGDownloads   atomic.Int64 `json:"gcgDownloads"`   // game files downloaded
 	LimitNewRoom   atomic.Int64 `json:"limitNewRoom"`   // refusals by each rate limit
 	LimitCodeQuery atomic.Int64 `json:"limitCodeQuery"` // code lookups and "Show on TV"
 	LimitTTS       atomic.Int64 `json:"limitTTS"`
 	LimitDefine    atomic.Int64 `json:"limitDefine"`
+	LimitReview    atomic.Int64 `json:"limitReview"`   // analyser queue full
 	LimitMessages  atomic.Int64 `json:"limitMessages"` // WebSocket messages dropped by flood protection
 	PeakClients    atomic.Int64 `json:"peakClients"`   // most connections at once
 	PeakRooms      atomic.Int64 `json:"peakRooms"`
@@ -332,7 +336,7 @@ func statsReport() map[string]any {
 		"memoryMB":   ms.Sys >> 20,
 		"heapMB":     ms.HeapAlloc >> 20,
 	}
-	features := map[string]any{"definitions": defs != nil && defs.enabled, "cast": os.Getenv("CAST_APP_ID") != "", "musicStations": len(musicStations)}
+	features := map[string]any{"definitions": defs != nil && defs.enabled, "cast": os.Getenv("CAST_APP_ID") != "", "musicStations": len(musicStations), "analysis": analysisMode}
 	if tts != nil {
 		features["serverVoice"] = map[string]any{"voices": len(tts.voices), "default": tts.voices[0].ID,
 			"cacheMB": tts.cache.megabytes()}

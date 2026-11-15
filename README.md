@@ -32,6 +32,7 @@ closet.
 - Clock warnings: chimes at 5 and 1 minute left, a 10-second countdown, and an alarm plus penalty tones in overtime.
 - Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, **Games on this TV** (switch between games in progress), new game.
 - Your tiles never appear on the TV; only submitted moves do.
+- **Game review** after the game, on the big screen: each move graded by Macondo (best, or a small, medium or large mistake), the best move shown on the board in green, other options with their winning chances, and the announcer reading it out. Driven from a player's phone or the remote.
 
 **On your phone** (any modern browser; installable as an app/PWA)
 - Tap a square (tap again to flip → / ↓), then tap tiles to type them in, or drag tiles onto the board.
@@ -39,6 +40,7 @@ closet.
 - **Drag tiles along your rack to rearrange them** (the others slide aside), or **Shuffle**.
 - A live score of your tentative move, visible only to you. Invalid words are rejected before they're played.
 - **Double-tap a word in the scorecard to hear what it means**, read by the TV's announcer (or your phone's), with the definition shown on screen.
+- **📊 Analysis & game file** after a game: step through your moves with Macondo's verdicts (on the TV too), and download, share or copy the game as a **GCG** file for Woogles.io, Macondo or Quackle.
 - 📋 scorecard overlay, 🔍 board zoom, unseen tiles (bag + opponent), swap, pass, blanks, pause, resign, rematch.
 - Phones, tall phones, **tablets** and landscape: the layout adapts (in landscape the board sits beside a full scorecard; tall screens show the latest moves under the board).
 - Sound & voice settings per phone: volume, clock warnings for your own clock (with vibration), and an optional announcer for games without a TV.

@@ -33,6 +33,7 @@
     <div class="field" id="botField">Computer strength <div class="seg wrap" id="botSeg"></div><small class="muted" id="botHelp"></small></div>
     <div class="field">Theme <div id="themeRow" class="themes"></div></div>
     <div class="field hidden" id="musicField">Music on the TV <button id="musicBtn" class="btn"></button></div>
+    <button id="rvLastBtn" class="btn hidden">📊 Last game: analysis &amp; game file</button>
     <button id="startBtn" class="btn primary big">Start game</button>
     <button id="botBtn" class="btn big">🤖 Play vs computer</button>
   </div>
@@ -66,8 +67,30 @@
   <div id="ovIcon">🏆</div>
   <h2 id="ovTitle"></h2><p id="ovReason" class="muted"></p><div id="ovScores"></div>
   <button id="rematchBtn" class="btn primary big">Rematch</button>
+  <button id="rvBtn" class="btn hidden">📊 Analysis &amp; game file</button>
   <div class="row2"><button id="ovBoardBtn" class="btn">See board</button><button id="lobbyBtn" class="btn">Change settings</button></div>
 </div></div>
+
+<!-- game review: the player who opens it drives (on this phone and the TV); the other player follows along -->
+<div id="review" class="hidden" role="dialog" aria-label="Game review">
+  <header class="rvTop"><b>Game review</b><div class="seg" id="rvTabs"><button data-v="walk" class="on">Walkthrough</button><button data-v="file">Game file</button></div>
+    <button id="rvClose" class="chip" aria-label="Close">✕</button></header>
+  <div id="rvWalk" class="rvScroll">
+    <div class="rvShowRow"><span id="rvCountP"></span><div class="seg" id="rvShow"><button data-v="played">Played</button><button data-v="best">Best</button></div></div>
+    <div id="rvBoard"></div>
+    <div id="rvCard"></div>
+    <div id="rvProgP"></div>
+    <div id="rvLineP" class="rvLine"></div>
+  </div>
+  <div id="rvFile" class="rvScroll hidden">
+    <p>The whole game as a <b>GCG</b> file, the standard format for this kind of game. Load it into Woogles.io's analyser, Macondo or Quackle, or keep it as a record.</p>
+    <div class="row2"><button id="gcgDl" class="btn primary">⬇ Download</button><button id="gcgShare" class="btn hidden">Share…</button></div>
+    <button id="gcgCopy" class="btn">Copy to clipboard</button>
+    <pre id="gcgText"></pre>
+  </div>
+  <footer id="rvNav"><button id="rvPrev" class="btn">‹ Prev</button><button id="rvNext" class="btn primary">Next ›</button></footer>
+  <footer id="rvFollow" class="hidden"><span></span><button id="rvTake" class="btn hidden">Take over</button></footer>
+</div>
 
 <div id="modal" class="sheet hidden"><div class="sheetCard"><div id="mbody"></div><button id="mclose" class="btn ghost">Close</button></div></div>
 <div id="noauth" class="screen hidden">

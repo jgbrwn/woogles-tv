@@ -1,3 +1,4 @@
+import { tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, VERDICTS } from './review.js';
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
@@ -76,6 +77,7 @@ function render(st) {
   queueMicrotask(paintTvNote);
   const prev = s; s = st; recvAt = performance.now();
   applyTheme(s.settings.theme);
+  renderReview();
   const watch = s.you < 0 && s.phase !== 'lobby' && !wantSeat;
   document.body.classList.toggle('watching', watch);
   if (s.you >= 0) wantSeat = false;
@@ -555,7 +557,7 @@ function pickLetter() {
 
 // ---- game over ----
 function renderOver(prev) {
-  if (overDismissed === s.gameNo) return;
+  if (overDismissed === s.gameNo || !$('#review').classList.contains('hidden')) { $('#over').classList.add('hidden'); return; } // the review is on top
   $('#over').classList.remove('hidden');
   if (prev && prev.phase === 'playing') {
     sfx.over(); navigator.vibrate?.([100, 50, 100]);
@@ -569,6 +571,7 @@ function renderOver(prev) {
   const loser = s.winner >= 0 ? (W ? n[1 - s.winner] : s.winner === s.you ? n[1 - s.you] : 'You') : '';
   $('#rematchBtn').classList.toggle('hidden', W);
   $('#lobbyBtn').classList.toggle('hidden', W);
+  $('#rvBtn').classList.toggle('hidden', !s.review?.you);
   $('#ovReason').textContent = s.endReason === 'time' ? `${loser} went over 10 minutes of overtime` : s.endReason === 'resign' ? `${loser} resigned` : '';
   $('#ovScores').innerHTML = [me, 1 - me].map((i) => `<div class="${s.winner === i ? 'win' : ''}">${esc(i === s.you ? 'You' : n[i])}<b>${s.seats[i].score}</b></div>`).join('');
 }
@@ -617,6 +620,7 @@ $('#menuBtn').onclick = () => {
     <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button>
     ${musicStations().length ? `<button class="btn" data-a="music">🎵 Music on TV: ${MUSIC_MODE_NAMES[musicSettings(s.settings).mode]}</button>` : ''}
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
+    ${s.review?.you ? '<button class="btn" data-a="review">📊 Analysis &amp; game file</button>' : ''}
     ${playing ? '<button class="btn danger" data-a="resign">🏳 Resign</button>' : ''}
     <button class="btn danger" data-a="end">✖ End game for everyone</button></div>`);
   $('#mbody').querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
@@ -630,6 +634,7 @@ $('#menuBtn').onclick = () => {
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }
+    else if (a === 'review') openReview();
     else if (a === 'resign' && confirm('Resign this game?')) ws.send({ t: 'resign' });
     else if (a === 'end' && confirm('End this game and go back to the lobby?')) ws.send({ t: 'end' });
   });
@@ -806,3 +811,129 @@ function showUnseen() {
     <div class="unseen">${keys.map((k) => `<span>${tileEl(k).outerHTML}<b>${u[k]}</b></span>`).join('')}</div>`);
 }
 
+
+// ---- game review (post-game analysis) and the game file ----
+// Opening it starts the analysis (if it hasn't run yet) and makes this phone the driver: it steps through the moves
+// here and on the TV. The other player's phone follows along. Spectators don't get it.
+let rvLocal = false, rvHidden = false, rvTab = 'walk', rvCells = null, rvShowP = 'played', rvKeyP = '', rvPicked = false, rvAuto = 0, gcgCache = null;
+function openReview(tab = 'walk') {
+  if (!s.review?.you) return;
+  rvLocal = true; rvHidden = false; rvTab = tab;
+  if (s.review.analysis !== false && tab === 'walk') askOpen();
+  renderReview();
+}
+$('#rvBtn').onclick = () => { $('#over').classList.add('hidden'); overDismissed = s.gameNo; openReview(); };
+$('#rvLastBtn').onclick = () => openReview();
+let rvAsked = 0;
+function askOpen() { rvAsked = performance.now(); ws.send({ t: 'review', op: 'open' }); setTimeout(() => s && renderReview(), 6000); }
+const rvDriver = () => !!s.review?.open && s.review.driver === s.you;
+function renderReview() {
+  const rv = s?.review, box = $('#review');
+  $('#rvLastBtn').classList.toggle('hidden', !(rv?.you && rv.past));
+  if (!rv?.you) { box.classList.add('hidden'); rvLocal = false; rvCells = null; return; }
+  if (!rv.open) rvHidden = false;
+  const show = (rv.open && !rvHidden) || rvLocal;
+  box.classList.toggle('hidden', !show);
+  document.body.classList.toggle('reviewOpen', show);
+  if (!show) { rvCells = null; return; }
+  if (rv.analysis === false) rvTab = 'file';
+  $('#rvTabs').classList.toggle('hidden', rv.analysis === false);
+  $('#rvTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === rvTab));
+  $('#rvWalk').classList.toggle('hidden', rvTab !== 'walk');
+  $('#rvFile').classList.toggle('hidden', rvTab !== 'file');
+  if (rvTab === 'file') { $('#rvNav').classList.add('hidden'); $('#rvFollow').classList.add('hidden'); loadGCG(); return; }
+  const drive = rvDriver(), names = (rv.seats || s.seats).map((x) => x.name);
+  $('#rvNav').classList.toggle('hidden', !drive);
+  $('#rvFollow').classList.toggle('hidden', drive || !rv.open);
+  if (!rv.open) {
+    $('#rvCard').innerHTML = performance.now() - rvAsked < 5500 ? '<div class="rvVerdict wait"><span class="spin"></span>Starting the analysis…</div>'
+      : '<div class="rvVerdict wait">The analysis didn\'t start. Try again in a few minutes, or get the game file.</div>';
+    return;
+  }
+  if (!drive) {
+    $('#rvFollow span').textContent = rv.driverHere ? `Following ${names[rv.driver]}` : `${names[rv.driver]} has left the review`;
+    $('#rvTake').classList.toggle('hidden', rv.driverHere);
+  }
+  if (!rvCells) rvCells = buildBoard($('#rvBoard'), rv.bonuses, { labels: false });
+  const total = rv.marks.length, key = `${rv.pos}:${rv.step?.ev ?? ''}`;
+  if (key !== rvKeyP) { rvKeyP = key; rvShowP = 'played'; rvPicked = false; clearTimeout(rvAuto); }
+  // once the analysis of this move is in, show the best move after a moment (unless the player picked a view)
+  if (bestDiffers(rv) && !rvPicked && rvShowP === 'played' && !rvAuto) rvAuto = setTimeout(() => { rvAuto = 0; if (!rvPicked && bestDiffers(s.review)) { rvShowP = 'best'; renderReview(); } }, 1800);
+  $('#rvCountP').textContent = rv.pos < 0 ? 'Overview' : `Move ${rv.pos + 1} of ${total}`;
+  $('#rvShow').classList.toggle('hidden', rv.pos < 0);
+  $('#rvShow').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.v === rvShowP); b.disabled = b.dataset.v === 'best' && !bestDiffers(rv); });
+  if (rv.pos < 0 || !rv.step) paintBoard(rvCells, rv.board);
+  else paintStep(rvCells, rv, rvShowP === 'best' && bestDiffers(rv) ? 'best' : 'played', { animate: true });
+  $('#rvCard').innerHTML = rv.pos < 0 ? overviewP(rv, names) : stepHTML(rv, names);
+  $('#rvCard').querySelectorAll('.rvMove').forEach((x) => x.classList.toggle('onBoard', x.classList.contains(rvShowP === 'best' && bestDiffers(rv) ? 'best' : 'played')));
+  $('#rvProgP').textContent = progressText(rv);
+  $('#rvLineP').innerHTML = timelineHTML(rv);
+  $('#rvPrev').disabled = rv.pos < 0;
+  $('#rvNext').disabled = rv.pos >= total - 1;
+  $('#rvNext').textContent = rv.pos < 0 ? 'Start ›' : 'Next ›';
+  const on = $('#rvLineP .on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+function overviewP(rv, names) {
+  const t = tally(rv);
+  return `<div class="rvOver">${rv.seats.map((x, i) => {
+    const y = t[i], me = i === s.you;
+    const body = x.bot ? '<div class="rvNote">The computer\'s moves aren\'t analysed</div>'
+      : `<div class="rvChips">${['best', 'small', 'medium', 'large'].map((v) => `<span class="chip v-${v}"><b>${y[v]}</b> ${VERDICTS[v].short}</span>`).join('')}</div>${y.missedBingo ? `<div class="rvNote">${y.missedBingo} missed bingo${y.missedBingo === 1 ? '' : 's'}</div>` : ''}`;
+    return `<div class="rvPlayer"><span class="avatar p${i}">${avatarInner(x, x.name)}</span><div class="who"><div class="name">${esc(me ? 'You' : names[i])}</div>${body}</div><div class="score">${rv.finals[i]}</div></div>`;
+  }).join('')}</div><p class="rvTip">Tap <b>Start</b> to go through ${rv.marks.length === t[s.you]?.moves ? 'your' : 'the'} moves one by one. They show on the TV too.</p>`;
+}
+const rvStep = (d) => { if (rvDriver()) ws.send({ t: 'review', op: 'step', pos: s.review.pos + d }); };
+$('#rvPrev').onclick = () => rvStep(-1);
+$('#rvNext').onclick = () => rvStep(1);
+$('#rvLineP').addEventListener('click', (e) => { const b = e.target.closest('.rvDot'); if (b && rvDriver()) ws.send({ t: 'review', op: 'step', pos: +b.dataset.k }); });
+$('#rvShow').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; rvShowP = b.dataset.v; rvPicked = true; renderReview(); });
+$('#rvTabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  rvTab = b.dataset.v;
+  if (rvTab === 'walk' && !s.review?.open) askOpen();
+  renderReview();
+});
+$('#rvTake').onclick = askOpen;
+$('#rvClose').onclick = () => {
+  if (rvDriver()) ws.send({ t: 'review', op: 'close' }); else rvHidden = true;
+  rvLocal = false; rvCells = null; renderReview();
+  if (s.phase === 'over') { overDismissed = -1; renderOver(); } // back to the results
+};
+// swipe the board to step
+let rvTouch = null;
+$('#rvBoard').addEventListener('touchstart', (e) => { rvTouch = e.touches[0] ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+$('#rvBoard').addEventListener('touchend', (e) => {
+  const t = e.changedTouches[0]; if (!rvTouch || !t) return;
+  const dx = t.clientX - rvTouch.x, dy = t.clientY - rvTouch.y; rvTouch = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) rvStep(dx < 0 ? 1 : -1);
+});
+// the game file
+async function loadGCG(force) {
+  const key = `${s.code}:${s.review?.gameNo}`;
+  if (!force && gcgCache?.key === key) return gcgCache;
+  $('#gcgText').textContent = 'Loading…';
+  try {
+    const r = await fetch('/api/gcg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: s.code, token: localStorage.getItem(tokKey) || '' }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Couldn\'t get the game file');
+    gcgCache = { key, text: await r.text(), file: r.headers.get('X-Filename') || 'woogles-tv.gcg' };
+    $('#gcgText').textContent = gcgCache.text;
+    const f = new File([gcgCache.text], gcgCache.file, { type: 'text/plain' });
+    const share = !!navigator.canShare?.({ files: [f] });
+    $('#gcgShare').classList.toggle('hidden', !share); $('#gcgDl').classList.toggle('solo', !share);
+    return gcgCache;
+  } catch (err) { $('#gcgText').textContent = err.message; return null; }
+}
+$('#gcgDl').onclick = async () => {
+  const g = await loadGCG(); if (!g) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([g.text], { type: 'text/plain' })); a.download = g.file;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+$('#gcgShare').onclick = async () => {
+  const g = await loadGCG(); if (!g) return;
+  try { await navigator.share({ files: [new File([g.text], g.file, { type: 'text/plain' })], title: g.file }); } catch {}
+};
+$('#gcgCopy').onclick = async () => {
+  const g = await loadGCG(); if (!g) return;
+  try { await navigator.clipboard.writeText(g.text); toast('Copied the game file', 'good'); } catch { toast('Couldn\'t copy — use Download instead'); }
+};

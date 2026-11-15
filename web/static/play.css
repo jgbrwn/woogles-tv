@@ -227,3 +227,75 @@ body.watching #recent { flex-grow: 1; }
 #defCard small { color: var(--muted); font-size: 12.5px; font-weight: 600; }
 /* small phones: room for the "double-tap to define" hint between the title and the turn count */
 @media (max-width: 380px) { .scPanel .scHead { gap: 6px; letter-spacing: .05em; } .scHint { font-size: 11px; } }
+
+/* ---- game review (post-game analysis) ---- */
+#review { position: fixed; inset: 0; z-index: 55; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
+.rvTop { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.rvTop > b { font-size: 16px; white-space: nowrap; }
+.rvTop .seg { flex: 1; max-width: 260px; margin-left: auto; }
+.rvTop .seg button { padding: 7px 4px; font-size: 13px; }
+.rvScroll { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.rvShowRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#rvCountP { font-weight: 900; font-size: 15px; }
+#rvShow { width: 170px; } #rvShow button { padding: 6px 4px; font-size: 13px; } #rvShow button:disabled { opacity: .4; }
+#rvBoard { width: min(100%, 52dvh); align-self: center; --gap: 1px; --frame: 2px; border-radius: 4px; flex-shrink: 0; }
+#rvBoard .tile { inset: 3%; }
+#rvCard { display: flex; flex-direction: column; gap: 8px; }
+#rvProgP { color: var(--muted); font-weight: 700; font-size: 13px; min-height: 0; }
+#rvProgP:empty { display: none; }
+#rvNav, #rvFollow { display: flex; gap: 10px; align-items: center; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); }
+#rvNav .btn { flex: 1; padding: 13px; font-size: 17px; }
+#rvFollow span { flex: 1; color: var(--muted); font-weight: 700; }
+#rvFile p { margin: 0; line-height: 1.5; color: var(--muted); }
+#rvFile p b { color: var(--ink); }
+#gcgText { margin: 0; padding: 10px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); font: 12px/1.45 "Roboto Mono", monospace; color: var(--ink);
+  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40dvh; overflow-y: auto; }
+.rvWho { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rvWho .nm { font-size: 18px; font-weight: 900; }
+.rvRack { display: inline-flex; gap: 3px; }
+.rvRack .tile { position: relative; inset: auto; display: inline-flex; width: 24px; height: 24px; font-size: 15px; }
+.rvRack .tile .tl-val { font-size: 7px; }
+.rvSc { margin-left: auto; color: var(--muted); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rvPrev { color: var(--muted); font-size: 14px; font-weight: 600; }
+.rvPrev b { color: var(--ink); font-family: "Roboto Mono", monospace; }
+.rvVerdict { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 19px; font-weight: 900; padding: 9px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--vc) 18%, transparent); color: var(--vc); border: 2px solid color-mix(in srgb, var(--vc) 55%, transparent); }
+.rvVerdict .ico { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 99px; background: var(--vc); color: var(--card); font-size: 15px; }
+.rvVerdict .tag { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--vc); color: var(--card); }
+.rvVerdict .tag:first-of-type { margin-left: auto; }
+.rvVerdict.wait { --vc: var(--muted); font-size: 15px; }
+.v-best { --vc: var(--good); } .v-small { --vc: var(--warn); } .v-medium { --vc: color-mix(in srgb, var(--warn) 45%, var(--bad)); } .v-large { --vc: var(--bad); }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 3px solid currentColor; border-right-color: transparent; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+.rvMoves, .rvAlts { display: flex; flex-direction: column; gap: 6px; }
+.rvMove { display: grid; grid-template-columns: 52px 1fr auto auto; gap: 8px; align-items: baseline; padding: 8px 10px; border-radius: 9px; background: var(--card);
+  border: 2px solid transparent; font-size: 15px; }
+.rvMove .lbl { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; font-weight: 900; color: var(--muted); }
+.rvMove .mv { min-width: 0; overflow-wrap: anywhere; }
+.rvMove .mv b { font-family: "Roboto Mono", monospace; }
+.rvMove .pos { color: var(--muted); font-weight: 800; font-size: 12px; }
+.rvMove .pts { font-weight: 900; font-variant-numeric: tabular-nums; }
+.rvMove .out { white-space: nowrap; min-width: 70px; text-align: right; color: var(--muted); font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; }
+.rvMove .keep { grid-column: 2 / -1; color: var(--muted); font-size: 12px; font-weight: 700; }
+.rvMove.played.onBoard { border-color: var(--secondary); }
+.rvMove.best { background: color-mix(in srgb, var(--good) 12%, var(--card)); }
+.rvMove.best .lbl { color: var(--good); }
+.rvMove.best.onBoard { border-color: var(--good); }
+.rvAlts .cap { text-transform: uppercase; letter-spacing: .12em; font-size: 10px; font-weight: 900; color: var(--muted); margin-top: 2px; }
+.rvMove.alt { font-size: 14px; padding: 4px 10px; background: transparent; }
+.rvLine { display: flex; gap: 6px; overflow-x: auto; padding: 6px 4px; scrollbar-width: none; }
+.rvDot { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--vc, var(--line)); border: 2px solid var(--bg); box-shadow: 0 0 0 2px var(--pc); padding: 0; }
+.rvDot.todo { background: var(--card2); }
+.rvDot.on { transform: scale(1.35); box-shadow: 0 0 0 3px var(--ink); }
+.rvOver { display: flex; flex-direction: column; gap: 10px; }
+.rvPlayer { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; background: var(--card); border-radius: 12px; padding: 12px; }
+.rvPlayer .avatar { width: 44px; height: 44px; font-size: 20px; }
+.rvPlayer .name { font-size: 18px; font-weight: 900; }
+.rvPlayer .score { font-size: 32px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rvChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.rvChips .chip { box-shadow: none; border: 0; padding: 3px 9px; font-size: 13px; font-weight: 700; background: color-mix(in srgb, var(--vc) 16%, transparent); color: var(--vc); }
+.rvNote { color: var(--muted); font-weight: 700; font-size: 13px; margin-top: 5px; }
+.rvTip { margin: 2px 0 0; color: var(--muted); font-size: 14px; text-align: center; }
+.tile.rvPlayed { box-shadow: 0 0 0 2px var(--secondary), 0 2px 6px rgba(0,0,0,.35); z-index: 2; }
+.tile.rvBest { background: color-mix(in srgb, var(--good) 55%, var(--t-bg)); box-shadow: 0 0 0 2px var(--good), 0 2px 6px rgba(0,0,0,.35); z-index: 2; }
+#gcgDl.solo { grid-column: 1 / -1; }

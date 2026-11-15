@@ -106,6 +106,7 @@ type Match struct {
 	EndReason string    `json:"endReason,omitempty"` // "", "time", "resign"
 	Winner    *int      `json:"winner,omitempty"`    // forced winner seat (time/resign)
 	Extra     []MoveLog `json:"extra,omitempty"`     // penalty log entries (seat-indexed)
+	Review    *Review   `json:"review,omitempty"`    // post-game analysis (analysis.go)
 }
 
 type Room struct {
@@ -125,8 +126,10 @@ type Room struct {
 	baseURL   string
 	deleted   bool
 	linkLimit *tokenBucket
-	defLimit  *tokenBucket // word definition lookups
-	ttsLimit  *tokenBucket // server speech (tts.go), created on first use
+	defLimit  *tokenBucket  // word definition lookups
+	ttsLimit  *tokenBucket  // server speech (tts.go), created on first use
+	past      *pastGame     // the last finished game, kept for its review and game file (analysis.go)
+	rv        reviewSession // the review walkthrough in progress
 }
 
 var globalJoin = newTokenBucket(5, 100) // 300/minute across everyone: code lookups + TV links
@@ -283,6 +286,7 @@ type savedRoom struct {
 	Match    *Match          `json:"match,omitempty"`
 	Lexicon  string          `json:"lexicon,omitempty"` // lexicon of the current match
 	History  json.RawMessage `json:"history,omitempty"`
+	Past     *savedPast      `json:"past,omitempty"` // the last finished game (analysis.go)
 }
 
 func (r *Room) file() string { return filepath.Join(roomsDir, r.Code+".json") }
@@ -303,6 +307,11 @@ func (r *Room) saveLocked() {
 			return
 		}
 		sr.Match, sr.Lexicon, sr.History = r.m, r.m.eng.Lexicon, h
+	}
+	if p := r.past; p != nil {
+		if h, err := p.m.eng.HistoryJSON(); err == nil {
+			sr.Past = &savedPast{Match: p.m, Lexicon: p.m.eng.Lexicon, History: h, Order: p.order, Seats: p.seats, GameNo: p.gameNo}
+		}
 	}
 	b, err := json.Marshal(sr)
 	if err != nil {
@@ -335,7 +344,7 @@ func loadRooms(dir string) error {
 			continue
 		}
 		ttl := roomIdleTTL
-		if sr.Match != nil && sr.Match.EndReason == "" {
+		if sr.Match != nil && (sr.Match.EndReason == "" || sr.Match.Review != nil) || sr.Past != nil && sr.Past.Match != nil && sr.Past.Match.Review != nil {
 			ttl = gameIdleTTL // may be finished; the reaper re-checks precisely
 		}
 		if time.Since(sr.LastUsed) > ttl {
@@ -360,6 +369,12 @@ func loadRooms(dir string) error {
 				if r.m.Clock != nil {
 					r.m.Clock.since = time.Now() // downtime isn't charged to anyone
 				}
+			}
+		}
+		if p := sr.Past; p != nil && p.Match != nil && len(p.History) > 0 {
+			if eng, err := RestoreEngine(p.Lexicon, p.History); err == nil {
+				p.Match.eng = eng
+				r.past = &pastGame{m: p.Match, order: p.Order, seats: p.Seats, gameNo: p.GameNo}
 			}
 		}
 		rooms[r.Code] = r
@@ -390,6 +405,8 @@ type inMsg struct {
 	Music    string `json:"music"`
 	Station  *int   `json:"station"`
 	MusicVol string `json:"musicVol"`
+	Op       string `json:"op"`  // review: open, step, close
+	Pos      *int   `json:"pos"` // review: the move to show (-1: the overview)
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -666,7 +683,8 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		if r.playingLocked() {
 			return
 		}
-		if r.m != nil { // rematch: other seat starts
+		r.archiveLocked() // keep the finished game for its review and game file
+		if r.m != nil {   // rematch: other seat starts
 			r.order = [2]int{r.order[1], r.order[0]}
 		}
 		eng, err := NewEngine(r.settings.Lexicon, [2]string{r.seats[r.order[0]].Name, r.seats[r.order[1]].Name})
@@ -695,6 +713,7 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		if r.playingLocked() {
 			stats.GamesAbandoned.Add(1)
 		}
+		r.archiveLocked()
 		r.m = nil
 		r.preview = nil
 		r.broadcastLocked()
@@ -720,6 +739,8 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		r.m.Clock.Paused = m.T == "pause"
 		r.eventLocked(map[string]any{"t": "event", "kind": m.T, "seat": cl.seat})
 		r.broadcastLocked()
+	case "review":
+		r.reviewMsgLocked(cl, m)
 	case "tvprefs":
 		if cl.role == "tv" && m.Voice != nil && cl.voice != *m.Voice {
 			cl.voice = *m.Voice
@@ -919,8 +940,8 @@ func (r *Room) seatConnected(seat int) bool {
 }
 
 func (r *Room) ttlLocked() time.Duration {
-	if r.playingLocked() {
-		return gameIdleTTL
+	if r.playingLocked() || r.m != nil && r.m.Review != nil || r.past != nil && r.past.m.Review != nil {
+		return gameIdleTTL // analysed games are kept as long as unfinished ones
 	}
 	return roomIdleTTL
 }
@@ -1090,6 +1111,9 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 		"t": "state", "code": r.Code, "phase": phase, "settings": r.settings,
 		"lexicons": Lexicons, "timeOptions": TimeOptions, "themes": Themes, "bots": botLevelViews, "tvs": r.tvCount(), "tvVoice": r.tvVoiceLocked(),
 		"seats": seats, "you": cl.seat, "role": cl.role, "gameNo": r.gameNo, "joinUrl": r.joinURL(),
+	}
+	if rv := r.reviewViewLocked(cl); rv != nil {
+		st["review"] = rv
 	}
 	if r.m != nil {
 		eng := r.m.eng

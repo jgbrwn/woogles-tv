@@ -101,7 +101,7 @@ export function makeMusic(ann, { onNow = () => {}, onBlocked = () => {} } = {}) 
       last = st;
       if (!conf || !st?.settings) return;
       const s = musicSettings(st.settings), station = musicStations()[s.station], brk = isBreak(st);
-      const on = !!station && s.mode !== 'off' && (s.mode === 'always' || brk) && sfx.enabled && !document.hidden;
+      const on = !!station && s.mode !== 'off' && (s.mode === 'always' || brk) && sfx.enabled && !document.hidden && !st.review?.open; // quiet during a game review
       level = LEVEL[s.vol] * (brk ? 1 : IN_PLAY);
       if (s.station !== stIdx || !on) retryAt = 0;
       stIdx = s.station;

@@ -24,6 +24,14 @@
       <div class="cardTitle">Scorecard</div>
       <ol id="log"></ol>
     </div>
+    <!-- game review (post-game analysis): replaces the cards above while it's open -->
+    <div id="rvPanel" class="hidden">
+      <div class="rvHead"><span class="cardTitle">Game review</span><span id="rvCount"></span></div>
+      <div id="rvBody" class="card"></div>
+      <div id="rvProg"></div>
+      <div id="rvLine" class="rvLine"></div>
+      <div id="rvHelp" class="muted"></div>
+    </div>
     <div id="footRow">
       <div id="npMini" class="np hidden"><img alt=""><div class="npt"><b></b><span class="ar"></span></div></div>
       <div id="joinMini"><div><div>TV code · scan to join or watch</div><div class="codeRow"><span id="clock" class="hidden"></span><b class="code"></b></div></div><img id="qrMini" alt=""></div>
@@ -62,6 +70,7 @@
     <p id="reason" class="muted"></p>
     <div id="finals"></div>
     <p class="hint">Press <b>Rematch</b> on a phone to play again</p>
+    <p class="hint hidden" id="rvHint">📊 Go through the game move by move: tap <b>Analysis</b> on a player's phone</p>
   </div>
 </div>
 
@@ -84,6 +93,7 @@
     <button class="mitem hidden" data-page="ann" data-act="backup" id="mBackupItem">Backup voice: <b id="mBackup"></b></button>
     <button class="mitem annOpt" data-page="ann" data-act="spell">Spell out words: <b id="mSpell"></b></button>
     <button class="mitem annOpt" data-page="ann" data-act="rate">Speaking speed: <b id="mRate"></b></button>
+    <button class="mitem annOpt" data-page="ann" data-act="rvspeak">Game review: <b id="mRvSpeak"></b></button>
     <button class="mitem" data-page="ann" data-act="back">‹ Back</button>
     <!-- music page -->
     <button class="mitem" data-page="music" data-act="music" id="mMusicItem">Music: <b id="mMusic"></b><small class="msub" id="mMusicNote"></small></button>

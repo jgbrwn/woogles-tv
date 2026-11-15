@@ -2,6 +2,7 @@ import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, e
   applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
+import { VERDICTS, tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, stepSpeech, overviewSpeech } from './review.js';
 import { makeMusic, musicReady, musicStations, musicSettings, isBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
 
 const $ = (s) => document.querySelector(s);
@@ -67,6 +68,9 @@ function render(s) {
   applyTheme(s.settings.theme);
   music.update(s); paintNow();
   setQR(s.joinUrl);
+  if (s.review?.open) { renderReview(s); return; }
+  if (rvOn) leaveReview();
+  $('#rvHint').classList.toggle('hidden', !s.review?.analysis);
   const names = s.seats.map((x, i) => x.name || `Player ${i + 1}`);
   const timeTxt = s.settings.timeMin ? `${s.settings.timeMin} min each` : 'untimed';
 
@@ -154,6 +158,65 @@ function render(s) {
       <div class="n">${esc(names[i])}</div><div class="s">${seat.score}</div>
       <div class="r">${s.endReason ? '' : seat.rack ? 'Left: ' + esc(seat.rack) : 'Went out'}</div></div>`).join('');
   }
+}
+
+// ---- game review (post-game analysis) ----
+// The board shows the position before each move with the move played, then the best one (alternating); the side
+// panel shows the verdict and the numbers. A player's phone drives; the remote takes over if that phone goes.
+let rvOn = false, rvKey = '', rvShow = 'played', rvTimer = 0, rvSaid = '';
+const rvSpeakOn = () => { try { return localStorage.getItem('wt_rv_speak') !== 'off'; } catch { return true; } };
+function leaveReview() {
+  rvOn = false; rvKey = ''; clearInterval(rvTimer); document.body.classList.remove('reviewing');
+  $('#rvPanel').classList.add('hidden'); cells = null; gameNo = -1; prevBoard = null; ann.stop();
+}
+function renderReview(s) {
+  const rv = s.review, names = rv.seats.map((x) => x.name);
+  if (!rvOn) {
+    rvOn = true; rvSaid = '';
+    document.body.classList.add('reviewing');
+    cells = buildBoard($('#board'), rv.bonuses); buildCoords($('#coordTop'), $('#coordSide')); gameNo = -1;
+    if (ann.on('moves') && rvSpeakOn()) { ann.stop(); ann.say('Game review.'); }
+  }
+  for (const id of ['#lobby', '#over', '#pausedBanner']) $(id).classList.add('hidden');
+  $('#rvPanel').classList.remove('hidden');
+  $('#meta').textContent = `${rv.lexicon} · review`;
+  const total = rv.marks.length, key = `${rv.pos}:${rv.step?.ev ?? ''}:${rv.turn ? 1 : 0}`;
+  const moved = key.split(':').slice(0, 2).join() !== rvKey.split(':').slice(0, 2).join();
+  if (key !== rvKey) {
+    rvKey = key;
+    if (moved) rvShow = 'played';
+    clearInterval(rvTimer);
+    if (bestDiffers(rv)) rvTimer = setInterval(() => { rvShow = rvShow === 'played' ? 'best' : 'played'; paintReviewBoard(true); }, 4000);
+  }
+  paintReviewBoard(moved);
+  $('#rvCount').textContent = rv.pos < 0 ? `${total} move${total === 1 ? '' : 's'} to go through` : `Move ${rv.pos + 1} of ${total}`;
+  $('#rvBody').innerHTML = rv.pos < 0 ? overviewHTML(rv, names, s) : stepHTML(rv, names);
+  $('#rvProg').textContent = progressText(rv);
+  $('#rvLine').innerHTML = timelineHTML(rv);
+  const driver = names[rv.driver];
+  $('#rvHelp').innerHTML = rv.driverHere ? `${esc(driver)}'s phone is going through the game` : '◀ ▶ on the remote to step through · Back to finish';
+  // say each move once its analysis is in, and the overview once the whole game is done
+  const line = rv.pos < 0 ? (rv.done >= total && total ? overviewSpeech(rv, names, sayName) : '') : stepSpeech(rv, names, sayName);
+  const id = `${rv.pos}:${rv.step?.ev ?? ''}`;
+  if (line && rvSaid !== id && ann.on('moves') && rvSpeakOn()) { rvSaid = id; ann.stop(); ann.later(() => ann.say(line), 500); }
+  function paintReviewBoard(animate) {
+    if (!state.review?.open) return;
+    const r = state.review;
+    if (r.pos < 0 || !r.step) { paintBoard(cells, r.board); return; }
+    const show = rvShow === 'best' && bestDiffers(r) ? 'best' : 'played';
+    paintStep(cells, r, show, { animate });
+    document.querySelectorAll('#rvBody .rvMove').forEach((x) => x.classList.toggle('onBoard', x.classList.contains(show)));
+  }
+}
+function overviewHTML(rv, names, s) {
+  const t = tally(rv);
+  return `<div class="rvOver">${rv.seats.map((x, i) => {
+    const y = t[i];
+    const body = x.bot ? '<div class="rvNote">The computer\'s moves aren\'t analysed</div>'
+      : `<div class="rvChips">${['best', 'small', 'medium', 'large'].map((v) => `<span class="chip v-${v}"><b>${y[v]}</b> ${VERDICTS[v].short}</span>`).join('')}</div>
+         ${y.missedBingo ? `<div class="rvNote">${y.missedBingo} missed bingo${y.missedBingo === 1 ? '' : 's'}</div>` : ''}`;
+    return `<div class="rvPlayer">${avatar(names[i], i, x)}<div class="who"><div class="name">${esc(names[i])}</div>${body}</div><div class="score">${rv.finals[i]}</div></div>`;
+  }).join('')}</div>`;
 }
 
 function renderLog(s, names, prev) {
@@ -277,6 +340,7 @@ function paintSoundMenu() {
   $('#mBackup').textContent = ann.backupName();
   $('#mSpell').textContent = SPELL_NAMES[ann.spell];
   $('#mRate').textContent = RATE_NAMES[ann.rate] || 'Normal';
+  $('#mRvSpeak').textContent = rvSpeakOn() ? 'Spoken' : 'Silent';
 }
 const MUSIC_NOTES = { always: 'Quieter during play, and softer still while the announcer talks', breaks: 'In the lobby, while the clock is paused, and after the game', off: '' };
 function paintMusicMenu() {
@@ -341,6 +405,10 @@ function menuAct(act) {
   } else if (act === 'backup') { ann.cycleBackup(); ann.stop(); paintSoundMenu(); ann.sayOnDevice("This is the backup voice, used if the server voice can't be reached."); }
   else if (act === 'spell') { ann.cycleSpell(); paintSoundMenu(); ann.stop(); ann.say(ann.spell === 'never' ? 'Words will not be spelled out.' : `Zoea. Z, O, E, A.`); }
   else if (act === 'rate') { ann.cycleRate(); paintSoundMenu(); ann.stop(); ann.say(`${sayName('STEEBot')} plays, quixotic, for 98 points.`); } else if (act === 'newroom') { closeMenu(); newRoomHere(); toast('New game — earlier games are under OK → Games on this TV'); }
+  else if (act === 'rvspeak') {
+    try { localStorage.setItem('wt_rv_speak', rvSpeakOn() ? 'off' : 'on'); } catch {}
+    paintSoundMenu(); ann.stop(); if (rvSpeakOn()) ann.say('Game reviews will be read out: the best move for each turn.');
+  }
   else if (act === 'page-ann') showMenuPage('ann');
   else if (act === 'page-music') showMenuPage('music');
   else if (act === 'back') menuBack();
@@ -368,6 +436,14 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   const open = !$('#menu').classList.contains('hidden');
+  const rv = state.review;
+  if (!open && rv?.open && ['ArrowLeft', 'ArrowRight', 'Escape', 'Backspace', 'GoBack'].includes(e.key)) {
+    e.preventDefault();
+    if (rv.driverHere) { toast(`${rv.seats[rv.driver].name}'s phone is going through the game`); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ws.send({ t: 'review', op: 'step', pos: rv.pos + (e.key === 'ArrowRight' ? 1 : -1) });
+    else ws.send({ t: 'review', op: 'close' });
+    return;
+  }
   if (!open) {
     if (['Enter', ' ', 'm', 'M', 'ContextMenu'].includes(e.key)) { e.preventDefault(); openMenu(); }
     return;

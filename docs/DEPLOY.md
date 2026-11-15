@@ -9,6 +9,7 @@ database. Anything that can run a Linux/macOS/Windows binary or a Docker contain
 - [Option B: Docker / Docker Compose](#option-b-docker--docker-compose)
 - [HTTPS and reverse proxies](#https-and-reverse-proxies)
 - [Configuration](#configuration)
+- [Game review (analysis)](#game-review-analysis)
 - [Background music](#background-music)
 - [Stats](#stats)
 - [Data, backups and upgrades](#data-backups-and-upgrades)
@@ -192,6 +193,8 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 | `WT_TTS_URL` | empty (off) | Speech engine for the announcer's server voice, e.g. `http://127.0.0.1:8431` ([TTS.md](TTS.md)) |
 | `WT_TTS_VOICES` | 15 voices, Cosette first | Server voices offered, in menu order; the first is the default ([TTS.md](TTS.md)) |
 | `WT_MUSIC_STREAMS` | empty (off) | Internet radio stations the TV can play as background music: `Name=URL` entries separated by commas ([Background music](#background-music)) |
+| `WT_ANALYSIS` | `quick` | Post-game analysis ([Game review](#game-review-analysis)): `quick`, `deep` (Macondo's own settings, about 10× slower) or `off` (players still get the GCG game file) |
+| `WT_ANALYSIS_THREADS` | 1 | CPU cores one analysis may use. One game is analysed at a time, server-wide |
 | `WT_MUSIC_NOWPLAYING` | on | `off` stops the server from reading song titles and covers from the streams |
 | `-admin` / `WT_ADMIN_ADDR` | off | Address for the stats listener, e.g. `127.0.0.1:8421`: `GET /stats` there. Keep it on `127.0.0.1` ([Stats](#stats)) |
 | `WT_STATS_TOKEN` | off | Turns on `GET /api/stats` on the public site, for requests with `Authorization: Bearer <token>`. At least 24 characters ([Stats](#stats)) |
@@ -201,7 +204,24 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 
 Built-in limits (in `room.go` / `main.go`): 500 rooms, 16 connections per room, 20 new rooms per hour per IP,
 10 code lookups per minute per IP, plus a global budget for code lookups and *Show on TV*. Idle rooms are removed after
-3 days, or 7 days with an unfinished game.
+3 days, or 7 days with an unfinished or analysed game.
+
+## Game review (analysis)
+
+After a game, a player can have it analysed: Macondo's game analyser (the one behind Woogles.io's) grades each move
+by a person against the best one, by simulation, with an exact solver for the endgame. It runs in the server process;
+nothing is sent elsewhere.
+
+- **Cost.** It's CPU-heavy, so there's one analyser for the whole server: one game at a time, on
+  `WT_ANALYSIS_THREADS` cores (default 1, so live games, bots and the server voice always have the rest). Others wait
+  in line (up to 6 games; beyond that players are asked to try again in a few minutes). Each game is analysed once;
+  the results are saved with it.
+- **Speed.** Measured on a 2-core VM: `quick` takes 1–4 s a move (about a minute for a game), `deep` 15–40 s a move
+  (8–12 minutes on both cores). Moves are analysed in the order they're viewed and pushed as they finish, so the
+  walkthrough starts at once. Use `deep` only with cores to spare, e.g. `WT_ANALYSIS=deep WT_ANALYSIS_THREADS=4`.
+- **Data.** The analysis lives in the game's room file. A rematch keeps the previous game (one) so it can still be
+  reviewed. Analysed games are kept 7 days.
+- The GCG game file (`POST /api/gcg`) is available to the game's seated players only, even with `WT_ANALYSIS=off`.
 
 ## Background music
 

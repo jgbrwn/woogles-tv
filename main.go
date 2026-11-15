@@ -101,6 +101,7 @@ func main() {
 	loadStats(filepath.Join(*data, "rooms"))
 	initTTS()
 	initMusic()
+	initAnalysis()
 	go reapRooms()
 	go clockWatch()
 
@@ -142,7 +143,7 @@ func main() {
 		// publicUrl: the address TVs and phones should use (PUBLIC_URL, else this request's); apk: whether
 		// /app/woogles-tv.apk is there to download.
 		_, apkErr := os.Stat(*apk)
-		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig(), "music": musicConfig(),
+		writeJSON(w, 200, map[string]any{"castAppId": os.Getenv("CAST_APP_ID"), "tts": ttsConfig(), "music": musicConfig(), "analysis": analysisMode,
 			"publicUrl": baseURL(r), "apk": apkErr == nil})
 	})
 	mux.HandleFunc("GET /manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
@@ -224,6 +225,8 @@ func main() {
 	})
 	// Server speech for the announcer (tts.go). Streams audio; only the room's TV or a seated player may use it.
 	mux.HandleFunc("POST /api/tts", handleTTS)
+	// The finished game as a GCG file, for its players (analysis.go).
+	mux.HandleFunc("POST /api/gcg", handleGCG)
 	if h := publicStatsHandler(); h != nil {
 		mux.HandleFunc("GET /api/stats", h)
 	}

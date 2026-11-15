@@ -9,6 +9,7 @@ Each **phone** is a private rack and the controller. You can play another person
 - [4. The TV remote](#4-the-tv-remote)
 - [5. Rules, clocks and the computer](#5-rules-clocks-and-the-computer)
 - [6. Several games, rejoining and watching](#6-several-games-rejoining-and-watching)
+- [Game review (analysis) and the game file](#game-review-analysis-and-the-game-file)
 - [7. Installing the phone app (PWA)](#7-installing-the-phone-app-pwa)
 - [8. Troubleshooting](#8-troubleshooting)
 
@@ -54,6 +55,31 @@ sound straight away.
 ### Rematch
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
 player goes first. **Change settings** returns to the lobby.
+
+### Game review (analysis) and the game file
+After a game, each player's phone has **📊 Analysis & game file** (on the results card and under ☰; after a rematch or
+back in the lobby, **📊 Last game: analysis & game file**). Spectators don't get it.
+
+- **Walkthrough.** Macondo, the engine behind Woogles.io, goes through the game on the server and grades every move:
+  **Best move**, or a **small**, **medium** or **large mistake** (plus *missed bingo* and, in the endgame, *cost the
+  game*). It starts with an overview of each player's moves, then **Next ›** steps through them (or swipe the board, or
+  tap a dot on the timeline). Each move shows the board before it, the rack, what was played and, if it wasn't the best,
+  the best move and a few other options with their winning chances (in the endgame, the final margin).
+  **Played | Best** switches the board between the two.
+- **You don't have to wait.** Moves are analysed in order, the one on screen first, and appear as they're ready: about a
+  minute for a whole game. If several games are being analysed, the phone says how many are ahead.
+- **Against the computer**, only your moves are analysed and walked through; the computer's reply shows as context
+  ("STEEBot played NEEDERS 8B for 68").
+- **On the TV.** The walkthrough shows on the TV too, big: the move played, then the best move in green, the verdict
+  and the timeline. Background music pauses. If the announcer is on, it reads out each move and what the best play
+  was; turn that off with OK → **Announcer ›** → **Game review: Silent**.
+- **Who's in charge.** The first player to open it drives, on their phone and the TV. The other player's phone follows
+  along. If the driver's phone leaves, the other player can **Take over**, or the TV remote steps through (◀ ▶, Back
+  to finish).
+- **Game file.** The second tab downloads the game as a **GCG** file (the standard format, which Woogles.io, Macondo
+  and Quackle can open), or shares or copies it. It's ready straight away, no analysis needed.
+- The analysis is saved with the game: opening it again is instant. A game that's been analysed is kept for 7 days
+  (instead of 3).
 
 ## 3. Playing on your phone
 
