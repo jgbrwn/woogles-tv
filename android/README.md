@@ -72,7 +72,7 @@ You can also install with adb (Developer options → USB/Network debugging):
 | Remote key            | Action |
 |-----------------------|--------|
 | D-pad / OK            | Sent to the web page as normal key events (OK = `Enter`, arrows = `Arrow*`) |
-| Back                  | Goes back in WebView history; otherwise "press Back again within 2s to exit" |
+| Back                  | Goes back in WebView history; otherwise "press Back again within 2s to exit". The TV page adds a history entry while a menu, prompt or game review is showing, so Back closes that first |
 | Menu, or **hold OK** (≥0.7s) | Native menu: Reload, Change server URL, Reset to default server, Exit |
 
 Notes:

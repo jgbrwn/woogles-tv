@@ -179,7 +179,7 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 | **OK** | Opens the options menu (theme, volume, clock, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
-| **Back** | Closes a menu. In the app, press Back twice to exit |
+| **Back** | Closes a menu or prompt, or finishes a game review the remote is driving. With nothing open, in the app, press Back twice to exit |
 | **Hold OK** or **Menu** (app only) | Native app menu: reload, change server URL, reset, exit |
 
 Browsers on a computer: Enter opens the menu, the arrow keys move, Esc closes.

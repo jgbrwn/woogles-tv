@@ -501,6 +501,26 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menuAct(it[menuIdx].dataset.act); }
   else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') { e.preventDefault(); menuBack(); }
 });
+// The remote's Back button. The Android TV app (and most TV browsers) don't hand Back to the page as a key: it goes
+// "back" in the page's history, or the app offers to exit. So while something Back should close is showing (the
+// menu, a prompt, the game review), the page keeps one extra history entry; Back pops it, and the page treats that
+// like Escape (close the menu, finish the review, ...). If it's still showing afterwards, the entry is put back.
+const backLayers = ['#menu', '#gamesMenu', '#switchAsk', '#stillAsk', '#idleNote'];
+const backWanted = () => !CAST && (!!state.review?.open || backLayers.some((id) => !$(id).classList.contains('hidden')));
+let backGuard = false, backSkip = 0;
+function syncBack() {
+  const want = backWanted();
+  if (want && !backGuard) { history.pushState({ wtBack: 1 }, ''); backGuard = true; }
+  else if (!want && backGuard) { backGuard = false; if (history.state?.wtBack) { backSkip++; history.back(); } }
+}
+window.addEventListener('popstate', () => {
+  if (backSkip) { backSkip--; return; } // our own clean-up
+  backGuard = false;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  setTimeout(syncBack, 50);
+});
+setInterval(syncBack, 300);
+
 document.addEventListener('pointerdown', () => { idleAt = Date.now(); sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
 document.addEventListener('mousemove', () => { document.body.classList.add('mouse'); clearTimeout(mouseT); mouseT = setTimeout(() => document.body.classList.remove('mouse'), 3000); });
