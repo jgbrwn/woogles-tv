@@ -695,7 +695,10 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		}
 		r.broadcastLocked()
 	case "start":
-		if cl.seat < 0 || r.seats[0] == nil || r.seats[1] == nil {
+		if cl.role == "tv" && !r.tvRematchLocked() {
+			return
+		}
+		if cl.seat < 0 && cl.role != "tv" || r.seats[0] == nil || r.seats[1] == nil {
 			r.errTo(cl, "Need two players to start")
 			return
 		}
@@ -958,6 +961,20 @@ func (r *Room) seatConnected(seat int) bool {
 	return false
 }
 
+// tvRematchLocked: the TV remote may start a rematch: a game just finished and every person in it has their phone
+// connected (so nobody's clock starts while they're away).
+func (r *Room) tvRematchLocked() bool {
+	if !r.overLocked() {
+		return false
+	}
+	for i, s := range r.seats {
+		if s == nil || !s.Bot && !r.seatConnected(i) {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *Room) ttlLocked() time.Duration {
 	if r.playingLocked() || r.m != nil && r.m.Review != nil {
 		return gameIdleTTL
@@ -1196,6 +1213,9 @@ func (r *Room) stateFor(cl *Client) map[string]any {
 		if phase == "over" {
 			st["winner"] = r.winnerLocked()
 			st["endReason"] = r.m.EndReason
+			if cl.role == "tv" {
+				st["tvRematch"] = r.tvRematchLocked()
+			}
 		}
 		if cl.seat >= 0 {
 			st["rack"] = eng.Rack(r.engIdx(cl.seat))

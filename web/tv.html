@@ -69,7 +69,7 @@
     <h2 id="winner"></h2>
     <p id="reason" class="muted"></p>
     <div id="finals"></div>
-    <p class="hint">Press <b>Rematch</b> on a phone to play again</p>
+    <p class="hint" id="rematchHint">Press <b>Rematch</b> on a phone to play again</p>
     <p class="hint hidden" id="rvHint">📊 Go through the game move by move: press <b>OK</b> → <b>Game review</b>, or tap <b>Analysis</b> on a player's phone</p>
   </div>
 </div>
@@ -78,6 +78,7 @@
   <div class="menuCard">
     <div class="cardTitle" id="menuTitle">Options</div>
     <!-- main page; the announcer and music settings have pages of their own so the menu fits on any TV -->
+    <button class="mitem hidden" data-page="main" data-act="rematch" id="mRematch">🔁 Rematch</button>
     <button class="mitem hidden" data-page="main" data-act="review" id="mReview">📊 Game review</button>
     <button class="mitem" data-page="main" data-act="theme">Theme: <b id="mTheme"></b></button>
     <button class="mitem" data-page="main" data-act="sound">Volume: <b id="mSound"></b></button>

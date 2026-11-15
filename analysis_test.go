@@ -238,3 +238,35 @@ func TestDescribedMove(t *testing.T) {
 		t.Errorf("pass: %+v", m)
 	}
 }
+
+// The TV remote can start a rematch only once a game is over and every person in it is connected.
+func TestTVRematch(t *testing.T) {
+	r := newTestRoom(t)
+	defer func() { roomsMu.Lock(); delete(rooms, r.Code); roomsMu.Unlock() }()
+	r.seats = [2]*Seat{{Name: "Ann", Token: "tok"}, {Name: "Bo", Token: "tok2"}}
+	ann := &Client{role: "player", seat: 0, send: make(chan []byte, 256)}
+	bo := &Client{role: "player", seat: 1, send: make(chan []byte, 256)}
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 256)}
+	r.mu.Lock()
+	r.clients[ann], r.clients[tv] = true, true
+	r.mu.Unlock()
+	r.handle(tv, inMsg{T: "start"})
+	if r.gameNo != 0 {
+		t.Fatal("the TV started a game from the lobby")
+	}
+	r.handle(ann, inMsg{T: "start"})
+	r.handle(ann, inMsg{T: "resign"})
+	r.handle(tv, inMsg{T: "start"})
+	if r.gameNo != 1 {
+		t.Fatal("the TV started a rematch while Bo is away")
+	}
+	r.mu.Lock()
+	r.clients[bo] = true
+	r.mu.Unlock()
+	r.handle(tv, inMsg{T: "start"})
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.gameNo != 2 || !r.playingLocked() || len(r.games) != 1 {
+		t.Fatalf("rematch from the TV: game %d", r.gameNo)
+	}
+}

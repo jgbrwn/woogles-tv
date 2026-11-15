@@ -55,7 +55,8 @@ sound straight away.
 
 ### Rematch
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
-player goes first. **Change settings** returns to the lobby. **🏠 Home** leaves the game as it is: it stays under
+player goes first. The TV remote can start it too (OK → **🔁 Rematch**) while every player's phone is connected, so
+nobody's clock starts while they're away. **Change settings** returns to the lobby. **🏠 Home** leaves the game as it is: it stays under
 *Your games → Finished* on the home page until a rematch starts in that room.
 
 ### Game review (analysis) and the game file

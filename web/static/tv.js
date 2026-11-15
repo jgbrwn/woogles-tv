@@ -71,6 +71,8 @@ function render(s) {
   idleAt = Date.now();
   paintStill(s);
   $('#mReview').classList.toggle('hidden', !(s.review?.tvCan && !s.review?.open));
+  $('#mRematch').classList.toggle('hidden', !(s.tvRematch && !s.review?.open));
+  $('#rematchHint').innerHTML = s.tvRematch ? 'Play again: press <b>OK</b> → <b>Rematch</b>, or <b>Rematch</b> on a phone' : 'Press <b>Rematch</b> on a phone to play again';
   if (s.review?.open) { renderReview(s); return; }
   if (rvOn) leaveReview();
   $('#rvHint').classList.toggle('hidden', !s.review?.analysis);
@@ -359,6 +361,7 @@ function openMenu() {
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
   $('#mReview').classList.toggle('hidden', !(state.review?.tvCan && !state.review?.open));
+  $('#mRematch').classList.toggle('hidden', !(state.tvRematch && !state.review?.open));
   $('#menu').classList.remove('hidden'); showMenuPage('main');
 }
 function paintSoundMenu() {
@@ -447,6 +450,7 @@ function menuAct(act) {
     paintSoundMenu(); ann.stop(); if (rvSpeakOn()) ann.say('Game reviews will be read out: the best move for each turn.');
   }
   else if (act === 'review') { closeMenu(); ws.send({ t: 'review', op: 'open' }); }
+  else if (act === 'rematch') { closeMenu(); ws.send({ t: 'start' }); }
   else if (act === 'page-ann') showMenuPage('ann');
   else if (act === 'page-music') showMenuPage('music');
   else if (act === 'back') menuBack();
