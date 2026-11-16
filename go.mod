@@ -4,10 +4,11 @@ go 1.27.0
 
 require (
 	github.com/coder/websocket v1.8.15
-	github.com/domino14/macondo v0.13.9
+	github.com/domino14/macondo v0.13.10-0.20261116053746-9c33baa63625
 	github.com/domino14/word-golib v0.3.0
 	github.com/rs/zerolog v1.35.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
@@ -37,7 +38,6 @@ require (
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260807164820-c8921c73eeea // indirect
 	google.golang.org/grpc v1.83.0 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.5.1 // indirect
 	modernc.org/libc v1.75.1 // indirect
