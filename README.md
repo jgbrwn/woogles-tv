@@ -30,7 +30,7 @@ closet.
   LG webOS included, with the device's own speech as a backup.
 - Optional **background music**: internet radio (e.g. Radio Paradise) under the game, with now playing and album covers on the TV, fading down whenever the announcer talks. *Always*, *Breaks* only, or *Off*.
 - Clock warnings: chimes at 5 and 1 minute left, a 10-second countdown, and an alarm plus penalty tones in overtime.
-- Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, **Games on this TV** (switch between games in progress), new game.
+- Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, music, **Games on this TV** (switch between games in progress), new game, and after a game **Rematch** and **Game review**. Back closes menus and the review.
 - Your tiles never appear on the TV; only submitted moves do.
 - **Game review** after the game, on the big screen: each move graded by Macondo (best, or a small, medium or large mistake), the best move shown on the board in green, other options with their winning chances, and the announcer reading it out. Driven from a player's phone or the remote.
 - Left alone, a finished game makes way for a fresh new-game screen after 20 minutes, and an idle review asks "Still reviewing?" before closing.
@@ -96,7 +96,7 @@ Want the natural announcer voice too? See [docs/TTS.md](docs/TTS.md): it's one e
 
 | | |
 |---|---|
-| [User guide](docs/USER-GUIDE.md) | How to play: starting games, phone controls, TV remote, clocks, bots, several games per TV |
+| [User guide](docs/USER-GUIDE.md) | How to play: starting games, phone controls, TV remote, clocks, bots, game review, several games per TV |
 | [Deployment](docs/DEPLOY.md) | Any server: binary, systemd, Docker, reverse proxies (Caddy/nginx), TLS, configuration, upgrades, backups |
 | [Home network / Raspberry Pi](docs/LOCAL-NETWORK.md) | Running it on your LAN: Pi setup, addresses, local DNS, HTTPS options and caveats |
 | [Android TV app](android/README.md) | Building the launcher for your own server, signing, sideloading, remote keys |

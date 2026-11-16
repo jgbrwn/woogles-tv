@@ -57,7 +57,7 @@ sound straight away.
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
 player goes first. The TV remote can start it too (OK → **🔁 Rematch**) while every player's phone is connected, so
 nobody's clock starts while they're away. **Change settings** returns to the lobby. **🏠 Home** leaves the game as it is: it stays under
-*Your games → Finished* on the home page until a rematch starts in that room.
+*Your games → Finished* on the home page, even after a rematch in that room (see *Earlier games* below).
 
 ### Game review (analysis) and the game file
 After a game, each player's phone has **📊 Analysis & game file** (on the results card and under ☰; back in the lobby,
@@ -146,8 +146,9 @@ spot in the rack.
   too. Definitions come from Woogles.io (the NWL23/CSW24 definitions), so the server needs internet access for this.
 - **🔍 Zoom**: enlarges the board; scroll around it with your finger.
 - **☰ Menu**: 🏠 *Home*, 🔤 *Unseen tiles* (everything in the bag plus your opponent's rack, with vowel/consonant counts),
-  ⏸ *Pause clock*, 🎨 *Theme*, 📺 *Show on a TV*, 📡 *Cast board to TV*, 📨 *Invite / room QR*, 🏳 *Resign*,
-  ✖ *End game for everyone*.
+  ⏸ *Pause clock*, 📺 *Show on a TV*, 📡 *Cast board to TV*, 📨 *Invite / room QR*, 🎨 *Theme*, 🔊 *Sound & voice*,
+  🎵 *Music on TV*, 🏳 *Resign*, ✖ *End game for everyone*; after a game also 🏆 *Results / rematch* and 📊 *Analysis &
+  game file*.
 
 <p>
   <img src="screenshots/phone-scorecard-v2.png" width="250" alt="Scorecard overlay">
@@ -177,9 +178,9 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (theme, volume, clock, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
+| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
-| **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button |
+| **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button. In a game review the remote is driving: the previous or next move |
 | **Back** | Closes a menu or prompt, or finishes a game review the remote is driving. With nothing open, in the app, press Back twice to exit |
 | **Hold OK** or **Menu** (app only) | Native app menu: reload, change server URL, reset, exit |
 
@@ -276,8 +277,8 @@ key to enable sound*, press a button on the remote once.
   the seat moves if the old phone is disconnected.
 - **Watching**: anyone who opens the game's link while both seats are taken watches the game: the board, scores,
   clocks and scorecard, but never the racks. If a seat becomes free, a 🪑 *Take empty seat* button appears.
-- **How long games last**: rooms with an unfinished game are kept for **7 days** after the last activity, and
-  others for **3 days**. Expired games disappear from the TV's and phones' lists automatically.
+- **How long games last**: rooms with an unfinished game, or an analysed one, are kept for **7 days** after the last
+  activity, and others for **3 days**. Expired games disappear from the TV's and phones' lists automatically.
 
 ## 7. Installing the phone app (PWA)
 

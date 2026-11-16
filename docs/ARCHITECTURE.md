@@ -17,6 +17,7 @@
 | `main.go` | Flags, HTTP routes, static files (embedded `web/`), JSON APIs, WebSocket endpoint, QR codes |
 | `room.go` | Rooms, seats, clients, game lifecycle, NASPA clock, persistence, expiry, state broadcasting |
 | `engine.go` | Thin wrapper around Macondo: build/validate/preview moves, play/pass/exchange, move log, unseen tiles, bots, history save/restore |
+| `definitions.go` | Word definitions for a played word (double-tap in the scorecard): Woogles.io's word service, dictionaryapi.dev as a fallback, cached and rate limited |
 | `tts.go` | Optional server voice: `/api/tts` checks credentials and limits, streams audio from the local speech engine, caches clips |
 | `analysis.go` | Post-game review: Macondo's game analyser run by one background worker (a queue, one game at a time), results saved with the game, the walkthrough state (who drives, which move, the idle prompt) sent with the room state, private look-backs at an earlier game while a new one is on, the last 5 finished games kept per room, and GCG export (`/api/gcg`) |
 | `music.go` | Optional background music: the station list (`WT_MUSIC_STREAMS`), their hosts in the CSP, and "now playing" read from each stream's ICY metadata (`/api/music/now`, `/api/music/cover`). The TV plays the stream itself |
@@ -52,13 +53,13 @@ and also why you should only share a game's link with people you're happy to hav
 
 Client → server (`t` field): `join` (seat, name), `leave`, `addbot`, `removebot`, `settings`, `start`, `end`, `resign`,
 `pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code),
-`define` (move number: look up that play's word), `tvprefs` (TV only: whether its announcer will speak; players' `state` carries `tvVoice` so phones can stay quiet
+`define` (move number: look up that play's word), `review` (`op`: `open` a finished game's walkthrough, `game` picking one of the room's last 5; `step` to a move; `still` to answer *Still reviewing?*; `close`), `tvprefs` (TV only: whether its announcer will speak; players' `state` carries `tvVoice` so phones can stay quiet
 while a TV announces).
 
 The announcer's optional server voice is plain HTTP, not WebSocket: `POST /api/tts` with the room code, the TV key or
 a seat token, the sentence and a voice streams back 16-bit 24 kHz PCM from a local speech engine. See [TTS.md](TTS.md).
 
-Server → client: `state` (the full view for that client: board, scores, log, clock, settings, seats, and **your rack only**),
+Server → client: `state` (the full view for that client: board, scores, log, clock, settings, seats, the game review's walkthrough if one is open, and **your rack only**),
 `define` (a played word's definition, also sent to TVs as an `event`), `event` (moves, bingos, start, time-outs for sounds and animations), `preview` (score or error for your tentative
 move, sent only to you), `joined` (your seat token), `notice` / `error` (toasts), `switch` (TV only: show another room;
 `ask` if it's mid-game).
@@ -81,7 +82,10 @@ receives only committed moves.
 
 - Each room is saved to `data/rooms/CODE.json` (write to a temp file, then rename) whenever something changes. A game
   is stored as Macondo's protobuf game history (protojson) and replayed on load, so games survive restarts and upgrades.
-- Rooms expire after **72 h** without activity, or **7 days** if a game is unfinished, and only when nobody is connected.
+- A room file also holds the room's last 5 finished games (as game histories) and any analysis of them, so reviews survive
+  restarts and a rematch doesn't lose the game before it.
+- Rooms expire after **72 h** without activity, or **7 days** if a game is unfinished or has been analysed, and only when
+  nobody is connected.
 - Limits: 500 rooms, 16 connections per room.
 
 ## Security model
@@ -98,11 +102,15 @@ The server is meant to sit on the open internet without accounts.
 - **Room creation** is limited to 20 rooms per hour per IP, with a cap of 500 rooms.
 - **Headers:** strict CSP (`default-src 'self'`; Google's domain only on `/cast`), `X-Frame-Options: DENY`,
   `nosniff`, `no-referrer`, COOP, Permissions-Policy, HSTS behind HTTPS.
-- **WebSockets:** origin-checked, size and rate limited, and per-role authorization on every message (TVs can't
-  act; players can only act for their own seat).
+- **WebSockets:** origin-checked, size and rate limited, and per-role authorization on every message. Players can only
+  act for their own seat. A TV can't play: it can change the look (theme, music), step through a game review it opened,
+  and start a rematch only when the game is over and every human player's phone is connected.
 - **Definitions:** a phone can only ask about a word already played in its game (by move number), so the server
   can't be used as an open dictionary proxy. Lookups are cached and rate limited per room and globally. The only
   data sent out is the word and the dictionary name (to Woogles.io, or dictionaryapi.dev as a fallback).
+- **Game review:** analysis runs in one background worker with a short queue, so it can't swamp the CPU. Reviews and the
+  GCG file (`POST /api/gcg`) are for the game's seated players (and the TV, for the review); spectators get neither,
+  and a GCG file needs that game's seat token.
 - **Server voice:** `/api/tts` needs the TV key or a seat token, caps text at 700 characters, allows only the
   configured voices and is rate limited per room and globally. The speech engine listens on localhost only.
 - **Process:** the systemd unit and Docker image run unprivileged with a read-only filesystem, apart from `data/`.

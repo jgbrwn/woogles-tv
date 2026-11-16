@@ -23,7 +23,10 @@ go vet ./... && go test ./...
 ```
 
 `engine_test.go` covers playing moves, rejecting invalid words, a full bot-vs-bot game and restoring a saved game. `room_test.go` covers
-authorization, *Show on TV*, game summaries and the NASPA clock (overtime penalties, time loss). There is no JS test
+authorization, *Show on TV*, game summaries, planning moves while waiting and the NASPA clock (overtime penalties, time
+loss). `analysis_test.go` covers the game review (who drives, private look-backs, the idle prompt, restarts), keeping the
+last 5 games and the TV's rematch. The rest cover definitions, the server voice, music and now playing, stats, and bot
+faces. There is no JS test
 suite; the web code is small, framework-free ES modules. Check them with `node --check` and in a browser.
 
 `tools/sim` is a scripted player for watching full games on the TV:
@@ -41,7 +44,8 @@ It sits down, adds the computer opponent, starts a game and only exchanges or pa
   client's view, `broadcastLocked` sends it) → `engine.go` (all Macondo calls). Everything a room does happens under
   its mutex, and saving happens in `saveLocked` after each change.
 - **Web:** `web/static/common.js` has the shared pieces (board and tile rendering, the WebSocket connection with
-  reconnect, clocks, sounds, themes). `tv.js` / `play.js` / `index.js` drive the three pages. `announcer.js` turns game events into spoken sentences
+  reconnect, clocks, sounds, themes). `tv.js` / `play.js` / `index.js` drive the three pages. `review.js` is the game review's shared rendering (the move card, timeline and what the announcer says), and
+  `music.js` plays the background radio. `announcer.js` turns game events into spoken sentences
   and speaks them: the server voice (`/api/tts`, `tts.go`, streamed into Web Audio) when configured, else the Web Speech
   API or the Android app's native TTS bridge. `app.css` holds the
   design tokens and all six themes; `tv.css` / `play.css` hold the layouts.

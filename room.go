@@ -423,7 +423,7 @@ type inMsg struct {
 	Music    string `json:"music"`
 	Station  *int   `json:"station"`
 	MusicVol string `json:"musicVol"`
-	Op       string `json:"op"`   // review: open, step, close
+	Op       string `json:"op"`   // review: open, step, still, close
 	Pos      *int   `json:"pos"`  // review: the move to show (-1: the overview)
 	Game     int    `json:"game"` // review: which finished game (0: the room's latest)
 }
