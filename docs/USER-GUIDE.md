@@ -29,7 +29,7 @@ Choose one of these:
 The TV lobby shows a **QR code** and a 6-letter **TV code**. The TV code is always the code of the game currently on
 screen. During a game it sits in the bottom-right corner, labelled *TV code*.
 
-![TV lobby](screenshots/tv-lobby-v2.png)
+![TV lobby](screenshots/tv-lobby-v3.png)
 
 The first click or key press on a browser TV turns on sound; browsers block audio until then. The Android TV app plays
 sound straight away.
@@ -51,7 +51,7 @@ sound straight away.
 4. Invite the other player with **📨 Invite the other player** (QR code or share link), or have them scan the QR code
    that is now on the TV.
 
-![Phone lobby](screenshots/phone-lobby-v2.png)
+![Phone lobby](screenshots/phone-lobby-v3.png)
 
 ### Rematch
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
@@ -62,6 +62,10 @@ nobody's clock starts while they're away. **Change settings** returns to the lob
 ### Game review (analysis) and the game file
 After a game, each player's phone has **📊 Analysis & game file** (on the results card and under ☰; back in the lobby,
 **📊 Last game: analysis & game file**), and the TV has it under OK → **📊 Game review**. Spectators don't get it.
+
+![Game review on the TV](screenshots/tv-review-v3.png)
+
+<img src="screenshots/phone-review-v3.png" width="250" alt="Game review on a phone">
 
 - **Walkthrough.** Macondo, the engine behind Woogles.io, goes through the game on the server and grades every move:
   **Best move**, or a **small**, **medium** or **large mistake** (plus *missed bingo* and, in the endgame, *cost the
@@ -100,7 +104,7 @@ TV**.
 
 ## 3. Playing on your phone
 
-![Phone during a game](screenshots/phone-game-v2.png)
+![Phone during a game](screenshots/phone-game-v3.png)
 
 **Placing tiles**
 - **Tap a square** to put the cursor there. Tap it again to switch between across (→) and down (↓).
@@ -129,7 +133,7 @@ TV**.
 show where it will land, and it stays wherever you let go. You can also drop a tile from the board onto a particular
 spot in the rack.
 
-![Rearranging the rack](screenshots/phone-rearrange.png)
+![Rearranging the rack](screenshots/phone-rearrange-v3.png)
 
 **Above the rack**
 - **🏠 Home**: back to the home page to start or join another game. The game isn't ended: it keeps going (on the TV
@@ -151,8 +155,8 @@ spot in the rack.
   game file*.
 
 <p>
-  <img src="screenshots/phone-scorecard-v2.png" width="250" alt="Scorecard overlay">
-  <img src="screenshots/phone-unseen.png" width="250" alt="Unseen tiles">
+  <img src="screenshots/phone-scorecard-v3.png" width="250" alt="Scorecard overlay">
+  <img src="screenshots/phone-unseen-v3.png" width="250" alt="Unseen tiles">
 </p>
 
 Your phone buzzes when it's your turn (on phones that support vibration), and plays a short sound. While a game is
@@ -220,7 +224,7 @@ If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)
 game, with the song and artist (and often the album cover) on screen. Choose in the TV menu (**OK** → **Music ›**), or on a phone (☰ →
 *Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
 
-![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v2.png)
+![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v3.png)
 
 | Option | Choices |
 |---|---|
@@ -263,14 +267,14 @@ key to enable sound*, press a button on the remote once.
   OK → **Games on this TV** lists every game this TV has shown, with players, score and status. Pick one with OK to put
   it back on screen, or press ▶ and then OK twice to remove it from the list.
 
-  ![Games on this TV](screenshots/tv-games-list-v2.png)
+  ![Games on this TV](screenshots/tv-games-list-v3.png)
 
 - **On the phone**: the home page has **Your games**, with **Active** and **Finished** tabs. A game counts as finished
   when it has ended, when you have left your seat, or after 3 days without a move ("Abandoned"). Tap a game to
   rejoin it; ✕ removes it from this phone (it carries on for the other player). To put a game back on the TV, open it
   and use ☰ → **Show on a TV**.
 
-  <img src="screenshots/phone-home.png" width="250" alt="Your games on the phone's home page">
+  <img src="screenshots/phone-home-v3.png" width="250" alt="Your games on the phone's home page">
 
 - **Rejoining**: your phone remembers its seat, so you can close the browser, lock the phone or lose Wi-Fi and pick
   up where you left off. To move to a different phone, scan the TV's QR code with the new phone and tap your seat;
