@@ -296,6 +296,10 @@ slowed down. Tokens shorter than 24 characters are refused (the route stays off 
   git pull && CGO_ENABLED=0 go build -o woogles-tv . && sudo cp woogles-tv /opt/woogles-tv/ && sudo systemctl restart woogles-tv
   # Docker: git pull && docker compose up -d --build
   ```
+- **Macondo updates:** a weekly GitHub Action (`.github/workflows/macondo-update.yml`, Mondays, or run it by hand
+  from the Actions tab) moves the repository to Macondo's latest `master`, runs `go vet` and the tests, and opens a
+  pull request with the upstream changes and the test result. Once it's merged, upgrade as above. Forks need
+  *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests* turned on for it.
 - **Phone caches:** the PWA's service worker fetches from the network first, so new versions show up on the next
   reload. Nothing needs clearing.
 

@@ -1,0 +1,99 @@
+# Weekly: move to the latest Macondo master, run the checks, and open (or refresh) a pull request.
+# Nothing reaches main until the PR is merged. Run it by hand from the Actions tab too.
+name: Macondo update
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays, 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: macondo-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: macondo-update
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Update Macondo to master
+        id: bump
+        run: |
+          ver() { go list -m -f '{{.Version}}' github.com/domino14/macondo; }
+          ref() { case "$1" in *-*-*) echo "${1##*-}" ;; *) echo "$1" ;; esac; } # pseudo-version -> commit, else tag
+          old=$(ver)
+          go get github.com/domino14/macondo@master
+          go mod tidy
+          new=$(ver)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if git diff --quiet go.mod go.sum; then
+            echo "Already on the latest Macondo ($old)."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Upstream changes"
+            echo
+            echo "\`$old\` → \`$new\` · [compare](https://github.com/domino14/macondo/compare/$(ref "$old")...$(ref "$new"))"
+            echo
+            gh api "repos/domino14/macondo/compare/$(ref "$old")...$(ref "$new")" \
+              --jq '"\(.ahead_by) commits:\n", (.commits | reverse | .[:40][] | "- \(.commit.message | split("\n")[0])")' || true
+          } > "$RUNNER_TEMP/changes.md"
+
+      - name: Vet and test
+        id: test
+        if: steps.bump.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          go build ./... 2>&1 | tee "$RUNNER_TEMP/test.log"
+          go vet ./... 2>&1 | tee -a "$RUNNER_TEMP/test.log"
+          go test -count=1 ./... 2>&1 | tee -a "$RUNNER_TEMP/test.log"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Open or update the pull request
+        if: steps.bump.outputs.changed == 'true'
+        run: |
+          new='${{ steps.bump.outputs.new }}'
+          if [ '${{ steps.test.outcome }}' = success ]; then result='✅ Build, `go vet` and `go test` pass.'; else result='❌ **Build or tests failed**: see the log below. Do not merge as is.'; fi
+          {
+            echo "Automated weekly update of [Macondo](https://github.com/domino14/macondo) to its latest \`master\`."
+            echo
+            echo "$result"
+            echo
+            cat "$RUNNER_TEMP/changes.md"
+            echo
+            echo "<details><summary>Test log (last 60 lines)</summary>"
+            echo
+            echo '```'
+            tail -n 60 "$RUNNER_TEMP/test.log"
+            echo '```'
+            echo "</details>"
+            echo
+            echo "After merging, production needs a rebuild and restart (docs/DEPLOY.md, section 'Data, backups and upgrades')."
+          } > "$RUNNER_TEMP/body.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -am "Macondo: update to master ($new)"
+          git push --force origin "$BRANCH"
+          title="Macondo: update to master ($new)"
+          if gh pr view "$BRANCH" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          fi
