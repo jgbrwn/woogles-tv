@@ -11,11 +11,11 @@
   "theme_color": "#6b268b",
   "categories": ["games", "entertainment"],
   "icons": [
-    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/static/wtv-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/wtv-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/wtv-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "New game", "url": "/?new=1", "icons": [{ "src": "/static/icon-192.png", "sizes": "192x192" }] }
+    { "name": "New game", "url": "/?new=1", "icons": [{ "src": "/static/wtv-192.png", "sizes": "192x192" }] }
   ]
 }
