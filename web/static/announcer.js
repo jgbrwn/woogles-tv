@@ -349,3 +349,20 @@ export function definitionSpeech(ev, names, ann) {
   if (senses[1] && senses[1].text !== senses[0].text) t += ` It can also mean: ${senses[1].text}.`;
   return t;
 }
+
+// A computer opponent waits while a screen announces the previous move: tell the server "hold" now and "quiet" once
+// nothing has been said for a moment (the server caps the wait anyway). n is the number of moves being announced.
+export function holdBot(send, ann, s) {
+  if (!s || !s.seats || !s.seats.some((x) => x && x.bot)) return;
+  const game = s.gameNo, n = (s.log || []).length, t0 = performance.now();
+  send({ t: 'hold', game, n });
+  let quietSince = null;
+  const tick = () => {
+    const now = performance.now();
+    if (ann.soon()) quietSince = null;
+    else if (quietSince === null) quietSince = now;
+    if ((quietSince !== null && now - quietSince >= 300) || now - t0 > 30000) { send({ t: 'quiet', game, n }); return; }
+    setTimeout(tick, 150);
+  };
+  setTimeout(tick, 150);
+}

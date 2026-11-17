@@ -54,7 +54,8 @@ and also why you should only share a game's link with people you're happy to hav
 Client → server (`t` field): `join` (seat, name), `leave`, `addbot`, `removebot`, `settings`, `start`, `end`, `resign`,
 `pause`, `preview` (tentative tiles → private score), `play` (tiles), `pass`, `exchange` (letters), `linktv` (TV code),
 `define` (move number: look up that play's word), `review` (`op`: `open` a finished game's walkthrough, `game` picking one of the room's last 5; `step` to a move; `still` to answer *Still reviewing?*; `close`), `tvprefs` (TV only: whether its announcer will speak; players' `state` carries `tvVoice` so phones can stay quiet
-while a TV announces).
+while a TV announces), `hold` / `quiet` (`game`, `n` moves: a screen is announcing that position / has finished, so a
+computer opponent on turn waits for it; only the current position counts and the wait is capped at 20 s).
 
 The announcer's optional server voice is plain HTTP, not WebSocket: `POST /api/tts` with the room code, the TV key or
 a seat token, the sentence and a voice streams back 16-bit 24 kHz PCM from a local speech engine. See [TTS.md](TTS.md).

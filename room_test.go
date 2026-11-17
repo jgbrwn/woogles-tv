@@ -156,3 +156,72 @@ func TestTVVoiceInState(t *testing.T) {
 	}
 	r.handle(phone, inMsg{T: "tvprefs", Voice: &v}) // only TVs may set it
 }
+
+// A bot waits its beat, then for a screen still announcing the position, then botAfterVoice; botMaxWait caps it.
+func TestBotWaitsForAnnouncer(t *testing.T) {
+	defer func(b, j, bb, av, mx time.Duration) {
+		botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait = b, j, bb, av, mx
+	}(botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait)
+	botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait = 50*time.Millisecond, time.Millisecond, 50*time.Millisecond, 100*time.Millisecond, 3*time.Second
+
+	r := newTestRoom(t)
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
+	r.mu.Lock()
+	r.clients[tv] = true
+	r.seats = [2]*Seat{{Name: "A", Token: "tok"}, {Name: "Bot", Bot: true, Level: "hasty"}}
+	r.order = [2]int{1, 0} // the bot goes first
+	r.mu.Unlock()
+	moves := func() int { r.mu.Lock(); defer r.mu.Unlock(); return len(r.m.eng.Log()) }
+	zero, stale := 0, 3
+
+	r.handle(&Client{role: "player", seat: 0, send: make(chan []byte, 64)}, inMsg{T: "start"})
+	r.mu.Lock()
+	game := r.gameNo
+	r.mu.Unlock()
+	r.handle(tv, inMsg{T: "hold", Game: game, N: &stale}) // not the current position: ignored
+	r.handle(tv, inMsg{T: "hold", Game: game, N: &zero})
+	time.Sleep(400 * time.Millisecond)
+	if moves() != 0 {
+		t.Fatal("the bot moved while the TV was still announcing")
+	}
+	r.handle(tv, inMsg{T: "quiet", Game: game, N: &zero})
+	time.Sleep(30 * time.Millisecond)
+	if moves() != 0 {
+		t.Fatal("the bot moved without a pause after the announcement")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for moves() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if moves() != 1 {
+		t.Fatal("the bot didn't move once the TV was quiet")
+	}
+
+}
+
+// A screen that never says it's done holds the bot for botMaxWait at most.
+func TestBotMaxWait(t *testing.T) {
+	defer func(b, j, mx time.Duration) { botBeat, botJitter, botMaxWait = b, j, mx }(botBeat, botJitter, botMaxWait)
+	botBeat, botJitter, botMaxWait = 20*time.Millisecond, time.Millisecond, 300*time.Millisecond
+	r := newTestRoom(t)
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
+	r.mu.Lock()
+	r.clients[tv] = true
+	r.seats = [2]*Seat{{Name: "A", Token: "tok"}, {Name: "Bot", Bot: true, Level: "hasty"}}
+	r.order = [2]int{1, 0}
+	r.mu.Unlock()
+	zero := 0
+	r.handle(&Client{role: "player", seat: 0, send: make(chan []byte, 64)}, inMsg{T: "start"})
+	r.handle(tv, inMsg{T: "hold", Game: r.gameNo, N: &zero})
+	time.Sleep(150 * time.Millisecond)
+	r.mu.Lock()
+	early := len(r.m.eng.Log())
+	r.mu.Unlock()
+	time.Sleep(600 * time.Millisecond)
+	r.mu.Lock()
+	late := len(r.m.eng.Log())
+	r.mu.Unlock()
+	if early != 0 || late != 1 {
+		t.Fatalf("moves before/after botMaxWait = %d/%d, want 0/1", early, late)
+	}
+}

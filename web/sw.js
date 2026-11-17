@@ -1,6 +1,6 @@
 // Woogles-TV service worker: network-first with a cache fallback so the app shell opens offline-ish
 // and installs as a PWA. Game traffic (/api, /ws, /qr) is never cached.
-const CACHE = 'wt-v12';
+const CACHE = 'wt-v13';
 const SHELL = ['/', '/static/app.css', '/static/play.css', '/static/common.js', '/static/index.js', '/static/play.js',
   '/static/cast.js', '/static/confetti.js', '/static/announcer.js', '/static/music.js', '/static/review.js', '/static/fonts/fonts.css', '/static/wtv-192.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });

@@ -259,7 +259,8 @@ key to enable sound*, press a button on the remote once.
   | STEEBot | Hard: a strong club player |
   | HastyBot | Expert: always the top static play |
 
-  The computer takes a couple of seconds per move so it feels less abrupt.
+  The computer pauses a few seconds before each move (longer after a bingo) so the game doesn't feel rushed. When the
+  announcer is on, it also waits until your move has been read out, plus a short beat, so it never talks over it.
 
 ## 6. Several games, rejoining and watching
 

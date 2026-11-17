@@ -1,6 +1,6 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
   applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace } from './common.js';
-import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, holdBot, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 import { VERDICTS, tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, stepSpeech, overviewSpeech } from './review.js';
 import { makeMusic, musicReady, musicStations, musicSettings, isBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
@@ -142,6 +142,7 @@ function render(s) {
     if (ann.on('moves')) {
       const lines = describeForSpeech(s.log.slice(prev.log.length), s, names, ann, speechCtx);
       ann.later(() => lines.forEach((l) => ann.say(l)), s.log.slice(prev.log.length).some((m) => m.bingo) ? 1300 : 650);
+      if (lines.length && s.phase === 'playing') holdBot((m) => ws.send(m), ann, s);
     }
   }
   if (prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
@@ -657,6 +658,7 @@ function announceStart() {
   const time = state.clock ? `, ${Math.round(state.clock.initialMs / 60000)} minutes each` : '';
   const first = state.seats[state.turn] ? ` ${n[state.turn]} goes first.` : '';
   ann.say(`New game! ${n[0]} versus ${n[1]}. ${lex}${time}.${first} Good luck!`);
+  holdBot((m) => ws.send(m), ann, state);
 }
 
 function startRoom(room) {

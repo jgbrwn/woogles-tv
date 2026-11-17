@@ -9,9 +9,11 @@ import (
 	"errors"
 	"log/slog"
 	"math/big"
+	mrand "math/rand/v2"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +29,18 @@ const (
 	maxOvertime       = 10 * time.Minute   // NASPA: exceeding 10 min of overtime loses the game
 )
 
+// Bot pacing: a computer move waits a human-feeling beat after the previous move, longer after a bingo (the TV
+// celebrates), and while a screen is still announcing the previous move (see "hold" in handle), plus a short pause
+// once it has finished, so the announcer is never talked over. botMaxWait caps it if a screen never reports back.
+var (
+	botBeat       = 2500 * time.Millisecond // plus up to botJitter
+	botJitter     = 1000 * time.Millisecond
+	botBingoBeat  = 4500 * time.Millisecond
+	botAfterVoice = 1200 * time.Millisecond
+	botMaxWait    = 20 * time.Second
+	botPoll       = 150 * time.Millisecond
+)
+
 var TimeOptions = []int{0, 15, 30, 45, 60, 75, 90, 105, 120} // minutes per player for the whole game; 0 = untimed
 
 var Themes = []string{"woogles", "woogles-dark", "balsa", "forest", "pastel", "midnight"}
@@ -38,6 +52,8 @@ type Client struct {
 	bucket *tokenBucket
 	voice  bool           // TV only: its announcer is on and can speak (reported by the TV)
 	rv     *reviewSession // a player's own look back at an earlier game while a new one is on (analysis.go)
+	hold   string         // "game/move" this screen is announcing (a bot waits for it), see "hold" in handle
+	quiet  time.Time      // when it finished announcing hold (zero: still talking)
 }
 
 type Seat struct {
@@ -425,7 +441,8 @@ type inMsg struct {
 	MusicVol string `json:"musicVol"`
 	Op       string `json:"op"`   // review: open, step, still, close
 	Pos      *int   `json:"pos"`  // review: the move to show (-1: the overview)
-	Game     int    `json:"game"` // review: which finished game (0: the room's latest)
+	Game     int    `json:"game"` // review: which finished game (0: the room's latest); hold/quiet: the game number
+	N        *int   `json:"n"`    // hold/quiet: the number of moves in the game's log being announced
 }
 
 // authorize decides the client's role. Players need the room's join key (from the QR code)
@@ -768,6 +785,18 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			cl.voice = *m.Voice
 			r.broadcastLocked() // phones stay quiet while a TV announces (see tvVoiceLocked)
 		}
+	case "hold", "quiet":
+		// A screen announcing the latest move (or the game's start) asks a bot on turn to wait until it's done
+		// talking. Only the current position counts, and botMaxWait caps the wait, so this can't stall a game.
+		if r.m == nil || m.N == nil || m.Game != r.gameNo || *m.N != len(r.m.eng.Log()) {
+			return
+		}
+		key := holdKey(m.Game, *m.N)
+		if m.T == "hold" {
+			cl.hold, cl.quiet = key, time.Time{}
+		} else if cl.hold == key && cl.quiet.IsZero() {
+			cl.quiet = time.Now()
+		}
 	case "define":
 		// Look up the definition of a word that has been played (never anything else, so this can't be used as a
 		// general dictionary proxy). The TVs get it to announce; the asker gets it to show (and speak if no TV will).
@@ -930,8 +959,23 @@ func (r *Room) maybeBotLocked() {
 		return
 	}
 	m, gameNo := r.m, r.gameNo
+	n := len(m.eng.Log())
+	beat := botBeat + mrand.N(botJitter)
+	if ev := m.eng.tp.History().Events; len(ev) > 0 && ev[len(ev)-1].IsBingo {
+		beat = botBingoBeat
+	}
 	go func() {
-		time.Sleep(1800 * time.Millisecond) // feel less robotic
+		start := time.Now()
+		time.Sleep(beat)
+		for time.Since(start) < botMaxWait {
+			r.mu.Lock()
+			wait := r.announcingLocked(holdKey(gameNo, n))
+			r.mu.Unlock()
+			if !wait {
+				break
+			}
+			time.Sleep(botPoll)
+		}
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		if r.m != m || r.gameNo != gameNo || !r.playingLocked() || r.seatOnTurn() != seat {
@@ -947,6 +991,22 @@ func (r *Room) maybeBotLocked() {
 		}
 		r.afterMoveLocked("bot", seat)
 	}()
+}
+
+func holdKey(game, n int) string { return strconv.Itoa(game) + "/" + strconv.Itoa(n) }
+
+// announcingLocked: should a bot keep waiting for a screen announcing position `key`? Yes while one is still talking
+// about it, and for botAfterVoice after the last one finishes.
+func (r *Room) announcingLocked(key string) bool {
+	for c := range r.clients {
+		if c.hold != key {
+			continue
+		}
+		if c.quiet.IsZero() || time.Since(c.quiet) < botAfterVoice {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Room) seatConnected(seat int) bool {

@@ -1,6 +1,6 @@
 import { tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, VERDICTS } from './review.js';
 import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner } from './common.js';
-import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
+import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, holdBot, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
 const ann = makeAnnouncer('wt_ph_', 'off', () => { const t = localStorage.getItem(tokKey); return t && s && s.you >= 0 ? { code, token: t } : null; });
@@ -119,6 +119,7 @@ function render(st) {
     if (ann.on('moves') && !tvTalks()) {
       const lines = describeForSpeech(s.log.slice(prev.log.length), s, names(), ann, speechCtx);
       ann.later(() => lines.forEach((l) => ann.say(l)), b ? 1300 : 400);
+      if (lines.length && s.phase === 'playing') holdBot((m) => ws.send(m), ann, s);
     }
   }
   if (!prev || prev.gameNo !== s.gameNo || !prev.log) speechCtx = speechMemory(s);
