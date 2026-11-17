@@ -11,7 +11,7 @@ follows Woogles.io too.
 It's a single Go binary with the web app built in. Run it on a $5 VPS, in Docker, or on a Raspberry Pi in the
 closet.
 
-![The TV during a game](docs/screenshots/tv-game-v4.png)
+![The TV during a game](docs/screenshots/tv-game-v5.png)
 
 <p align="center">
   <img src="docs/screenshots/phone-game-v3.png" width="200" alt="A phone with tiles placed and a live score">

@@ -202,7 +202,8 @@ the game's top play. On the new-game screen it shows the QR code and TV code ins
 
 ![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v4.png)
 
-- **Take a break any time**: during a game, press **OK** twice (the menu opens on *Pause the clock & take a break*),
+- **Take a break any time**: during a game, press **OK** twice (a reminder sits at the top of the TV's side panel; the
+  menu opens on *Pause the clock & take a break*),
   or the remote's play/pause button. In a timed game this pauses the clock of whoever is on move and brings up the
   idle screen right away; in an untimed game it just brings up the idle screen. (The phones see "The TV paused the
   clock".)
@@ -243,7 +244,7 @@ If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)
 game, with the song and artist (and often the album cover) on screen. Choose in the TV menu (**OK** → **Music ›**), or on a phone (☰ →
 *Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
 
-![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v4.png)
+![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v5.png)
 
 | Option | Choices |
 |---|---|

@@ -17,6 +17,8 @@ body.tv.mouse { cursor: default; }
 #brand .logo { font-size: 4.2vh; }
 #meta { color: var(--muted); font-weight: 700; font-size: 1.8vh; text-align: right; }
 #brand { align-items: center; }
+#breakHint { flex: 1; min-width: 0; text-align: center; color: var(--muted); font-size: 1.8vh; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#breakHint kbd { display: inline-block; font: 800 1.45vh Mulish, sans-serif; padding: .25vh .6vh; margin-right: .3vh; border-radius: .5vh; border: .15vh solid var(--line); border-bottom-width: .35vh; background: var(--card); color: var(--ink); vertical-align: .1vh; }
 #brand .brandEnd { display: flex; align-items: center; gap: 1.4vh; }
 #brand .appIcon { width: 5.2vh; height: 5.2vh; }
 .lobbyBrand { display: flex; align-items: center; justify-content: space-between; gap: 4vh; }

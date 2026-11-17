@@ -100,6 +100,7 @@ function render(s) {
   paintBoard(cells, s.board, { fresh, last: new Set(last), order: last });
   prevBoard = s.board;
   $('#meta').textContent = `${s.lexicon} · ${s.clock ? Math.round(s.clock.initialMs / 60000) + ' min' : 'untimed'}`;
+  paintBreakHint(s);
   $('#pausedBanner').classList.toggle('hidden', !(s.phase === 'playing' && s.clock?.paused));
 
   // players
@@ -188,6 +189,7 @@ function renderReview(s) {
   for (const id of ['#lobby', '#over', '#pausedBanner']) $(id).classList.add('hidden');
   $('#rvPanel').classList.remove('hidden');
   $('#meta').textContent = `${rv.lexicon} · review`;
+  paintBreakHint(s);
   const total = rv.marks.length, key = `${rv.pos}:${rv.step?.ev ?? ''}:${rv.turn ? 1 : 0}`;
   const moved = key.split(':').slice(0, 2).join() !== rvKey.split(':').slice(0, 2).join();
   if (key !== rvKey) {
@@ -471,6 +473,14 @@ function takeBreak() {
   if (c?.paused) { ws.send({ t: 'resume' }); return; } // closes the idle screen when the resumed state arrives
   if (c) ws.send({ t: 'pause' });
   if (!loungeOn) openLounge();
+}
+// The remote shortcut, shown in the header during a game: OK OK = Pause & break (see takeBreak).
+function paintBreakHint(s = state) {
+  const h = $('#breakHint'), on = !CAST && s.phase === 'playing' && !s.review?.open;
+  h.classList.toggle('hidden', !on);
+  if (!on) return;
+  const html = `<kbd>OK</kbd><kbd>OK</kbd> ${!s.clock ? 'Take a break' : s.clock.paused ? 'Resume the clock' : 'Pause &amp; break'}`;
+  if (h.innerHTML !== html) h.innerHTML = html;
 }
 function paintBreakItem() {
   const b = $('#mBreak'), c = state.clock;
