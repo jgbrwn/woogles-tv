@@ -198,6 +198,9 @@ the choice is kept on that TV.
 time of day and the date, what the music is playing with its album cover, and the game at a glance: both players with
 their scores, who's on move, their clocks counting down in a timed game, the lead, tiles in the bag, the last move and
 the game's top play. On the new-game screen it shows the QR code and TV code instead, and after a game, the result.
+
+![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v3.png)
+
 - **OK** pauses (or resumes) the clock in a timed game; the idle screen stays up while it's paused.
 - **Back** or any other button returns to the game, and so does the next move, which then plays out as usual.
 - **OK** → **Idle screen** sets how long the TV waits: 5, 10 (default), 20 or 30 minutes, or Off. Kept on that TV.

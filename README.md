@@ -72,6 +72,7 @@ under **Show on TV** (*phone-first*).
   <img src="docs/screenshots/tv-bingo-v3.png" width="49%" alt="A bingo celebration on the TV">
   <img src="docs/screenshots/tv-game-midnight-v3.png" width="49%" alt="The Midnight theme">
   <img src="docs/screenshots/tv-review-v3.png" width="49%" alt="Game review on the TV: a missed bingo, with the best move in green">
+  <img src="docs/screenshots/tv-idle-v3.png" width="49%" alt="The idle screen: a big clock, the album cover of the song playing, and the game at a glance">
 </p>
 
 ## Quick start
