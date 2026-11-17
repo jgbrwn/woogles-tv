@@ -29,17 +29,29 @@ const (
 	maxOvertime       = 10 * time.Minute   // NASPA: exceeding 10 min of overtime loses the game
 )
 
-// Bot pacing: a computer move waits a human-feeling beat after the previous move, longer after a bingo (the TV
-// celebrates), and while a screen is still announcing the previous move (see "hold" in handle), plus a short pause
-// once it has finished, so the announcer is never talked over. botMaxWait caps it if a screen never reports back.
+// Bot pacing (the room's "computer speed"): a computer move waits a human-feeling beat after the previous move, longer
+// after a bingo (the TV celebrates), and while a screen is still announcing the previous move (see "hold" in handle),
+// plus a short pause once it has finished, so the announcer is never talked over. botMaxWait caps the announcer wait
+// if a screen never reports back.
+type botPace struct{ Beat, Jitter, Bingo, AfterVoice time.Duration }
+
 var (
-	botBeat       = 2500 * time.Millisecond // plus up to botJitter
-	botJitter     = 1000 * time.Millisecond
-	botBingoBeat  = 4500 * time.Millisecond
-	botAfterVoice = 1200 * time.Millisecond
-	botMaxWait    = 20 * time.Second
-	botPoll       = 150 * time.Millisecond
+	BotSpeeds = []string{"quick", "normal", "relaxed"} // "normal" is the default
+	botPaces  = map[string]botPace{
+		"quick":   {Beat: 1000 * time.Millisecond, Jitter: 500 * time.Millisecond, Bingo: 3000 * time.Millisecond, AfterVoice: 300 * time.Millisecond},
+		"normal":  {Beat: 2500 * time.Millisecond, Jitter: 1000 * time.Millisecond, Bingo: 4500 * time.Millisecond, AfterVoice: 1200 * time.Millisecond},
+		"relaxed": {Beat: 5000 * time.Millisecond, Jitter: 2000 * time.Millisecond, Bingo: 7000 * time.Millisecond, AfterVoice: 2500 * time.Millisecond},
+	}
+	botMaxWait = 20 * time.Second
+	botPoll    = 150 * time.Millisecond
 )
+
+func (r *Room) paceLocked() botPace {
+	if p, ok := botPaces[r.settings.BotSpeed]; ok {
+		return p
+	}
+	return botPaces["normal"]
+}
 
 var TimeOptions = []int{0, 15, 30, 45, 60, 75, 90, 105, 120} // minutes per player for the whole game; 0 = untimed
 
@@ -75,6 +87,8 @@ type Settings struct {
 	TimeMin int    `json:"timeMin"`
 	Theme   string `json:"theme"`
 	Bot     string `json:"bot"` // computer opponent strength
+	// How long the computer pauses before moving (BotSpeeds; see botPaces)
+	BotSpeed string `json:"botSpeed"`
 	// Background music on the TV (only offered when the server has WT_MUSIC_STREAMS; see music.go)
 	Music    string `json:"music"`    // always, breaks (lobby, paused clock, game over) or off
 	Station  int    `json:"station"`  // index into the server's station list
@@ -224,7 +238,7 @@ func createRoom(base string) (*Room, error) {
 		code = newCode()
 	}
 	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8),
-		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better", Music: MusicModes[0], MusicVol: "med"}, lastUsed: time.Now(), baseURL: base}
+		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better", BotSpeed: "normal", Music: MusicModes[0], MusicVol: "med"}, lastUsed: time.Now(), baseURL: base}
 	rooms[code] = r
 	stats.RoomsCreated.Add(1)
 	raisePeak(&stats.PeakRooms, int64(len(rooms)))
@@ -383,6 +397,9 @@ func loadRooms(dir string) error {
 		if r.settings.Bot == "" {
 			r.settings.Bot = "better"
 		}
+		if r.settings.BotSpeed == "" { // saved before computer speed existed
+			r.settings.BotSpeed = "normal"
+		}
 		if r.settings.Music == "" { // saved before music existed
 			r.settings.Music, r.settings.MusicVol = MusicModes[0], "med"
 		}
@@ -438,6 +455,7 @@ type inMsg struct {
 	Voice    *bool  `json:"voice"` // tvprefs: the TV's announcer is on
 	Music    string `json:"music"`
 	Station  *int   `json:"station"`
+	BotSpeed string `json:"botSpeed"`
 	MusicVol string `json:"musicVol"`
 	Op       string `json:"op"`   // review: open, step, still, close
 	Pos      *int   `json:"pos"`  // review: the move to show (-1: the overview)
@@ -677,6 +695,9 @@ func (r *Room) handle(cl *Client, m inMsg) {
 			if t == m.Theme {
 				r.settings.Theme = t
 			}
+		}
+		if slices.Contains(BotSpeeds, m.BotSpeed) {
+			r.settings.BotSpeed = m.BotSpeed // any time: a bot waiting to move picks it up
 		}
 		if slices.Contains(MusicModes, m.Music) {
 			r.settings.Music = m.Music
@@ -960,9 +981,10 @@ func (r *Room) maybeBotLocked() {
 	}
 	m, gameNo := r.m, r.gameNo
 	n := len(m.eng.Log())
-	beat := botBeat + mrand.N(botJitter)
+	pace := r.paceLocked()
+	beat := pace.Beat + mrand.N(pace.Jitter)
 	if ev := m.eng.tp.History().Events; len(ev) > 0 && ev[len(ev)-1].IsBingo {
-		beat = botBingoBeat
+		beat = pace.Bingo
 	}
 	go func() {
 		start := time.Now()
@@ -996,13 +1018,14 @@ func (r *Room) maybeBotLocked() {
 func holdKey(game, n int) string { return strconv.Itoa(game) + "/" + strconv.Itoa(n) }
 
 // announcingLocked: should a bot keep waiting for a screen announcing position `key`? Yes while one is still talking
-// about it, and for botAfterVoice after the last one finishes.
+// about it, and for the pace's AfterVoice once the last one finishes.
 func (r *Room) announcingLocked(key string) bool {
+	after := r.paceLocked().AfterVoice
 	for c := range r.clients {
 		if c.hold != key {
 			continue
 		}
-		if c.quiet.IsZero() || time.Since(c.quiet) < botAfterVoice {
+		if c.quiet.IsZero() || time.Since(c.quiet) < after {
 			return true
 		}
 	}

@@ -1,5 +1,5 @@
 import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
-  applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace } from './common.js';
+  applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace, BOT_SPEED_NAMES, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, holdBot, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 import { VERDICTS, tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, stepSpeech, overviewSpeech } from './review.js';
@@ -65,6 +65,7 @@ const avatar = (name, i, seat) => `<span class="avatar p${i}">${seat?.bot ? botF
 
 function render(s) {
   const prev = state; state = s; recvAt = performance.now();
+  paintBotSpeedMenu();
   applyTheme(s.settings.theme);
   music.update(s); paintNow();
   setQR(s.joinUrl);
@@ -358,6 +359,7 @@ function menuBack() { if (menuPage === 'main') closeMenu(); else showMenuPage('m
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
   $('#mClock').textContent = CLOCK_NAMES[clockMode];
+  paintBotSpeedMenu();
   paintSoundMenu();
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
@@ -384,6 +386,10 @@ function paintSoundMenu() {
   $('#mRvSpeak').textContent = rvSpeakOn() ? 'Spoken' : 'Silent';
 }
 const MUSIC_NOTES = { always: 'Quieter during play, and softer still while the announcer talks', breaks: 'In the lobby, while the clock is paused, and after the game', off: '' };
+function paintBotSpeedMenu(speed = state.settings?.botSpeed) {
+  $('#mBotSpeedItem').classList.toggle('hidden', !(state.seats || []).some((x) => x && x.bot));
+  $('#mBotSpeed').textContent = BOT_SPEED_NAMES[speed || 'normal'];
+}
 function paintMusicMenu() {
   const sts = musicStations(), ms = musicSettings(state.settings), on = sts.length > 0 && !!state.settings;
   $('#mMusicEntry').classList.toggle('hidden', !on);
@@ -429,6 +435,10 @@ function menuAct(act) {
     const next = th[(th.indexOf(state.settings.theme) + 1) % th.length];
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
+  } else if (act === 'botspeed') {
+    const next = nextBotSpeed(state.settings?.botSpeed);
+    ws.send({ t: 'settings', botSpeed: next });
+    paintBotSpeedMenu(next);
   } else if (act === 'clock') { cycleClock();
   } else if (act === 'sound') {
     sfx.cycle(); paintSoundMenu(); paintMusicMenu(); music.update(); sfx.turn();

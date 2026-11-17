@@ -157,12 +157,11 @@ func TestTVVoiceInState(t *testing.T) {
 	r.handle(phone, inMsg{T: "tvprefs", Voice: &v}) // only TVs may set it
 }
 
-// A bot waits its beat, then for a screen still announcing the position, then botAfterVoice; botMaxWait caps it.
+// A bot waits its beat, then for a screen still announcing the position, then AfterVoice; botMaxWait caps it.
 func TestBotWaitsForAnnouncer(t *testing.T) {
-	defer func(b, j, bb, av, mx time.Duration) {
-		botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait = b, j, bb, av, mx
-	}(botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait)
-	botBeat, botJitter, botBingoBeat, botAfterVoice, botMaxWait = 50*time.Millisecond, time.Millisecond, 50*time.Millisecond, 100*time.Millisecond, 3*time.Second
+	defer func(p botPace, mx time.Duration) { botPaces["normal"], botMaxWait = p, mx }(botPaces["normal"], botMaxWait)
+	botPaces["normal"] = botPace{Beat: 50 * time.Millisecond, Jitter: time.Millisecond, Bingo: 50 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
+	botMaxWait = 3 * time.Second
 
 	r := newTestRoom(t)
 	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
@@ -201,8 +200,9 @@ func TestBotWaitsForAnnouncer(t *testing.T) {
 
 // A screen that never says it's done holds the bot for botMaxWait at most.
 func TestBotMaxWait(t *testing.T) {
-	defer func(b, j, mx time.Duration) { botBeat, botJitter, botMaxWait = b, j, mx }(botBeat, botJitter, botMaxWait)
-	botBeat, botJitter, botMaxWait = 20*time.Millisecond, time.Millisecond, 300*time.Millisecond
+	defer func(p botPace, mx time.Duration) { botPaces["normal"], botMaxWait = p, mx }(botPaces["normal"], botMaxWait)
+	botPaces["normal"] = botPace{Beat: 20 * time.Millisecond, Jitter: time.Millisecond, Bingo: 20 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
+	botMaxWait = 300 * time.Millisecond
 	r := newTestRoom(t)
 	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
 	r.mu.Lock()
@@ -223,5 +223,27 @@ func TestBotMaxWait(t *testing.T) {
 	r.mu.Unlock()
 	if early != 0 || late != 1 {
 		t.Fatalf("moves before/after botMaxWait = %d/%d, want 0/1", early, late)
+	}
+}
+
+// Computer speed: a room setting any seated player or the TV may change, even mid-game; unknown values are ignored.
+func TestBotSpeedSetting(t *testing.T) {
+	r := newTestRoom(t)
+	if r.settings.BotSpeed != "normal" || r.paceLocked() != botPaces["normal"] {
+		t.Fatalf("default speed %q", r.settings.BotSpeed)
+	}
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
+	r.handle(tv, inMsg{T: "settings", BotSpeed: "relaxed"})
+	if r.settings.BotSpeed != "relaxed" || r.paceLocked() != botPaces["relaxed"] {
+		t.Fatalf("TV set relaxed: %q", r.settings.BotSpeed)
+	}
+	r.handle(&Client{role: "player", seat: 0, send: make(chan []byte, 64)}, inMsg{T: "settings", BotSpeed: "warp"})
+	r.handle(&Client{role: "player", seat: -1, send: make(chan []byte, 64)}, inMsg{T: "settings", BotSpeed: "quick"}) // spectator
+	if r.settings.BotSpeed != "relaxed" {
+		t.Fatalf("speed = %q, want relaxed", r.settings.BotSpeed)
+	}
+	r.handle(&Client{role: "player", seat: 0, send: make(chan []byte, 64)}, inMsg{T: "settings", BotSpeed: "quick"})
+	if r.settings.BotSpeed != "quick" {
+		t.Fatalf("speed = %q, want quick", r.settings.BotSpeed)
 	}
 }

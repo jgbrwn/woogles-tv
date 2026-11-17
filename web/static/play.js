@@ -1,5 +1,5 @@
 import { tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, VERDICTS } from './review.js';
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner, BOT_SPEEDS, BOT_SPEED_NAMES, BOT_SPEED_HELP, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, holdBot, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
@@ -168,6 +168,12 @@ function renderLobby() {
     seg($('#botSeg'), s.bots.map((b) => [b.id, b.name.replace('Bot', '')]), st.bot, (v) => ws.send({ t: 'settings', bot: v }));
     const lv = s.bots.find((b) => b.id === st.bot);
     $('#botHelp').textContent = lv ? `${lv.name}: ${lv.desc}` : '';
+  }
+  $('#botSpeedField').classList.toggle('hidden', !other.bot);
+  if (other.bot) {
+    const sp = st.botSpeed || 'normal';
+    seg($('#botSpeedSeg'), BOT_SPEEDS.map((v) => [v, BOT_SPEED_NAMES[v]]), sp, (v) => ws.send({ t: 'settings', botSpeed: v }));
+    $('#botSpeedHelp').textContent = BOT_SPEED_HELP[sp] + ' It also waits for the announcer.';
   }
   renderTV();
   $('#startBtn').disabled = !other.taken;
@@ -604,7 +610,6 @@ $('#menuBtn').onclick = () => {
       const a = b.dataset.a; closeModal(null);
       if (a === 'seat') { wantSeat = true; render(s); }
       else if (a === 'sound') soundSheet();
-    else if (a === 'home') goHome();
       else if (a === 'home') goHome();
       else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); }
     });
@@ -620,6 +625,7 @@ $('#menuBtn').onclick = () => {
     <button class="btn" data-a="invite">📨 Invite / room QR</button>
     <button class="btn" data-a="theme">🎨 Theme: ${THEME_NAMES[s.settings.theme]}</button>
     <button class="btn" data-a="sound">${soundIcon()} Sound &amp; voice</button>
+    ${s.seats.some((x) => x.bot) ? `<button class="btn" data-a="botspeed">🤖 Computer speed: ${BOT_SPEED_NAMES[s.settings.botSpeed || 'normal']}</button>` : ''}
     ${musicStations().length ? `<button class="btn" data-a="music">🎵 Music on TV: ${MUSIC_MODE_NAMES[musicSettings(s.settings).mode]}</button>` : ''}
     ${s.phase === 'over' ? '<button class="btn primary" data-a="results">🏆 Results / rematch</button>' : ''}
     ${s.review?.you ? '<button class="btn" data-a="review">📊 Analysis &amp; game file</button>' : ''}
@@ -633,6 +639,7 @@ $('#menuBtn').onclick = () => {
     else if (a === 'tv') linkPrompt();
     else if (a === 'sound') soundSheet();
     else if (a === 'music') musicSheet();
+    else if (a === 'botspeed') { const nx = nextBotSpeed(s.settings.botSpeed); ws.send({ t: 'settings', botSpeed: nx }); toast(`Computer speed: ${BOT_SPEED_NAMES[nx]}`); }
     else if (a === 'pause') ws.send({ t: s.clock.paused ? 'resume' : 'pause' });
     else if (a === 'theme') { const th = s.themes; const nx = th[(th.indexOf(s.settings.theme) + 1) % th.length]; applyTheme(nx); ws.send({ t: 'settings', theme: nx }); }
     else if (a === 'results') { overDismissed = -1; renderOver(); }

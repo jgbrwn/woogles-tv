@@ -2,6 +2,11 @@
 export const VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10,'?':0};
 export const BONUS = {'=':['tw','TRIPLE WORD','3W'], '-':['dw','DOUBLE WORD','2W'], '"':['tl','TRIPLE LETTER','3L'], "'":['dl','DOUBLE LETTER','2L']};
 export const COLS = 'ABCDEFGHIJKLMNO';
+// How long the computer pauses before moving (the room's botSpeed setting; the server's botPaces).
+export const BOT_SPEEDS = ['quick', 'normal', 'relaxed'];
+export const BOT_SPEED_NAMES = { quick: 'Quick', normal: 'Normal', relaxed: 'Relaxed' };
+export const BOT_SPEED_HELP = { quick: 'Moves after about a second.', normal: 'Pauses a few seconds, like a person would.', relaxed: 'Takes its time: about five to seven seconds.' };
+export const nextBotSpeed = (v) => BOT_SPEEDS[(BOT_SPEEDS.indexOf(v || 'normal') + 1) % BOT_SPEEDS.length];
 export const THEME_NAMES = { 'woogles': 'Woogles', 'woogles-dark': 'Woogles Dark', 'balsa': 'Balsa', 'forest': 'Forest', 'pastel': 'Pastel', 'midnight': 'Midnight' };
 
 // Computer opponents' faces: one robot per strength, drawn in the avatar's ink with features cut in the player colour.

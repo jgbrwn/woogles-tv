@@ -151,7 +151,7 @@ spot in the rack.
 - **🔍 Zoom**: enlarges the board; scroll around it with your finger.
 - **☰ Menu**: 🏠 *Home*, 🔤 *Unseen tiles* (everything in the bag plus your opponent's rack, with vowel/consonant counts),
   ⏸ *Pause clock*, 📺 *Show on a TV*, 📡 *Cast board to TV*, 📨 *Invite / room QR*, 🎨 *Theme*, 🔊 *Sound & voice*,
-  🎵 *Music on TV*, 🏳 *Resign*, ✖ *End game for everyone*; after a game also 🏆 *Results / rematch* and 📊 *Analysis &
+  🤖 *Computer speed* (against the computer), 🎵 *Music on TV*, 🏳 *Resign*, ✖ *End game for everyone*; after a game also 🏆 *Results / rematch* and 📊 *Analysis &
   game file*.
 
 <p>
@@ -182,7 +182,7 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
+| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, computer speed (when playing the computer), announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button. In a game review the remote is driving: the previous or next move |
 | **Back** | Closes a menu or prompt, or finishes a game review the remote is driving. With nothing open, in the app, press Back twice to exit |
@@ -259,8 +259,10 @@ key to enable sound*, press a button on the remote once.
   | STEEBot | Hard: a strong club player |
   | HastyBot | Expert: always the top static play |
 
-  The computer pauses a few seconds before each move (longer after a bingo) so the game doesn't feel rushed. When the
-  announcer is on, it also waits until your move has been read out, plus a short beat, so it never talks over it.
+  **Computer speed** sets how long the computer pauses before each move: *Quick* (about a second), *Normal* (the
+  default: a few seconds, like a person would) or *Relaxed* (about five to seven seconds). Pauses are longer after a
+  bingo. At any speed, when the announcer is on it also waits until your move has been read out, so it never talks
+  over it. Choose it in the lobby, from the phone's ☰ menu, or on the TV (OK → Computer speed), even mid-game.
 
 ## 6. Several games, rejoining and watching
 
