@@ -51,7 +51,7 @@ sound straight away.
 4. Invite the other player with **📨 Invite the other player** (QR code or share link), or have them scan the QR code
    that is now on the TV.
 
-![Phone lobby](screenshots/phone-lobby-v3.png)
+![Phone lobby](screenshots/phone-lobby-v4.png)
 
 ### Rematch
 When a game ends, the phones show the result. **Rematch** starts a new game with the same players, and the other
@@ -296,7 +296,7 @@ key to enable sound*, press a button on the remote once.
   rejoin it; ✕ removes it from this phone (it carries on for the other player). To put a game back on the TV, open it
   and use ☰ → **Show on a TV**.
 
-  <img src="screenshots/phone-home-v3.png" width="250" alt="Your games on the phone's home page">
+  <img src="screenshots/phone-home-v4.png" width="250" alt="Your games on the phone's home page">
 
 - **Rejoining**: your phone remembers its seat, so you can close the browser, lock the phone or lose Wi-Fi and pick
   up where you left off. To move to a different phone, scan the TV's QR code with the new phone and tap your seat;

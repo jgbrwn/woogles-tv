@@ -16,7 +16,7 @@ closet.
 <p align="center">
   <img src="docs/screenshots/phone-game-v3.png" width="200" alt="A phone with tiles placed and a live score">
   <img src="docs/screenshots/phone-scorecard-v3.png" width="200" alt="The phone's scorecard overlay">
-  <img src="docs/screenshots/phone-lobby-v3.png" width="200" alt="Choosing the dictionary, clock and computer strength">
+  <img src="docs/screenshots/phone-lobby-v4.png" width="200" alt="Choosing the dictionary, clock and computer strength">
   <img src="docs/screenshots/phone-review-v3.png" width="200" alt="Game review on a phone">
 </p>
 
