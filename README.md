@@ -11,7 +11,7 @@ follows Woogles.io too.
 It's a single Go binary with the web app built in. Run it on a $5 VPS, in Docker, or on a Raspberry Pi in the
 closet.
 
-![The TV during a game](docs/screenshots/tv-game-v3.png)
+![The TV during a game](docs/screenshots/tv-game-v4.png)
 
 <p align="center">
   <img src="docs/screenshots/phone-game-v3.png" width="200" alt="A phone with tiles placed and a live score">
@@ -68,11 +68,11 @@ Then either scan the TV's QR code with your phones (*TV-first*), or start a game
 under **Show on TV** (*phone-first*).
 
 <p align="center">
-  <img src="docs/screenshots/tv-lobby-v3.png" width="49%" alt="The TV lobby with its QR code and TV code">
+  <img src="docs/screenshots/tv-lobby-v4.png" width="49%" alt="The TV lobby with its QR code and TV code">
   <img src="docs/screenshots/tv-bingo-v3.png" width="49%" alt="A bingo celebration on the TV">
   <img src="docs/screenshots/tv-game-midnight-v3.png" width="49%" alt="The Midnight theme">
   <img src="docs/screenshots/tv-review-v3.png" width="49%" alt="Game review on the TV: a missed bingo, with the best move in green">
-  <img src="docs/screenshots/tv-idle-v3.png" width="49%" alt="The idle screen: a big clock, the album cover of the song playing, and the game at a glance">
+  <img src="docs/screenshots/tv-idle-v4.png" width="49%" alt="The idle screen: a big clock, the album cover of the song playing, and the game at a glance">
 </p>
 
 ## Quick start

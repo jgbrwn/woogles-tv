@@ -410,7 +410,7 @@ function paintLounge() {
     if (last && s.phase === 'playing') { const d = describeMove(last, names); facts.push(`Last: <b>${esc(d.text)}</b>${d.quiet ? '' : ` for <b>${d.score}</b>`} · ${esc(d.who)}`); }
     const top = log.filter((m) => m.type === 'play').reduce((a, m) => (!a || m.score > a.score ? m : a), null);
     if (top) { const d = describeMove(top, names); facts.push(`Top play: <b>${esc(d.text)}</b> for <b>${d.score}</b> · ${esc(d.who)}${top.bingo ? ' · bingo!' : ''}`); }
-    html += rows + (facts.length ? `<div class="lgFacts">${facts.map((f) => `<div>${f}</div>`).join('')}</div>` : '');
+    html += rows + (facts.length ? `<div class="lgFacts"><div class="lgLines">${facts.map((f) => `<div>${f}</div>`).join('')}</div><img class="appIcon" src="/static/wtv2-icon.svg" alt=""></div>` : '');
   }
   const g = box.querySelector('.lgGame');
   if (g.dataset.h !== html) { g.dataset.h = html; g.innerHTML = html; }

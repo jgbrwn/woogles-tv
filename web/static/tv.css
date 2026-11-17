@@ -16,6 +16,11 @@ body.tv.mouse { cursor: default; }
 #brand { display: flex; align-items: baseline; justify-content: space-between; gap: 2vh; }
 #brand .logo { font-size: 4.2vh; }
 #meta { color: var(--muted); font-weight: 700; font-size: 1.8vh; text-align: right; }
+#brand { align-items: center; }
+#brand .brandEnd { display: flex; align-items: center; gap: 1.4vh; }
+#brand .appIcon { width: 5.2vh; height: 5.2vh; }
+.lobbyBrand { display: flex; align-items: center; justify-content: space-between; gap: 4vh; }
+.lobbyBrand .appIcon { width: 13vh; height: 13vh; }
 .card { background: var(--card); border-radius: 1.4vh; box-shadow: var(--shadow); padding: 1.6vh 2vh; }
 .cardTitle { text-transform: uppercase; letter-spacing: .18em; color: var(--muted); font-size: 1.4vh; font-weight: 800; margin-bottom: 1vh; }
 
@@ -263,7 +268,9 @@ body.reviewing #players, body.reviewing #bagCard, body.reviewing #logCard { disp
 #lounge .lgRow .nm small { display: block; font-size: 1.9vh; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .08em; }
 #lounge .lgRow .sc { font-size: 5vh; font-weight: 900; min-width: 10vh; text-align: right; }
 #lounge .lgRow .timer { font-size: 3.2vh; padding: .4vh 1.2vh; border-radius: 1vh; }
-#lounge .lgFacts { margin-top: 1.6vh; padding-top: 1.6vh; border-top: .2vh solid var(--line); font-size: 2.3vh; color: var(--muted); font-weight: 600; display: flex; flex-direction: column; gap: .6vh; }
+#lounge .lgFacts { margin-top: 1.6vh; padding-top: 1.6vh; border-top: .2vh solid var(--line); font-size: 2.3vh; color: var(--muted); font-weight: 600; display: flex; align-items: flex-end; gap: 2vh; }
+#lounge .lgFacts .lgLines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .6vh; }
+#lounge .lgFacts .appIcon { width: 8.4vh; height: 8.4vh; flex-shrink: 0; }
 #lounge .lgFacts b { color: var(--ink); }
 #lounge .lgPaused { color: var(--bad); font-weight: 900; }
 #lounge .lgQR { display: flex; align-items: center; gap: 3vh; }

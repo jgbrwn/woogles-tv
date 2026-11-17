@@ -29,7 +29,7 @@ Choose one of these:
 The TV lobby shows a **QR code** and a 6-letter **TV code**. The TV code is always the code of the game currently on
 screen. During a game it sits in the bottom-right corner, labelled *TV code*.
 
-![TV lobby](screenshots/tv-lobby-v3.png)
+![TV lobby](screenshots/tv-lobby-v4.png)
 
 The first click or key press on a browser TV turns on sound; browsers block audio until then. The Android TV app plays
 sound straight away.
@@ -199,7 +199,7 @@ time of day and the date, what the music is playing with its album cover, and th
 their scores, who's on move, their clocks counting down in a timed game, the lead, tiles in the bag, the last move and
 the game's top play. On the new-game screen it shows the QR code and TV code instead, and after a game, the result.
 
-![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v3.png)
+![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v4.png)
 
 - **OK** pauses (or resumes) the clock in a timed game; the idle screen stays up while it's paused.
 - **Back** or any other button returns to the game, and so does the next move, which then plays out as usual.
@@ -237,7 +237,7 @@ If the server has radio stations set up ([DEPLOY.md](DEPLOY.md#background-music)
 game, with the song and artist (and often the album cover) on screen. Choose in the TV menu (**OK** → **Music ›**), or on a phone (☰ →
 *Music on TV*, or *Music on the TV* in the lobby); everyone in the game shares the setting.
 
-![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v3.png)
+![The TV during a game, with Radio Paradise playing](screenshots/tv-game-v4.png)
 
 | Option | Choices |
 |---|---|

@@ -53,8 +53,9 @@ def main():
             page.close()
             print(out)
         browser.close()
-    shutil.copy(os.path.join(HERE, 'favicon.svg'), os.path.join(ROOT, 'web/static/wtv2-favicon.svg'))
-    print('web/static/wtv2-favicon.svg')
+    for src, out in (('favicon.svg', 'wtv2-favicon.svg'), ('icon.svg', 'wtv2-icon.svg')):  # icon.svg: shown on the TV pages
+        shutil.copy(os.path.join(HERE, src), os.path.join(ROOT, 'web/static', out))
+        print('web/static/' + out)
 
 
 if __name__ == '__main__':
