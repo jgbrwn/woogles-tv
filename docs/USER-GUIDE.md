@@ -182,7 +182,7 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, computer speed (when playing the computer), announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
+| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, idle screen, computer speed (when playing the computer), announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button. In a game review the remote is driving: the previous or next move |
 | **Back** | Closes a menu or prompt, or finishes a game review the remote is driving. With nothing open, in the app, press Back twice to exit |
@@ -193,6 +193,16 @@ Browsers on a computer: Enter opens the menu, the arrow keys move, Esc closes.
 **Time of day.** During a game, a clock next to the TV code (bottom right) shows the time in the TV's own time zone.
 **OK** → **Clock** switches between 12 hr, 24 hr and Off. It starts in the format the TV (or browser) normally uses, and
 the choice is kept on that TV.
+
+**Idle screen.** After a while with nothing happening (no move, no one joining, no remote presses), the TV shows a big
+time of day and the date, what the music is playing with its album cover, and the game at a glance: both players with
+their scores, who's on move, their clocks counting down in a timed game, the lead, tiles in the bag, the last move and
+the game's top play. On the new-game screen it shows the QR code and TV code instead, and after a game, the result.
+- **OK** pauses (or resumes) the clock in a timed game; the idle screen stays up while it's paused.
+- **Back** or any other button returns to the game, and so does the next move, which then plays out as usual.
+- **OK** → **Idle screen** sets how long the TV waits: 5, 10 (default), 20 or 30 minutes, or Off. Kept on that TV.
+- With music set to *Breaks*, the idle screen counts as a break, so the music plays while it's up.
+- The picture shifts slightly every minute, so nothing sits still on the screen for hours.
 
 ### Sound and the announcer
 

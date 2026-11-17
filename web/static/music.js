@@ -26,7 +26,10 @@ export function musicSettings(settings = {}) {
   return { mode: MUSIC_MODES.includes(settings.music) ? settings.music : 'always', station,
     vol: MUSIC_VOLS.includes(settings.musicVol) ? settings.musicVol : 'med' };
 }
-export const isBreak = (st) => st.phase !== 'playing' || !!st.clock?.paused;
+// The TV's idle screen counts as a break too (setIdleBreak).
+let idleBreak = false;
+export const setIdleBreak = (on) => { idleBreak = !!on; };
+export const isBreak = (st) => idleBreak || st.phase !== 'playing' || !!st.clock?.paused;
 
 // ann: the TV's announcer (for ducking). onNow(info|null): what's playing, for the "now playing" card;
 // info = {station, title, artist, song, cover}. onBlocked(): the browser wants a key press before playing sound.

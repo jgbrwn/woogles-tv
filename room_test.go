@@ -247,3 +247,25 @@ func TestBotSpeedSetting(t *testing.T) {
 		t.Fatalf("speed = %q, want quick", r.settings.BotSpeed)
 	}
 }
+
+// The TV's remote may pause and resume a timed game's clock (from the idle screen); spectators may not.
+func TestTVPausesClock(t *testing.T) {
+	r := newTestRoom(t)
+	r.seats = [2]*Seat{{Name: "A", Token: "a"}, {Name: "B", Token: "b"}}
+	r.settings.TimeMin = 15
+	r.handle(&Client{role: "player", seat: 0, send: make(chan []byte, 64)}, inMsg{T: "start"})
+	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
+	watcher := &Client{role: "player", seat: -1, send: make(chan []byte, 64)}
+	r.handle(watcher, inMsg{T: "pause"})
+	if r.m.Clock.Paused {
+		t.Fatal("a spectator paused the clock")
+	}
+	r.handle(tv, inMsg{T: "pause"})
+	if !r.m.Clock.Paused {
+		t.Fatal("the TV couldn't pause the clock")
+	}
+	r.handle(tv, inMsg{T: "resume"})
+	if r.m.Clock.Paused {
+		t.Fatal("the TV couldn't resume the clock")
+	}
+}

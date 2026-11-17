@@ -3,7 +3,7 @@ import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, e
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, holdBot, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
 import { VERDICTS, tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, stepSpeech, overviewSpeech } from './review.js';
-import { makeMusic, musicReady, musicStations, musicSettings, isBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
+import { makeMusic, musicReady, musicStations, musicSettings, isBreak, setIdleBreak, MUSIC_MODES, MUSIC_MODE_NAMES, MUSIC_VOLS, MUSIC_VOL_NAMES } from './music.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -17,7 +17,7 @@ const ann = makeAnnouncer('wt_tv_', 'all', () => (currentRoom ? { code: currentR
 announcerReady.then(() => { if (!$('#menu').classList.contains('hidden')) paintSoundMenu(); sendPrefs(); });
 let speechCtx = {};
 // Background music (when the server lists stations); the room's settings say when it plays.
-const music = makeMusic(ann, { onNow: (info) => { npInfo = info; paintNow(); }, onBlocked: () => $('#soundHint').classList.remove('hidden') });
+const music = makeMusic(ann, { onNow: (info) => { npInfo = info; paintNow(); if (loungeOn) paintLounge(); }, onBlocked: () => $('#soundHint').classList.remove('hidden') });
 let npInfo = null;
 musicReady.then(() => { music.update(); if (!$('#menu').classList.contains('hidden')) paintMusicMenu(); });
 const alertsTick = clockAlerts(onClockAlert);
@@ -70,6 +70,7 @@ function render(s) {
   music.update(s); paintNow();
   setQR(s.joinUrl);
   idleAt = Date.now();
+  loungeSeen(s);
   paintStill(s);
   $('#mReview').classList.toggle('hidden', !(s.review?.tvCan && !s.review?.open));
   $('#mRematch').classList.toggle('hidden', !(s.tvRematch && !s.review?.open));
@@ -341,6 +342,123 @@ function cycleClock() {
 }
 paintClock(); setInterval(paintClock, 1000);
 
+// ---- idle screen ("lounge") ----
+// After a while with nothing happening (no move, no one joining, no remote presses), the TV shows a big time of day,
+// what's playing and the game at a glance. OK pauses or resumes the clock in a timed game; Back or any other key, or
+// the next move, closes it. How long: a setting of this TV (OK → Idle screen), 10 minutes by default.
+const LOUNGE_MINS = [0, 5, 10, 20, 30];
+let loungeMins = (() => { try { const v = localStorage.getItem('wt_lounge'); if (v !== null && LOUNGE_MINS.includes(+v)) return +v; } catch {} return 10; })();
+let loungeAt = Date.now(), loungeSig = '', loungeOn = false, loungeDrift = 0;
+const loungeName = () => (loungeMins ? `After ${loungeMins} min` : 'Off');
+function cycleLounge() {
+  loungeMins = LOUNGE_MINS[(LOUNGE_MINS.indexOf(loungeMins) + 1) % LOUNGE_MINS.length];
+  try { localStorage.setItem('wt_lounge', String(loungeMins)); } catch {}
+  $('#mLounge').textContent = loungeName();
+}
+function loungeActive() { loungeAt = Date.now(); if (loungeOn) closeLounge(); }
+// Called with every state: a move, a new game or a phase change, someone joining or a review counts as activity.
+// (A clock paused or resumed doesn't: the idle screen is a fine place to wait out a pause.)
+function loungeSeen(s) {
+  const sig = [s.code, s.gameNo, s.phase, s.log?.length, (s.seats || []).map((x) => x?.name || '').join(','), !!s.review?.open].join('|');
+  if (sig !== loungeSig) { loungeSig = sig; loungeActive(); } else if (loungeOn) paintLounge();
+}
+function loungeBlocked() {
+  return CAST || !state.phase || !!state.review?.open || pendingSwitch || ['#menu', '#gamesMenu', '#stillAsk', '#switchAsk', '#idleNote'].some((id) => !$(id).classList.contains('hidden')) ||
+    !$('#bingo').classList.contains('hidden');
+}
+function openLounge() {
+  loungeOn = true; loungeDrift = 0;
+  $('#lounge').classList.remove('hidden');
+  setIdleBreak(true); music.update(state); paintNow();
+  paintLounge();
+}
+function closeLounge() {
+  loungeOn = false;
+  $('#lounge').classList.add('hidden');
+  setIdleBreak(false); music.update(state); paintNow();
+}
+function fmtTimeOfDay(d) {
+  const mode = clockMode === 'off' ? (/h1[12]/.test(new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hourCycle || '') ? '12' : '24') : clockMode;
+  const m = String(d.getMinutes()).padStart(2, '0'), h = d.getHours();
+  return mode === '24' ? `${String(h).padStart(2, '0')}:${m}` : `${h % 12 || 12}:${m}<small>${h < 12 ? 'AM' : 'PM'}</small>`;
+}
+function paintLounge() {
+  const s = state, box = $('#lounge');
+  const names = (s.seats || []).map((x, i) => x?.name || `Player ${i + 1}`);
+  const timed = s.phase === 'playing' && !!s.clock;
+  let html = '';
+  if (s.phase === 'lobby') {
+    html = `<div class="lgQR"><img src="${esc($('#qr').getAttribute('src') || '')}" alt=""><div><div style="font-size:3.2vh;font-weight:800">Scan to play</div>
+      <div class="muted" style="font-size:2.2vh;margin:.6vh 0 1.4vh">or enter the TV code at ${esc(location.host)}</div><div class="code">${esc(s.code || '')}</div></div></div>`;
+  } else {
+    const rows = (s.seats || []).map((seat, i) => {
+      const turn = s.phase === 'playing' && s.turn === i;
+      const tag = turn ? `<small>${seat.bot ? 'Thinking…' : 'On move'}</small>` : '';
+      return `<div class="lgRow ${turn ? 'turn' : ''}">${avatar(names[i], i, seat)}<div class="nm">${esc(names[i])}${tag}</div>
+        ${timed ? '<div class="timer"></div>' : ''}<div class="sc">${seat.score}</div></div>`;
+    }).join('');
+    const facts = [];
+    if (s.phase === 'over') {
+      html = `<div class="lgWin">${s.winner === -1 ? "It's a tie!" : `🏆 ${esc(names[s.winner] || '')} wins!`}</div>`;
+    } else {
+      const sc = (s.seats || []).map((x) => x.score), d = Math.abs(sc[0] - sc[1]);
+      if (timed && s.clock.paused) facts.push('<span class="lgPaused">❚❚ Clock paused</span>');
+      facts.push(d ? `<b>${esc(names[sc[0] > sc[1] ? 0 : 1])}</b> leads by <b>${d}</b> · <b>${s.bag}</b> in the bag` : `All square · <b>${s.bag}</b> in the bag`);
+    }
+    const log = s.log || [];
+    const last = [...log].reverse().find((m) => ['play', 'exchange', 'pass'].includes(m.type));
+    if (last && s.phase === 'playing') { const d = describeMove(last, names); facts.push(`Last: <b>${esc(d.text)}</b>${d.quiet ? '' : ` for <b>${d.score}</b>`} · ${esc(d.who)}`); }
+    const top = log.filter((m) => m.type === 'play').reduce((a, m) => (!a || m.score > a.score ? m : a), null);
+    if (top) { const d = describeMove(top, names); facts.push(`Top play: <b>${esc(d.text)}</b> for <b>${d.score}</b> · ${esc(d.who)}${top.bingo ? ' · bingo!' : ''}`); }
+    html += rows + (facts.length ? `<div class="lgFacts">${facts.map((f) => `<div>${f}</div>`).join('')}</div>` : '');
+  }
+  const g = box.querySelector('.lgGame');
+  if (g.dataset.h !== html) { g.dataset.h = html; g.innerHTML = html; }
+  box.querySelector('.lgHint').innerHTML = timed
+    ? `<b>OK</b> ${s.clock.paused ? 'resumes' : 'pauses'} the clock · <b>Back</b> returns to the game`
+    : `Press any button to return${s.phase === 'lobby' ? '' : ' to the game'}`;
+  // Now playing, big
+  const np = box.querySelector('.lgNow'), glow = box.querySelector('.lgGlow');
+  np.classList.toggle('hidden', !npInfo);
+  if (npInfo) {
+    const img = np.querySelector('img');
+    if (npInfo.cover) { if (img.getAttribute('src') !== npInfo.cover) img.src = npInfo.cover; } else img.removeAttribute('src');
+    img.classList.toggle('hidden', !npInfo.cover);
+    np.querySelector('b').textContent = npInfo.song || npInfo.title || npInfo.station;
+    np.querySelector('.ar').textContent = npInfo.song ? npInfo.artist || '' : '';
+    np.querySelector('.st').textContent = npInfo.station || '';
+  }
+  const cover = npInfo?.cover || '';
+  glow.classList.toggle('hidden', !cover);
+  if (cover && glow.getAttribute('src') !== cover) glow.src = cover;
+  tickLounge();
+}
+function tickLounge() {
+  const box = $('#lounge'), d = new Date();
+  const t = fmtTimeOfDay(d), te = box.querySelector('.lgTime');
+  if (te.innerHTML !== t) te.innerHTML = t;
+  box.querySelector('.lgDate').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  box.querySelectorAll('.lgRow .timer').forEach((n, i) => paintTimer(n, state.clock, recvAt, i));
+}
+setInterval(() => {
+  if (loungeOn) {
+    tickLounge();
+    if (++loungeDrift % 240 === 0) { // every minute: move a little, so nothing sits still on the screen for hours
+      const r = () => (Math.random() * 2 - 1).toFixed(2);
+      $('#lounge .lgBody').style.transform = `translate(${r() * 2}vw, ${r() * 2.5}vh)`;
+    }
+    return;
+  }
+  if (loungeMins && !loungeBlocked() && Date.now() - loungeAt >= loungeMins * 60e3) openLounge();
+}, 250);
+// Remote keys while it's up: OK pauses/resumes a timed game's clock, anything else closes it.
+function loungeKey(e) {
+  e.preventDefault();
+  const timed = state.phase === 'playing' && !!state.clock;
+  if (timed && (e.key === 'Enter' || e.key === ' ')) { ws.send({ t: state.clock.paused ? 'resume' : 'pause' }); return; }
+  closeLounge();
+}
+
 // ---- options menu (works with a TV remote: arrows + OK) ----
 let menuIdx = 0, menuPage = 'main';
 const MENU_TITLES = { main: 'Options', ann: 'Announcer', music: 'Music' };
@@ -359,6 +477,7 @@ function menuBack() { if (menuPage === 'main') closeMenu(); else showMenuPage('m
 function openMenu() {
   $('#mTheme').textContent = THEME_NAMES[state.settings?.theme] || '';
   $('#mClock').textContent = CLOCK_NAMES[clockMode];
+  $('#mLounge').textContent = loungeName();
   paintBotSpeedMenu();
   paintSoundMenu();
   paintMusicMenu();
@@ -435,6 +554,7 @@ function menuAct(act) {
     const next = th[(th.indexOf(state.settings.theme) + 1) % th.length];
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
+  } else if (act === 'lounge') { cycleLounge();
   } else if (act === 'botspeed') {
     const next = nextBotSpeed(state.settings?.botSpeed);
     ws.send({ t: 'settings', botSpeed: next });
@@ -472,8 +592,9 @@ document.querySelectorAll('#menu .mitem').forEach((b) => b.addEventListener('cli
 document.addEventListener('keydown', (e) => {
   sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300);
   const idleShown = !$('#idleNote').classList.contains('hidden');
-  idleAt = Date.now();
+  idleAt = Date.now(); loungeAt = Date.now();
   if (idleShown) { e.preventDefault(); $('#idleNote').classList.add('hidden'); return; } // "press OK to stay"
+  if (loungeOn) { loungeKey(e); return; }
   if (!$('#stillAsk').classList.contains('hidden')) {
     e.preventDefault();
     if (['Enter', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) ws.send({ t: 'review', op: 'still' });
@@ -520,7 +641,7 @@ document.addEventListener('keydown', (e) => {
 // "back" in the page's history, or the app offers to exit. So while something Back should close is showing (the
 // menu, a prompt, the game review), the page keeps one extra history entry; Back pops it, and the page treats that
 // like Escape (close the menu, finish the review, ...). If it's still showing afterwards, the entry is put back.
-const backLayers = ['#menu', '#gamesMenu', '#switchAsk', '#stillAsk', '#idleNote'];
+const backLayers = ['#menu', '#gamesMenu', '#switchAsk', '#stillAsk', '#idleNote', '#lounge'];
 const backWanted = () => !CAST && (!!state.review?.open || backLayers.some((id) => !$(id).classList.contains('hidden')));
 let backGuard = false, backSkip = 0;
 function syncBack() {
@@ -536,7 +657,7 @@ window.addEventListener('popstate', () => {
 });
 setInterval(syncBack, 300);
 
-document.addEventListener('pointerdown', () => { idleAt = Date.now(); sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
+document.addEventListener('pointerdown', () => { idleAt = Date.now(); if (loungeOn) closeLounge(); loungeAt = Date.now(); sfx.ctx(); music.kick(); $('#soundHint').classList.add('hidden'); setTimeout(sendPrefs, 300); });
 let mouseT;
 document.addEventListener('mousemove', () => { document.body.classList.add('mouse'); clearTimeout(mouseT); mouseT = setTimeout(() => document.body.classList.remove('mouse'), 3000); });
 
@@ -682,7 +803,7 @@ function startRoom(room) {
     if (m.t === 'state') render(m);
     else if (m.t === 'switch') onSwitch(m);
     else if (m.t === 'event') {
-      const nm = state.seats?.[m.seat]?.name || '';
+      const nm = state.seats?.[m.seat]?.name || 'The TV';
       if (m.kind === 'rejected') { toast(`${nm}: ${m.msg}`, 'bad'); sfx.bad(); }
       else if (m.kind === 'pause') { toast(`${nm} paused the clock`); if (ann.on('all')) ann.say('Clock paused.'); }
       else if (m.kind === 'resume') { toast(`${nm} resumed the clock`, 'good'); if (ann.on('all')) ann.say('Clock resumed.'); }

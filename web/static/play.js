@@ -55,7 +55,7 @@ function onMsg(m) {
   else if (m.t === 'notice') toast(m.msg, 'good');
   else if (m.t === 'define') onDefinition(m);
   else if (m.t === 'event' && s) {
-    const nm = s.seats?.[m.seat]?.name || '';
+    const nm = s.seats?.[m.seat]?.name || 'The TV';
     if (m.kind === 'pause' && m.seat !== s.you) toast(`${nm} paused the clock`);
     if (m.kind === 'resume' && m.seat !== s.you) toast(`${nm} resumed the clock`, 'good');
     if (m.kind === 'resign' && m.seat !== s.you) toast(`${nm} resigned`);

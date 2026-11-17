@@ -104,8 +104,8 @@ The server is meant to sit on the open internet without accounts.
 - **Headers:** strict CSP (`default-src 'self'`; Google's domain only on `/cast`), `X-Frame-Options: DENY`,
   `nosniff`, `no-referrer`, COOP, Permissions-Policy, HSTS behind HTTPS.
 - **WebSockets:** origin-checked, size and rate limited, and per-role authorization on every message. Players can only
-  act for their own seat. A TV can't play: it can change the look and pace (theme, music, computer speed), step through a game review it opened,
-  and start a rematch only when the game is over and every human player's phone is connected.
+  act for their own seat. A TV can't play: it can change the look and pace (theme, music, computer speed), pause or resume a timed
+  game's clock (from its idle screen), step through a game review it opened, and start a rematch only when the game is over and every human player's phone is connected.
 - **Definitions:** a phone can only ask about a word already played in its game (by move number), so the server
   can't be used as an open dictionary proxy. Lookups are cached and rate limited per room and globally. The only
   data sent out is the word and the dictionary name (to Woogles.io, or dictionaryapi.dev as a fallback).

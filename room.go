@@ -792,7 +792,8 @@ func (r *Room) handle(cl *Client, m inMsg) {
 		r.eventLocked(map[string]any{"t": "event", "kind": "resign", "seat": cl.seat})
 		r.broadcastLocked()
 	case "pause", "resume":
-		if cl.seat < 0 || !r.playingLocked() || r.m.Clock == nil {
+		// Players, and the TV (its remote, on the idle screen: the people are in the room with it).
+		if cl.seat < 0 && cl.role != "tv" || !r.playingLocked() || r.m.Clock == nil {
 			return
 		}
 		r.m.Clock.charge(time.Now())

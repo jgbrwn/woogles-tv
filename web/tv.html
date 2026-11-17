@@ -83,6 +83,7 @@
     <button class="mitem" data-page="main" data-act="theme">Theme: <b id="mTheme"></b></button>
     <button class="mitem" data-page="main" data-act="sound">Volume: <b id="mSound"></b></button>
     <button class="mitem" data-page="main" data-act="clock">Clock: <b id="mClock"></b></button>
+    <button class="mitem" data-page="main" data-act="lounge">Idle screen: <b id="mLounge"></b><small class="msub">Time, music and the game's status after a while with no moves</small></button>
     <button class="mitem hidden" data-page="main" data-act="botspeed" id="mBotSpeedItem">Computer speed: <b id="mBotSpeed"></b></button>
     <button class="mitem" data-page="main" data-act="page-ann" id="mAnnEntry">Announcer: <b id="mAnnSum"></b><span class="more">›</span></button>
     <button class="mitem hidden" data-page="main" data-act="page-music" id="mMusicEntry">Music: <b id="mMusicSum"></b><span class="more">›</span></button>
@@ -123,6 +124,18 @@
   <div class="cardTitle">Still reviewing?</div><p style="font-size:3vh;margin:1vh 0 3vh">Press <b>OK</b> to keep going. The review closes in <b id="stillLeft"></b>.</p>
   <button class="mitem focus" id="stillYes">Keep reviewing</button>
 </div></div>
+<!-- the idle screen: nothing has happened for a while (OK → Idle screen); any key or the next move closes it -->
+<div id="lounge" class="hidden">
+  <img class="lgGlow hidden" alt="">
+  <div class="lgBody">
+    <div class="lgMain">
+      <div class="lgTime"></div><div class="lgDate"></div>
+      <div class="lgGame"></div>
+    </div>
+    <div class="lgNow hidden"><img class="lgCover" alt=""><small>Now playing · <span class="st"></span></small><b></b><span class="ar"></span></div>
+  </div>
+  <div class="lgHint"></div>
+</div>
 <div id="idleNote" class="hidden">Getting ready for a new game in <b></b> · press <b>OK</b> to stay on this one</div>
 <div id="bingo" class="hidden"></div>
 <div id="defCard" class="hidden" aria-live="polite"></div>

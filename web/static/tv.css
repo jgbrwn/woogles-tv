@@ -244,3 +244,36 @@ body.reviewing #players, body.reviewing #bagCard, body.reviewing #logCard { disp
 #idleNote { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 21; background: var(--card); color: var(--ink);
   font-size: 2.6vh; font-weight: 700; padding: 1.4vh 3vh; border-radius: 99px; box-shadow: var(--shadow); white-space: nowrap; }
 #idleNote b:first-child { font-family: 'Roboto Mono', monospace; }
+
+/* ---- idle screen ("lounge"): big time of day, now playing, the game at a glance ---- */
+#lounge { position: fixed; inset: 0; z-index: 19; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(14px); animation: lgIn 1.2s ease; }
+@keyframes lgIn { from { opacity: 0; } to { opacity: 1; } }
+#lounge .lgGlow { position: absolute; inset: -10%; width: 120%; height: 120%; object-fit: cover; filter: blur(9vh) saturate(1.4); opacity: .35; pointer-events: none; }
+#lounge .lgBody { position: relative; display: flex; align-items: center; gap: 8vh; max-width: 92vw; transition: transform 4s ease; }
+#lounge .lgMain { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+#lounge .lgTime { font-family: 'Fjalla One', sans-serif; font-size: 22vh; line-height: 1; letter-spacing: .02em; color: var(--ink); }
+#lounge .lgTime small { font-size: .32em; margin-left: .25em; color: var(--muted); }
+#lounge .lgDate { font-size: 3.4vh; font-weight: 700; color: var(--muted); margin: 1vh 0 4vh .6vh; }
+#lounge .lgGame { background: var(--card); border-radius: 2.4vh; padding: 2.6vh 3.2vh; box-shadow: 0 2vh 8vh rgba(0,0,0,.25); min-width: 62vh; }
+#lounge .lgRow { display: flex; align-items: center; gap: 2vh; padding: 1vh 1.4vh; border-radius: 1.4vh; border: .3vh solid transparent; }
+#lounge .lgRow.turn { border-color: var(--primary); background: var(--primary-soft); }
+#lounge .lgRow .avatar { width: 6.4vh; height: 6.4vh; font-size: 3vh; }
+#lounge .lgRow .nm { flex: 1; min-width: 0; font-size: 3.2vh; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#lounge .lgRow .nm small { display: block; font-size: 1.9vh; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .08em; }
+#lounge .lgRow .sc { font-size: 5vh; font-weight: 900; min-width: 10vh; text-align: right; }
+#lounge .lgRow .timer { font-size: 3.2vh; padding: .4vh 1.2vh; border-radius: 1vh; }
+#lounge .lgFacts { margin-top: 1.6vh; padding-top: 1.6vh; border-top: .2vh solid var(--line); font-size: 2.3vh; color: var(--muted); font-weight: 600; display: flex; flex-direction: column; gap: .6vh; }
+#lounge .lgFacts b { color: var(--ink); }
+#lounge .lgPaused { color: var(--bad); font-weight: 900; }
+#lounge .lgQR { display: flex; align-items: center; gap: 3vh; }
+#lounge .lgQR img { width: 22vh; height: 22vh; border-radius: 1.2vh; background: #fff; padding: 1vh; }
+#lounge .lgQR .code { font-family: 'Roboto Mono', monospace; font-size: 4.4vh; font-weight: 900; letter-spacing: .12em; color: var(--primary); }
+#lounge .lgWin { font-size: 4vh; font-weight: 900; margin-bottom: 1vh; }
+#lounge .lgNow { display: flex; flex-direction: column; align-items: flex-start; width: 46vh; }
+#lounge .lgCover { width: 46vh; height: 46vh; object-fit: cover; border-radius: 2.4vh; box-shadow: 0 3vh 9vh rgba(0,0,0,.35); margin-bottom: 2.6vh; background: var(--card2); }
+#lounge .lgNow small { font-size: 1.9vh; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+#lounge .lgNow b { font-size: 4vh; font-weight: 900; margin: .6vh 0 .3vh; line-height: 1.15; }
+#lounge .lgNow .ar { font-size: 2.8vh; color: var(--muted); font-weight: 600; }
+#lounge .lgHint { position: absolute; bottom: 3.4vh; left: 0; right: 0; text-align: center; font-size: 2.2vh; color: var(--muted); font-weight: 600; }
+#lounge .lgHint b { color: var(--ink); }
