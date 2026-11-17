@@ -34,7 +34,7 @@ closet.
 - Driven entirely by the TV remote (D-pad + OK): theme, volume, announcer, music, **Games on this TV** (switch between games in progress), new game, and after a game **Rematch** and **Game review**. Back closes menus and the review.
 - Your tiles never appear on the TV; only submitted moves do.
 - **Game review** after the game, on the big screen: each move graded by Macondo (best, or a small, medium or large mistake), the best move shown on the board in green, other options with their winning chances, and the announcer reading it out. Driven from a player's phone or the remote.
-- **Idle screen** after 10 minutes with no move (adjustable): a big clock, the music's album cover, and the game at a glance with live timers. OK pauses the clock; the next move or any button returns to the game.
+- **Idle screen** after 10 minutes with no move (adjustable): a big clock, the music's album cover, and the game at a glance with live timers. Or take a break any time: **OK OK** on the remote pauses the clock and brings it up. OK again resumes; the next move or any button returns to the game.
 - Left alone, a finished game makes way for a fresh new-game screen after 20 minutes, and an idle review asks "Still reviewing?" before closing.
 
 **On your phone** (any modern browser; installable as an app/PWA)

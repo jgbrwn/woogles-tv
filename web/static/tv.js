@@ -70,7 +70,7 @@ function render(s) {
   music.update(s); paintNow();
   setQR(s.joinUrl);
   idleAt = Date.now();
-  loungeSeen(s);
+  loungeSeen(s, prev);
   paintStill(s);
   $('#mReview').classList.toggle('hidden', !(s.review?.tvCan && !s.review?.open));
   $('#mRematch').classList.toggle('hidden', !(s.tvRematch && !s.review?.open));
@@ -358,7 +358,9 @@ function cycleLounge() {
 function loungeActive() { loungeAt = Date.now(); if (loungeOn) closeLounge(); }
 // Called with every state: a move, a new game or a phase change, someone joining or a review counts as activity.
 // (A clock paused or resumed doesn't: the idle screen is a fine place to wait out a pause.)
-function loungeSeen(s) {
+function loungeSeen(s, prev) {
+  // The clock resumed (from a phone, or OK on the idle screen): the break is over, back to the board.
+  if (loungeOn && prev?.clock?.paused && s.clock && !s.clock.paused && prev.gameNo === s.gameNo) { loungeAt = Date.now(); closeLounge(); }
   const sig = [s.code, s.gameNo, s.phase, s.log?.length, (s.seats || []).map((x) => x?.name || '').join(','), !!s.review?.open].join('|');
   if (sig !== loungeSig) { loungeSig = sig; loungeActive(); } else if (loungeOn) paintLounge();
 }
@@ -455,8 +457,25 @@ setInterval(() => {
 function loungeKey(e) {
   e.preventDefault();
   const timed = state.phase === 'playing' && !!state.clock;
-  if (timed && (e.key === 'Enter' || e.key === ' ')) { ws.send({ t: state.clock.paused ? 'resume' : 'pause' }); return; }
+  if (timed && (e.key === 'Enter' || e.key === ' ' || MEDIA_KEYS.includes(e.key))) { takeBreak(); return; }
   closeLounge();
+}
+// "Pause & break" (OK → first item during a game, or the remote's play/pause key): in a timed game it pauses the
+// clock of whoever is on move and brings up the idle screen; pressed again (or OK there) it resumes the clock and
+// returns to the board. In an untimed game it just shows the idle screen.
+const MEDIA_KEYS = ['MediaPlayPause', 'MediaPause', 'MediaPlay'];
+const canBreak = () => !CAST && state.phase === 'playing' && !state.review?.open;
+function takeBreak() {
+  if (!canBreak()) return;
+  const c = state.clock;
+  if (c?.paused) { ws.send({ t: 'resume' }); return; } // closes the idle screen when the resumed state arrives
+  if (c) ws.send({ t: 'pause' });
+  if (!loungeOn) openLounge();
+}
+function paintBreakItem() {
+  const b = $('#mBreak'), c = state.clock;
+  b.classList.toggle('hidden', !canBreak());
+  b.textContent = !c ? '☕ Take a break (show the time and music)' : c.paused ? '▶ Resume the clock' : '⏸ Pause the clock & take a break';
 }
 
 // ---- options menu (works with a TV remote: arrows + OK) ----
@@ -482,6 +501,7 @@ function openMenu() {
   paintSoundMenu();
   paintMusicMenu();
   $('#mApp').classList.toggle('hidden', !window.WooglesTV?.openMenu);
+  paintBreakItem();
   $('#mReview').classList.toggle('hidden', !(state.review?.tvCan && !state.review?.open));
   $('#mRematch').classList.toggle('hidden', !(state.tvRematch && !state.review?.open));
   $('#menu').classList.remove('hidden'); showMenuPage('main');
@@ -554,6 +574,7 @@ function menuAct(act) {
     const next = th[(th.indexOf(state.settings.theme) + 1) % th.length];
     ws.send({ t: 'settings', theme: next });
     $('#mTheme').textContent = THEME_NAMES[next];
+  } else if (act === 'break') { closeMenu(); takeBreak();
   } else if (act === 'lounge') { cycleLounge();
   } else if (act === 'botspeed') {
     const next = nextBotSpeed(state.settings?.botSpeed);
@@ -595,6 +616,7 @@ document.addEventListener('keydown', (e) => {
   idleAt = Date.now(); loungeAt = Date.now();
   if (idleShown) { e.preventDefault(); $('#idleNote').classList.add('hidden'); return; } // "press OK to stay"
   if (loungeOn) { loungeKey(e); return; }
+  if (MEDIA_KEYS.includes(e.key) && canBreak() && $('#menu').classList.contains('hidden') && $('#gamesMenu').classList.contains('hidden') && !pendingSwitch) { e.preventDefault(); takeBreak(); return; }
   if (!$('#stillAsk').classList.contains('hidden')) {
     e.preventDefault();
     if (['Enter', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) ws.send({ t: 'review', op: 'still' });

@@ -182,9 +182,10 @@ rack and buttons on the right. On tall phones, the latest moves appear under the
 
 | Key | Action |
 |---|---|
-| **OK** | Opens the options menu (after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, idle screen, computer speed (when playing the computer), announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
+| **OK** | Opens the options menu (during a game, ⏸ *Pause the clock & take a break* first, so **OK OK** pauses; after a game, 🔁 Rematch and 📊 Game review first; then theme, volume, clock, idle screen, computer speed (when playing the computer), announcer ›, music ›, Games on this TV, New game). Items with › open a page of their own; **Back** returns to the menu |
 | **↑ ↓** | Move through menus |
 | **◀ ▶** | In *Games on this TV*: move to a game's ✕ (remove) button. In a game review the remote is driving: the previous or next move |
+| **▶❚❚ Play/Pause** (if the remote has one) | The same as *Pause the clock & take a break*, or resumes |
 | **Back** | Closes a menu or prompt, or finishes a game review the remote is driving. With nothing open, in the app, press Back twice to exit |
 | **Hold OK** or **Menu** (app only) | Native app menu: reload, change server URL, reset, exit |
 
@@ -201,7 +202,12 @@ the game's top play. On the new-game screen it shows the QR code and TV code ins
 
 ![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v4.png)
 
-- **OK** pauses (or resumes) the clock in a timed game; the idle screen stays up while it's paused.
+- **Take a break any time**: during a game, press **OK** twice (the menu opens on *Pause the clock & take a break*),
+  or the remote's play/pause button. In a timed game this pauses the clock of whoever is on move and brings up the
+  idle screen right away; in an untimed game it just brings up the idle screen. (The phones see "The TV paused the
+  clock".)
+- **OK** on the idle screen pauses the clock in a timed game, or resumes it and returns to the board when it's paused.
+  When a player resumes from their phone, the TV returns to the board too.
 - **Back** or any other button returns to the game, and so does the next move, which then plays out as usual.
 - **OK** → **Idle screen** sets how long the TV waits: 5, 10 (default), 20 or 30 minutes, or Off. Kept on that TV.
 - With music set to *Breaks*, the idle screen counts as a break, so the music plays while it's up.
