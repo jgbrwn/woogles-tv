@@ -200,7 +200,7 @@ time of day and the date, what the music is playing with its album cover, and th
 their scores, who's on move, their clocks counting down in a timed game, the lead, tiles in the bag, the last move and
 the game's top play. On the new-game screen it shows the QR code and TV code instead, and after a game, the result.
 
-![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v4.png)
+![The idle screen during a game, in the Midnight theme](screenshots/tv-idle-v5.png)
 
 - **Take a break any time**: during a game, press **OK** twice (a reminder sits at the top of the TV's side panel; the
   menu opens on *Pause the clock & take a break*),

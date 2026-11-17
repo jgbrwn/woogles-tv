@@ -257,7 +257,7 @@ body.reviewing #players, body.reviewing #bagCard, body.reviewing #logCard { disp
   background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(14px); animation: lgIn 1.2s ease; }
 @keyframes lgIn { from { opacity: 0; } to { opacity: 1; } }
 #lounge .lgGlow { position: absolute; inset: -10%; width: 120%; height: 120%; object-fit: cover; filter: blur(9vh) saturate(1.4); opacity: .35; pointer-events: none; }
-#lounge .lgBody { position: relative; display: flex; align-items: center; gap: 8vh; max-width: 92vw; transition: transform 4s ease; }
+#lounge .lgBody { position: relative; display: flex; align-items: center; gap: 16vh; max-width: 92vw; transition: transform 4s ease; }
 #lounge .lgMain { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 #lounge .lgTime { font-family: 'Fjalla One', sans-serif; font-size: 22vh; line-height: 1; letter-spacing: .02em; color: var(--ink); }
 #lounge .lgTime small { font-size: .32em; margin-left: .25em; color: var(--muted); }
