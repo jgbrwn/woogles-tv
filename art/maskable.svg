@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f548c"/><stop offset="1" stop-color="#0f2c52"/></linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#93c4ee"/><stop offset="1" stop-color="#5d93cc"/></linearGradient>
+    <linearGradient id="ear" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5f95cf"/><stop offset="1" stop-color="#3f73b0"/></linearGradient>
+    <linearGradient id="scr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d72c2"/><stop offset="1" stop-color="#173f82"/></linearGradient>
+    <radialGradient id="sheen" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#06152b" flood-opacity=".45"/></filter>
+  </defs><rect width="512" height="512" rx="0" fill="url(#bg)"/><rect width="512" height="512" rx="0" fill="url(#sheen)"/><g transform="translate(256 256) scale(0.78) translate(-256 -256)">  <g filter="url(#drop)">
+    <!-- feet -->
+    <rect x="168" y="372" width="34" height="44" rx="12" fill="#5d93cc"/>
+    <rect x="310" y="372" width="34" height="44" rx="12" fill="#5d93cc"/>
+    <!-- body -->
+    <rect x="96" y="150" width="320" height="246" rx="64" fill="url(#body)"/>
+    <rect x="96" y="150" width="320" height="246" rx="64" fill="none" stroke="#c6e3fb" stroke-opacity=".55" stroke-width="4"/>
+    <g id="earL">
+      <path d="M222 154 C 222 100, 200 62, 160 62 C 118 62, 94 92, 94 128 C 94 154, 112 166, 128 160 C 146 152, 148 132, 144 116 C 142 104, 148 94, 160 94 C 176 94, 188 112, 190 154 Z" fill="url(#ear)"/>
+      <path d="M200 92 C 190 76, 176 70, 160 70 C 132 70, 112 88, 106 112" fill="none" stroke="#b3d8f7" stroke-opacity=".4" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <use href="#earL" transform="translate(512 0) scale(-1 1)"/>
+    <!-- screen -->
+    <rect x="132" y="184" width="248" height="178" rx="40" fill="url(#scr)"/>
+    <path d="M150 214 Q 158 196, 184 194 L 300 194" stroke="#fff" stroke-opacity=".22" stroke-width="8" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- W + play -->
+  <g transform="translate(2 0)" filter="url(#glow)" fill="none" stroke="#e3f5ff" stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M168 240 L 194 312 L 220 264 L 246 312 L 270 240"/>
+    <path d="M270 240 C 354 232, 356 320, 252 304"/>
+    <path d="M287 256 L 315 274 L 287 292 Z" fill="#e3f5ff" stroke-width="7"/>
+  </g>
+</g></svg>
