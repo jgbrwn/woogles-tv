@@ -288,3 +288,7 @@ body.reviewing #players, body.reviewing #bagCard, body.reviewing #logCard { disp
 #lounge .lgNow .ar { font-size: 2.8vh; color: var(--muted); font-weight: 600; }
 #lounge .lgHint { position: absolute; bottom: 3.4vh; left: 0; right: 0; text-align: center; font-size: 2.2vh; color: var(--muted); font-weight: 600; }
 #lounge .lgHint b { color: var(--ink); }
+/* The splash at TV size (app.css caps it for phones) */
+.tv #splash .wtBrand { font-size: 11vh; gap: 3vh; margin-bottom: 7vh; }
+.tv #splash .wtTiles { gap: 1.6vh; }
+.tv #splash .wtTiles span { width: 11vh; height: 11vh; font-size: 6.6vh; box-shadow: 0 .8vh 2vh rgba(0,0,0,.25); }
