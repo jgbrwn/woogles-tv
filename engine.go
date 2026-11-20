@@ -44,9 +44,19 @@ func initEngine(dataPath string) error {
 	if err := os.MkdirAll(filepath.Join(dataPath, "lexica", "gaddag"), 0o755); err != nil {
 		return err
 	}
-	for _, l := range Lexicons {
-		if err := lexicon.EnsureLexiconFile(l, ".kwg", macCfg.WGLConfig()); err != nil {
-			return fmt.Errorf("lexicon %s: %w", l, err)
+	// Once per file per process, and every lexicon at the same time: Macondo checks a word list on
+	// disk against the published one (a HEAD request to woogles.io, with a 20 s timeout), and the
+	// rules it builds later ask again, so a site that doesn't answer costs one timeout in all, not
+	// one per lexicon and per question. A file on disk is used whenever the check can't be made.
+	errs := make([]error, len(Lexicons))
+	var wg sync.WaitGroup
+	for i, l := range Lexicons {
+		wg.Go(func() { errs[i] = lexicon.EnsureLexiconFileOnce(l, ".kwg", macCfg.WGLConfig()) })
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			return fmt.Errorf("lexicon %s: %w", Lexicons[i], err)
 		}
 	}
 	_, err := getRules(Lexicons[0])
