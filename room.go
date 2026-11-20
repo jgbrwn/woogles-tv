@@ -47,6 +47,9 @@ var (
 )
 
 func (r *Room) paceLocked() botPace {
+	if r.testPace != nil {
+		return *r.testPace
+	}
 	if p, ok := botPaces[r.settings.BotSpeed]; ok {
 		return p
 	}
@@ -145,9 +148,13 @@ type Room struct {
 	JoinKey string
 	TVKey   string
 	mu      sync.Mutex
-	seats   [2]*Seat
-	clients map[*Client]bool
-	m       *Match
+	// Tests only: this room's bot pace and longest wait, in place of botPaces and botMaxWait (so a test never
+	// changes the shared ones while another test's bot is still waiting).
+	testPace    *botPace
+	testMaxWait time.Duration
+	seats       [2]*Seat
+	clients     map[*Client]bool
+	m           *Match
 	// order[engineIdx] = seat. Swapped on rematch so the other seat starts.
 	order     [2]int
 	settings  Settings
@@ -987,10 +994,14 @@ func (r *Room) maybeBotLocked() {
 	if ev := m.eng.tp.History().Events; len(ev) > 0 && ev[len(ev)-1].IsBingo {
 		beat = pace.Bingo
 	}
+	maxWait := botMaxWait
+	if r.testMaxWait > 0 {
+		maxWait = r.testMaxWait
+	}
 	go func() {
 		start := time.Now()
 		time.Sleep(beat)
-		for time.Since(start) < botMaxWait {
+		for time.Since(start) < maxWait {
 			r.mu.Lock()
 			wait := r.announcingLocked(holdKey(gameNo, n))
 			r.mu.Unlock()

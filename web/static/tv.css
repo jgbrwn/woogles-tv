@@ -135,6 +135,8 @@ body.tv.mouse { cursor: default; }
 
 #soundHint { position: fixed; left: 50%; bottom: 2vh; transform: translateX(-50%); background: var(--card); color: var(--muted); padding: 1vh 2vh; border-radius: 1vh; font-weight: 700; z-index: 30; box-shadow: var(--shadow); }
 #conn { position: fixed; right: 2vh; bottom: 2vh; background: var(--bad); color: #fff; padding: 1vh 2vh; border-radius: 1vh; font-weight: 800; z-index: 40; }
+#conn .spin { display: inline-block; width: 1.6vh; height: 1.6vh; margin-right: 1vh; vertical-align: -.2vh; border-radius: 50%; border: .3vh solid rgba(255,255,255,.35); border-top-color: #fff; animation: connSpin .9s linear infinite; }
+@keyframes connSpin { to { transform: rotate(360deg); } }
 body.tv #toasts { top: 6vh; left: calc(2vh + 49vh); }
 body.tv .toast { font-size: 2.6vh; padding: 1.4vh 3vh; }
 #castWait { background: var(--bg); backdrop-filter: none; }

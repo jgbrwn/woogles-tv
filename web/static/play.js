@@ -1,5 +1,5 @@
 import { tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, VERDICTS } from './review.js';
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner, BOT_SPEEDS, BOT_SPEED_NAMES, BOT_SPEED_HELP, nextBotSpeed } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, connBadge, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner, BOT_SPEEDS, BOT_SPEED_NAMES, BOT_SPEED_HELP, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, holdBot, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
@@ -38,12 +38,16 @@ $('#name').value = localStorage.getItem('wt_name') || '';
 $('#name').addEventListener('input', () => localStorage.setItem('wt_name', $('#name').value));
 
 let ws = { send() {}, params: {} };
+const conn = connBadge($('#conn'));
 if (!localStorage.getItem(keyKey) && !localStorage.getItem(tokKey)) {
   show('noauth'); $('#noauthLink').href = '/?code=' + encodeURIComponent(code);
 } else {
   ws = connect({ room: code, role: 'player', key: localStorage.getItem(keyKey) || '', token: localStorage.getItem(tokKey) || '' }, onMsg, (ok, fails) => {
-    $('#conn').classList.toggle('hidden', ok || fails >= 4);
-    if (!ok && fails >= 4 && !s) { show('noauth'); $('#noauthLink').href = '/?code=' + encodeURIComponent(code); }
+    // Four failed tries with nothing shown yet means this phone isn't let in, unless the server is just starting up
+    // or not answering (a restart), when the badge says so and the socket keeps trying.
+    conn(ok).then((st) => {
+      if (!ok && fails >= 4 && !s && st.ready) { $('#conn').classList.add('hidden'); show('noauth'); $('#noauthLink').href = '/?code=' + encodeURIComponent(code); }
+    });
   });
 }
 

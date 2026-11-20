@@ -209,6 +209,32 @@ export function connect(params, onMsg, onStatus) {
   return api;
 }
 
+// What the server says about itself: { ready: true }, { ready: false, step, label, detail } while it starts up
+// (startup.go), or { ready: false } when it doesn't answer at all.
+export async function serverStatus() {
+  try {
+    const r = await fetch('/api/ready', { cache: 'no-store' });
+    if (r.ok || r.status === 503) return await r.json();
+    return { ready: r.status < 500 }; // an older server without /api/ready: up if it answered at all
+  } catch { return { ready: false }; }
+}
+
+// The "Reconnecting…" badge. While the server starts up, it says what the server is doing, with a spinner.
+// Returns a function to call with the socket's state; it resolves to the server's status when offline.
+export function connBadge(node) {
+  let gen = 0;
+  return async (ok) => {
+    const g = ++gen;
+    node.classList.toggle('hidden', ok);
+    if (ok) return { ready: true };
+    const st = await serverStatus();
+    if (g !== gen) return st;
+    node.innerHTML = '';
+    node.append(el('span', 'spin'), st.step ? `Woogles-TV is starting · ${st.label}…` : 'Reconnecting…');
+    return st;
+  };
+}
+
 export function toast(text, cls = '', ms = 2600) {
   let box = document.getElementById('toasts');
   if (!box) { box = el('div'); box.id = 'toasts'; document.body.append(box); }

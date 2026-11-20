@@ -1,4 +1,4 @@
-import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, toast, countUp, describeMove,
+import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, connBadge, toast, countUp, describeMove,
   applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace, BOT_SPEED_NAMES, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, holdBot, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
@@ -824,6 +824,7 @@ function announceStart() {
   holdBot((m) => ws.send(m), ann, state);
 }
 
+const conn = connBadge($('#conn'));
 function startRoom(room) {
   currentRoom = room; rememberRoom(room);
   if (ws) ws.close();
@@ -844,7 +845,7 @@ function startRoom(room) {
     }
   }, (ok, fails) => {
     if (ok) sendPrefs(true);
-    $('#conn').classList.toggle('hidden', ok);
+    conn(ok);
     if (!CAST && !ok && fails >= 3 && fails % 3 === 0) roomGone(room); // room may have expired: make a new one
   });
 }

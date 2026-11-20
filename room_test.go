@@ -159,11 +159,10 @@ func TestTVVoiceInState(t *testing.T) {
 
 // A bot waits its beat, then for a screen still announcing the position, then AfterVoice; botMaxWait caps it.
 func TestBotWaitsForAnnouncer(t *testing.T) {
-	defer func(p botPace, mx time.Duration) { botPaces["normal"], botMaxWait = p, mx }(botPaces["normal"], botMaxWait)
-	botPaces["normal"] = botPace{Beat: 50 * time.Millisecond, Jitter: time.Millisecond, Bingo: 50 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
-	botMaxWait = 3 * time.Second
+	pace := botPace{Beat: 50 * time.Millisecond, Jitter: time.Millisecond, Bingo: 50 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
 
 	r := newTestRoom(t)
+	r.testPace, r.testMaxWait = &pace, 3*time.Second
 	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
 	r.mu.Lock()
 	r.clients[tv] = true
@@ -200,10 +199,9 @@ func TestBotWaitsForAnnouncer(t *testing.T) {
 
 // A screen that never says it's done holds the bot for botMaxWait at most.
 func TestBotMaxWait(t *testing.T) {
-	defer func(p botPace, mx time.Duration) { botPaces["normal"], botMaxWait = p, mx }(botPaces["normal"], botMaxWait)
-	botPaces["normal"] = botPace{Beat: 20 * time.Millisecond, Jitter: time.Millisecond, Bingo: 20 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
-	botMaxWait = 300 * time.Millisecond
+	pace := botPace{Beat: 20 * time.Millisecond, Jitter: time.Millisecond, Bingo: 20 * time.Millisecond, AfterVoice: 100 * time.Millisecond}
 	r := newTestRoom(t)
+	r.testPace, r.testMaxWait = &pace, 300*time.Millisecond
 	tv := &Client{role: "tv", seat: -1, send: make(chan []byte, 64)}
 	r.mu.Lock()
 	r.clients[tv] = true

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,11 +70,11 @@ func main() {
 	fetchOnly := flag.Bool("fetch-only", false, "download the word lists into DATA/lexica and exit (for offline installs and Docker builds)")
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	if err := initEngine(*data); err != nil {
-		slog.Error("engine init", "err", err)
-		os.Exit(1)
-	}
 	if *fetchOnly {
+		if err := initEngine(*data); err != nil {
+			slog.Error("engine init", "err", err)
+			os.Exit(1)
+		}
 		if err := FetchAll(); err != nil {
 			slog.Error("fetch", "err", err)
 			os.Exit(1)
@@ -81,29 +82,6 @@ func main() {
 		slog.Info("word lists ready", "dir", filepath.Join(*data, "lexica"))
 		return
 	}
-	if err := loadRooms(filepath.Join(*data, "rooms")); err != nil {
-		slog.Error("load rooms", "err", err)
-		os.Exit(1)
-	}
-	if *demo > 0 {
-		base := os.Getenv("PUBLIC_URL")
-		if base == "" {
-			base = "http://localhost" + *addr
-			if !strings.HasPrefix(*addr, ":") {
-				base = "http://" + *addr
-			}
-		}
-		if err := seedDemo(strings.TrimRight(base, "/"), *demo); err != nil {
-			slog.Error("demo", "err", err)
-			os.Exit(1)
-		}
-	}
-	loadStats(filepath.Join(*data, "rooms"))
-	initTTS()
-	initMusic()
-	initAnalysis()
-	go reapRooms()
-	go clockWatch()
 
 	sub, _ := fs.Sub(webFS, "web")
 	if os.Getenv("WT_DEV") == "1" { // serve web/ from disk for live editing
@@ -161,6 +139,7 @@ func main() {
 	mux.HandleFunc("GET /api/music/now", handleMusicNow)
 	mux.HandleFunc("GET /api/music/cover", handleMusicCover)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("GET /api/ready", handleReady)
 	mux.HandleFunc("GET /app/woogles-tv.apk", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.android.package-archive")
 		w.Header().Set("Content-Disposition", `attachment; filename="woogles-tv.apk"`)
@@ -295,13 +274,62 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           securityHeaders(mux),
+		Handler:           securityHeaders(startupGate(mux, sub)),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    16 << 10,
 	}
+	initMusic() // reads settings only; before listening, as it sets the page headers' media sources
+	// Listen first, so TVs and phones see a "starting up" screen (startup.go) while the rest gets ready.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		slog.Error("listen", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("listening", "addr", *addr)
+	go func() {
+		if err := srv.Serve(ln); err != nil {
+			slog.Error("serve", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	if lexiconsOnDisk(*data) {
+		startupStepTo("lists", "Checking the word lists", "Making sure NWL23 and CSW24 match the ones woogles.io publishes")
+	} else {
+		startupStepTo("lists", "Downloading the word lists", "NWL23 and CSW24 from woogles.io, about 11 MB. Only the first start does this.")
+	}
+	if err := initEngine(*data); err != nil {
+		slog.Error("engine init", "err", err)
+		os.Exit(1)
+	}
+	startupStepTo("rooms", "Restoring saved games", "")
+	if err := loadRooms(filepath.Join(*data, "rooms")); err != nil {
+		slog.Error("load rooms", "err", err)
+		os.Exit(1)
+	}
+	if *demo > 0 {
+		base := os.Getenv("PUBLIC_URL")
+		if base == "" {
+			base = "http://localhost" + *addr
+			if !strings.HasPrefix(*addr, ":") {
+				base = "http://" + *addr
+			}
+		}
+		if err := seedDemo(strings.TrimRight(base, "/"), *demo); err != nil {
+			slog.Error("demo", "err", err)
+			os.Exit(1)
+		}
+	}
+	loadStats(filepath.Join(*data, "rooms"))
+	startupStepTo("extras", "Warming up the announcer", "")
+	initTTS()
+	initAnalysis()
+	go reapRooms()
+	go clockWatch()
 	startAdmin(*admin)
-	// Save the lifetime counters on the way out (systemd and Docker stop with SIGTERM).
+	// Save the lifetime counters on the way out (systemd and Docker stop with SIGTERM). Set up only now: a stop
+	// during startup must not save counters that were never loaded.
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
 	go func() {
@@ -309,11 +337,20 @@ func main() {
 		saveStats()
 		os.Exit(0)
 	}()
-	slog.Info("listening", "addr", *addr)
-	if err := srv.ListenAndServe(); err != nil {
-		slog.Error("serve", "err", err)
-		os.Exit(1)
+	startupReady()
+	slog.Info("ready", "took", time.Since(startupAt).Round(time.Millisecond))
+	select {}
+}
+
+// lexiconsOnDisk reports whether every lexicon's word graph is already in DATA/lexica (so starting up only checks
+// them against the published ones rather than downloading them).
+func lexiconsOnDisk(data string) bool {
+	for _, l := range Lexicons {
+		if _, err := os.Stat(filepath.Join(data, "lexica", "gaddag", l+".kwg")); err != nil {
+			return false
+		}
 	}
+	return true
 }
 
 func cacheHeaders(h http.Handler) http.Handler {
