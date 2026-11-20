@@ -235,6 +235,27 @@ export function connBadge(node) {
   };
 }
 
+// The theme, music and computer speed a screen last chose. Each room it creates starts with them, so they stick from
+// one new game to the next (RoomLook in room.go). Kept per device: 'wt_tv_look' on the TV, 'wt_ph_look' on a phone.
+const LOOK_KEYS = ['theme', 'music', 'musicVol', 'station', 'botSpeed'];
+export function loadLook(key) { try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch { return {}; } }
+export const newRoomRequest = (key) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(loadLook(key)) });
+// Call with each room state. A setting is remembered when it changes within a room (from this screen or another one in
+// the room), not when a different room is shown with its own settings.
+export function lookTracker(key) {
+  let code = null, last = null;
+  return (st) => {
+    const set = st && st.settings;
+    if (!set) return;
+    if (st.code !== code) { code = st.code; last = { ...set }; return; }
+    const look = loadLook(key);
+    let changed = false;
+    for (const k of LOOK_KEYS) if (set[k] !== undefined && set[k] !== last[k]) { look[k] = set[k]; changed = true; }
+    last = { ...set };
+    if (changed) try { localStorage.setItem(key, JSON.stringify(look)); } catch {}
+  };
+}
+
 export function toast(text, cls = '', ms = 2600) {
   let box = document.getElementById('toasts');
   if (!box) { box = el('div'); box.id = 'toasts'; document.body.append(box); }

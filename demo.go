@@ -9,7 +9,7 @@ import (
 // the bot for `moves` turns) and prints links for a TV and for Alex's phone. Used for screenshots
 // and for trying the UI without two people: `woogles-tv -demo 12`.
 func seedDemo(base string, moves int) error {
-	r, err := createRoom(base)
+	r, err := createRoom(base, RoomLook{})
 	if err != nil {
 		return err
 	}

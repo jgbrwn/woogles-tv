@@ -41,6 +41,8 @@ sound straight away.
    the code under **Join a game**.
 2. Type your name and tap a seat. To play the computer, tap **🤖 Play vs computer**.
 3. Choose the **dictionary**, **clock**, **computer strength** and **theme**. Any seated player can change them.
+   The theme, music and computer speed stick: the next new game started from the same TV or phone begins with the
+   ones it used last.
 4. Tap **Start game**.
 
 ### Phone-first (start on the phone, then show it on the TV)

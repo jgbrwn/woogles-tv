@@ -3,7 +3,9 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net"
@@ -154,7 +156,14 @@ func main() {
 			writeJSON(w, 429, map[string]string{"error": "too many new rooms, slow down"})
 			return
 		}
-		room, err := createRoom(baseURL(r))
+		// The body may carry the creating screen's last theme, music and computer speed (RoomLook); none is fine.
+		var look RoomLook
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if err := json.NewDecoder(r.Body).Decode(&look); err != nil && !errors.Is(err, io.EOF) {
+			writeJSON(w, 400, map[string]string{"error": "bad request"})
+			return
+		}
+		room, err := createRoom(baseURL(r), look)
 		if err != nil {
 			writeJSON(w, 503, map[string]string{"error": err.Error()})
 			return
@@ -279,6 +288,7 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    16 << 10,
 	}
+	initDefaults()
 	initMusic() // reads settings only; before listening, as it sets the page headers' media sources
 	// Listen first, so TVs and phones see a "starting up" screen (startup.go) while the rest gets ready.
 	ln, err := net.Listen("tcp", *addr)

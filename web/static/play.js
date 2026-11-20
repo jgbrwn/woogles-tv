@@ -1,5 +1,5 @@
 import { tally, paintStep, bestDiffers, stepHTML, progressText, timelineHTML, VERDICTS } from './review.js';
-import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, connBadge, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner, BOT_SPEEDS, BOT_SPEED_NAMES, BOT_SPEED_HELP, nextBotSpeed } from './common.js';
+import { buildBoard, paintBoard, lastPlaySquares, tileEl, el, esc, connect, connBadge, lookTracker, toast, describeMove, applyTheme, paintTimer, sfx, THEME_NAMES, clockAlerts, SOUND_LEVELS, SOUND_NAMES, keepAwake, avatarInner, BOT_SPEEDS, BOT_SPEED_NAMES, BOT_SPEED_HELP, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, holdBot, ANN_MODES, ANN_MODE_NAMES, SPELL_MODES, SPELL_NAMES, RATES, RATE_NAMES } from './announcer.js';
 sfx.load('high', 'wt_ph_sound');
 // A seated phone can use the server voice with its seat token (spectators use the phone's own speech).
@@ -77,7 +77,9 @@ const watching = () => s && s.you < 0;
 // next move. Only Play / Pass / Swap need it to be your turn.
 const canPlace = () => !!s && s.phase === 'playing' && s.you >= 0;
 const meSeat = () => (s.you >= 0 ? s.you : 0);
+const trackLook = lookTracker('wt_ph_look');
 function render(st) {
+  trackLook(st);
   queueMicrotask(paintTvNote);
   const prev = s; s = st; recvAt = performance.now();
   applyTheme(s.settings.theme);

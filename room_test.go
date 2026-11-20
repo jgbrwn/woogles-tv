@@ -23,7 +23,7 @@ func newTestRoom(t *testing.T) *Room {
 		t.Fatal(err)
 	}
 	roomsDir = ""
-	r, err := createRoom("http://x")
+	r, err := createRoom("http://x", RoomLook{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,5 +265,37 @@ func TestTVPausesClock(t *testing.T) {
 	r.handle(tv, inMsg{T: "resume"})
 	if r.m.Clock.Paused {
 		t.Fatal("the TV couldn't resume the clock")
+	}
+}
+
+// A new room starts with the server's defaults (WT_THEME, WT_MUSIC_VOL), then with what the creating screen last chose.
+func TestNewRoomLook(t *testing.T) {
+	if err := initEngine("./data"); err != nil {
+		t.Fatal(err)
+	}
+	defer func(d Settings) { defaultSettings = d }(defaultSettings)
+	t.Setenv("WT_THEME", "midnight")
+	t.Setenv("WT_MUSIC_VOL", "low")
+	initDefaults()
+	r, err := createRoom("http://x", RoomLook{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.settings.Theme != "midnight" || r.settings.MusicVol != "low" {
+		t.Fatalf("defaults: %+v", r.settings)
+	}
+	r, _ = createRoom("http://x", RoomLook{Theme: "pastel", MusicVol: "high", Music: "breaks", BotSpeed: "relaxed"})
+	if s := r.settings; s.Theme != "pastel" || s.MusicVol != "high" || s.Music != "breaks" || s.BotSpeed != "relaxed" {
+		t.Fatalf("look: %+v", s)
+	}
+	r, _ = createRoom("http://x", RoomLook{Theme: "nope", MusicVol: "loud", BotSpeed: "warp"})
+	if s := r.settings; s.Theme != "midnight" || s.MusicVol != "low" || s.BotSpeed != "normal" {
+		t.Fatalf("unknown values should keep the defaults: %+v", s)
+	}
+	t.Setenv("WT_THEME", "plaid")
+	defaultSettings.Theme = Themes[0]
+	initDefaults()
+	if defaultSettings.Theme != Themes[0] {
+		t.Fatal("an unknown WT_THEME should be ignored")
 	}
 }

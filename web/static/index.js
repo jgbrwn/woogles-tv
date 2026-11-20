@@ -1,4 +1,4 @@
-import { toast } from './common.js';
+import { toast, newRoomRequest } from './common.js';
 import { castAvailable, castRoom } from './cast.js';
 const q = new URLSearchParams(location.search);
 // The addresses to type on a TV, from the server's public URL (PUBLIC_URL), so they can be read off or copied.
@@ -28,7 +28,7 @@ const $ = (q) => document.getElementById(q);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
 async function newRoom() {
-  const r = await fetch('/api/rooms', { method: 'POST' });
+  const r = await fetch('/api/rooms', newRoomRequest('wt_ph_look'));
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || 'Could not create a game');
   localStorage.setItem('wt_tvkey_' + j.code, j.tvKey); // lets this phone cast the room later

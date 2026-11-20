@@ -1,4 +1,4 @@
-import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, connBadge, toast, countUp, describeMove,
+import { buildBoard, buildCoords, paintBoard, diffBoards, lastPlaySquares, el, esc, connect, connBadge, newRoomRequest, lookTracker, toast, countUp, describeMove,
   applyTheme, paintTimer, sfx, keepAwake, THEME_NAMES, tileEl, clockAlerts, SOUND_NAMES, botFace, BOT_SPEED_NAMES, nextBotSpeed } from './common.js';
 import { makeAnnouncer, announcerReady, definitionSpeech, speechMemory, describeForSpeech, gameOverSpeech, clockSpeech, sayName, holdBot, ANN_MODE_NAMES, SPELL_NAMES, RATE_NAMES } from './announcer.js';
 import { confetti } from './confetti.js';
@@ -39,7 +39,7 @@ async function getRoom() {
     } catch { return saved; }
   }
   for (;;) {
-    const r = await fetch('/api/rooms', { method: 'POST' }).catch(() => ({ ok: false }));
+    const r = await fetch('/api/rooms', newRoomRequest('wt_tv_look')).catch(() => ({ ok: false }));
     if (r.ok) {
       const j = await r.json();
       saved = { code: j.code, tvKey: j.tvKey };
@@ -63,7 +63,9 @@ function setQR(url) {
 const initial = (n) => [...(n || '?').trim()][0] || '?';
 const avatar = (name, i, seat) => `<span class="avatar p${i}">${seat?.bot ? botFace(seat.level) : esc(initial(name))}</span>`;
 
+const trackLook = lookTracker('wt_tv_look');
 function render(s) {
+  trackLook(s);
   const prev = state; state = s; recvAt = performance.now();
   paintBotSpeedMenu();
   applyTheme(s.settings.theme);
@@ -709,7 +711,7 @@ function rememberRoom(room) {
   localStorage.setItem(RECENT, JSON.stringify(list.slice(0, 10)));
 }
 async function newRoomHere() {
-  const r = await fetch('/api/rooms', { method: 'POST' }).catch(() => null);
+  const r = await fetch('/api/rooms', newRoomRequest('wt_tv_look')).catch(() => null);
   if (!r || !r.ok) { toast('Could not start a new game — try again', 'bad'); return; }
   const j = await r.json();
   const room = { code: j.code, tvKey: j.tvKey };

@@ -234,7 +234,57 @@ func secretEq(a, b string) bool {
 
 var errTooManyRooms = errors.New("server is busy, try again later")
 
-func createRoom(base string) (*Room, error) {
+// defaultSettings is what a new room starts with. The theme and music volume can be set per server
+// (WT_THEME, WT_MUSIC_VOL; see initDefaults).
+var defaultSettings = Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better", BotSpeed: "normal", Music: MusicModes[0], MusicVol: "med"}
+
+// initDefaults reads the server's own defaults for new rooms: WT_THEME (one of Themes) and WT_MUSIC_VOL (low, med, high).
+func initDefaults() {
+	if t := os.Getenv("WT_THEME"); t != "" {
+		if slices.Contains(Themes, t) {
+			defaultSettings.Theme = t
+		} else {
+			slog.Warn("WT_THEME is not a theme; using the standard one", "value", t, "themes", strings.Join(Themes, ", "))
+		}
+	}
+	if v := os.Getenv("WT_MUSIC_VOL"); v != "" {
+		if slices.Contains(MusicVols, v) {
+			defaultSettings.MusicVol = v
+		} else {
+			slog.Warn("WT_MUSIC_VOL is not low, med or high; using med", "value", v)
+		}
+	}
+}
+
+// RoomLook is what the screen creating a room asks it to start with: the theme, music and computer speed it last
+// used, so they stick from one new game to the next. Anything empty or unknown keeps the server's default.
+type RoomLook struct {
+	Theme    string `json:"theme"`
+	Music    string `json:"music"`
+	MusicVol string `json:"musicVol"`
+	Station  *int   `json:"station"`
+	BotSpeed string `json:"botSpeed"`
+}
+
+func (l RoomLook) apply(s *Settings) {
+	if slices.Contains(Themes, l.Theme) {
+		s.Theme = l.Theme
+	}
+	if slices.Contains(MusicModes, l.Music) {
+		s.Music = l.Music
+	}
+	if slices.Contains(MusicVols, l.MusicVol) {
+		s.MusicVol = l.MusicVol
+	}
+	if l.Station != nil && *l.Station >= 0 && *l.Station < len(musicStations) {
+		s.Station = *l.Station
+	}
+	if slices.Contains(BotSpeeds, l.BotSpeed) {
+		s.BotSpeed = l.BotSpeed
+	}
+}
+
+func createRoom(base string, look RoomLook) (*Room, error) {
 	roomsMu.Lock()
 	defer roomsMu.Unlock()
 	if len(rooms) >= maxRooms {
@@ -245,7 +295,8 @@ func createRoom(base string) (*Room, error) {
 		code = newCode()
 	}
 	r := &Room{Code: code, JoinKey: newSecret(), TVKey: newSecret(), clients: map[*Client]bool{}, linkLimit: newTokenBucket(0.1, 5), defLimit: newTokenBucket(0.2, 8),
-		order: [2]int{0, 1}, settings: Settings{Lexicon: Lexicons[0], Theme: Themes[0], Bot: "better", BotSpeed: "normal", Music: MusicModes[0], MusicVol: "med"}, lastUsed: time.Now(), baseURL: base}
+		order: [2]int{0, 1}, settings: defaultSettings, lastUsed: time.Now(), baseURL: base}
+	look.apply(&r.settings)
 	rooms[code] = r
 	stats.RoomsCreated.Add(1)
 	raisePeak(&stats.PeakRooms, int64(len(rooms)))
@@ -408,7 +459,7 @@ func loadRooms(dir string) error {
 			r.settings.BotSpeed = "normal"
 		}
 		if r.settings.Music == "" { // saved before music existed
-			r.settings.Music, r.settings.MusicVol = MusicModes[0], "med"
+			r.settings.Music, r.settings.MusicVol = MusicModes[0], defaultSettings.MusicVol
 		}
 		if sr.Match != nil && len(sr.History) > 0 {
 			eng, err := RestoreEngine(sr.Lexicon, sr.History)
