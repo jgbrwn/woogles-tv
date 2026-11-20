@@ -31,7 +31,7 @@
     try {
       const r = await fetch('/api/ready', { cache: 'no-store' });
       j = await r.json();
-      if (j.ready) { location.reload(); return; }
+      if (j.ready) { try { sessionStorage.setItem('wt_splash', '1'); } catch {} location.reload(); return; } // no splash after this screen
     } catch {}
     paint(j);
     setTimeout(poll, 700);

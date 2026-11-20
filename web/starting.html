@@ -12,20 +12,7 @@
   html, body { height: 100%; margin: 0; }
   body { background: var(--bg); color: var(--ink); font-family: Mulish, sans-serif; display: flex; align-items: center;
     justify-content: center; text-align: center; overflow: hidden; }
-  .glow { position: fixed; inset: 0; pointer-events: none;
-    background: radial-gradient(60vmax 45vmax at 50% 42%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%); }
   main { position: relative; display: flex; flex-direction: column; align-items: center; padding: 0 16px; max-width: 900px; }
-  .brand { display: flex; align-items: center; gap: 2.4vmin; font-size: min(9vmin, 64px); margin-bottom: 6vmin; }
-  .brand .appIcon { width: 1.5em; height: 1.5em; margin: 0; animation: bob 2.6s ease-in-out infinite;
-    filter: drop-shadow(0 0 2.4vmin color-mix(in srgb, var(--primary) 55%, transparent)); }
-  @keyframes bob { 50% { transform: translateY(-6%) rotate(-3deg); } }
-  .tiles { display: flex; gap: 1.2vmin; margin-bottom: 6vmin; }
-  .tiles span { position: relative; width: min(9vmin, 64px); height: min(9vmin, 64px); border-radius: 12%;
-    background: var(--t-bg, var(--card)); color: var(--t-ink, var(--ink)); font: 900 min(5.4vmin, 38px)/1 Mulish, sans-serif;
-    display: flex; align-items: center; justify-content: center; box-shadow: 0 .6vmin 1.6vmin rgba(0,0,0,.22);
-    animation: wave 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * .12s); }
-  .tiles span sub { position: absolute; right: 9%; bottom: 7%; font-size: .36em; font-weight: 800; }
-  @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 25% { transform: translateY(-38%) rotate(-4deg); } }
   h1 { font: 800 min(5vmin, 34px)/1.2 Mulish, sans-serif; margin: 0 0 1.4vmin; }
   h1 .dots::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.4s steps(4) infinite; }
   @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
@@ -42,14 +29,15 @@
     width: 1.4em; height: 1.4em; display: flex; align-items: center; justify-content: center; font-weight: 900; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none; }
-  @media (prefers-reduced-motion: reduce) { .tiles span, .brand .appIcon { animation: none; } }
 </style>
 </head>
 <body>
-<div class="glow"></div>
+<div class="wtGlow"></div>
 <main>
-  <div class="brand"><div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div><img class="appIcon" src="/static/wtv2-icon.svg" alt=""></div>
-  <div class="tiles" aria-hidden="true"><span style="--i:0">W<sub>4</sub></span><span style="--i:1">O<sub>1</sub></span><span style="--i:2">O<sub>1</sub></span><span style="--i:3">G<sub>2</sub></span><span style="--i:4">L<sub>1</sub></span><span style="--i:5">E<sub>1</sub></span><span style="--i:6">S<sub>1</sub></span></div>
+  <div class="wtArt">
+  <div class="wtBrand"><div class="logo"><span class="w">W</span>oogles<span class="tv">-TV</span></div><img class="appIcon" src="/static/wtv2-icon.svg" alt=""></div>
+  <div class="wtTiles" aria-hidden="true"><span style="--i:0">W<sub>4</sub></span><span style="--i:1">O<sub>1</sub></span><span style="--i:2">O<sub>1</sub></span><span style="--i:3">G<sub>2</sub></span><span style="--i:4">L<sub>1</sub></span><span style="--i:5">E<sub>1</sub></span><span style="--i:6">S<sub>1</sub></span></div>
+  </div>
   <h1 id="label" role="status" aria-live="polite">Starting up<span class="dots"></span></h1>
   <p class="detail" id="detail">Woogles-TV is getting ready. This page opens the game by itself.</p>
   <p class="slow hidden" id="slow"></p>

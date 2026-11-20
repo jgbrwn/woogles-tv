@@ -186,3 +186,26 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; background: 
 .confetti { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .confetti i { position: absolute; top: -5%; border-radius: 2px; animation-name: fall; animation-timing-function: cubic-bezier(.3,.6,.6,1); animation-fill-mode: both; }
 @keyframes fall { from { transform: translate(0, 0) rotate(0); } to { transform: translate(var(--drift), 115vh) rotate(var(--rot)); } }
+
+/* Woogles-TV art: the icon bobbing beside the wordmark over a wave of W O O G L E S tiles. Used by the starting-up
+   screen (web/starting.html) and the phone splash (#splash, static/splash.js). */
+.wtGlow { position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(60vmax 45vmax at 50% 42%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%); }
+.wtArt { position: relative; display: flex; flex-direction: column; align-items: center; }
+.wtBrand { display: flex; align-items: center; gap: 2.4vmin; font-size: min(9vmin, 64px); margin-bottom: 6vmin; }
+.wtBrand .appIcon { width: 1.5em; height: 1.5em; margin: 0; animation: wtBob 2.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 2.4vmin color-mix(in srgb, var(--primary) 55%, transparent)); }
+@keyframes wtBob { 50% { transform: translateY(-6%) rotate(-3deg); } }
+.wtTiles { display: flex; gap: 1.2vmin; margin-bottom: 6vmin; }
+.wtTiles span { position: relative; width: min(9vmin, 64px); height: min(9vmin, 64px); border-radius: 12%;
+  background: var(--t-bg, var(--card)); color: var(--t-ink, var(--ink)); font: 900 min(5.4vmin, 38px)/1 Mulish, sans-serif;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 .6vmin 1.6vmin rgba(0,0,0,.22);
+  animation: wtWave 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * .12s); }
+.wtTiles span sub { position: absolute; right: 9%; bottom: 7%; font-size: .36em; font-weight: 800; }
+@keyframes wtWave { 0%, 60%, 100% { transform: translateY(0); } 25% { transform: translateY(-38%) rotate(-4deg); } }
+#splash { display: none; }
+html.splashing #splash { display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center;
+  background: var(--bg); transition: opacity .45s ease; cursor: pointer; }
+html.splashing #splash .wtTiles { margin-bottom: 0; }
+html.splashing #splash.out { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .wtTiles span, .wtBrand .appIcon { animation: none; } }
