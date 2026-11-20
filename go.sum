@@ -5,8 +5,8 @@ github.com/coder/websocket v1.8.15 h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNU
 github.com/coder/websocket v1.8.15/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/domino14/macondo v0.13.10-0.20261116053746-9c33baa63625 h1:7avNuxVJwoNXgaEh76Lvi1pvG8OhIvrpHPfUQZmQvt8=
-github.com/domino14/macondo v0.13.10-0.20261116053746-9c33baa63625/go.mod h1:cMlcabojyLPIVtIlegqFEpY7SB9C+6Ovshl8RPVVjxc=
+github.com/domino14/macondo v0.14.1-0.20261120150442-9fe4fe8cdf3b h1:JKAzatQ53N1BgIFPVZ3meZ8JI/5Yj9SHlFQVxAKtolQ=
+github.com/domino14/macondo v0.14.1-0.20261120150442-9fe4fe8cdf3b/go.mod h1:cMlcabojyLPIVtIlegqFEpY7SB9C+6Ovshl8RPVVjxc=
 github.com/domino14/word-golib v0.3.0 h1:SN/kO141U8/jnSxFUTQgrZuQJ9CXgO2uO2cbxeZ6Dgg=
 github.com/domino14/word-golib v0.3.0/go.mod h1:38YHBSjV/RSonvbKmtCuLRXTmr03nJZUwnArYvFZCc4=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=

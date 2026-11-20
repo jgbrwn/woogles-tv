@@ -40,9 +40,12 @@ both, and always runs in Docker, because its speech engine is a separate program
   OS/architecture Go supports.
 - **At runtime:** the `data/` directory next to the binary (or wherever `-data` points), containing:
   - `letterdistributions/` and `strategy/`: shipped in this repository; copy them along with the binary.
-  - `lexica/`: word lists and bot leave files (~15 MB). They are **downloaded automatically** from the
-    [Woogles repository](https://github.com/woogles-io/liwords) on first start, so the first start needs internet
-    access. To prepare an offline machine, run `woogles-tv -data DIR -fetch-only` anywhere and copy `DIR/lexica`.
+  - `lexica/`: word lists and bot leave files (~15 MB). They are **downloaded automatically** from the files
+    Woogles publishes (`https://woogles.io/wasm/2026/`) on first start, so the first start needs internet access.
+    On each start, the copies on disk are compared (by sha256) with the published ones, and any that differ are
+    replaced. If woogles.io can't be reached, the copies on disk are used, and that start waits up to 20 s.
+    Set `MACONDO_LEXICON_AUTO_UPDATE=false` to keep the files on disk as they are, and only fetch missing ones.
+    To prepare an offline machine, run `woogles-tv -data DIR -fetch-only` anywhere and copy `DIR/lexica`.
   - `rooms/`: created automatically; saved games live here.
 - **Network:** one TCP port (default `8420`) carrying HTTP and WebSockets.
 

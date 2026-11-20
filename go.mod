@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/coder/websocket v1.8.15
-	github.com/domino14/macondo v0.13.10-0.20261116053746-9c33baa63625
+	github.com/domino14/macondo v0.14.1-0.20261120150442-9fe4fe8cdf3b
 	github.com/domino14/word-golib v0.3.0
 	github.com/rs/zerolog v1.35.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
