@@ -206,6 +206,11 @@ own proxy appends. If you expose the server directly with no proxy, it uses the 
 
 `GET /healthz` returns `ok` for load-balancer and container health checks.
 
+The server listens as soon as it starts. While it checks the word lists and restores saved games, pages show a
+"starting up" screen that names the step and opens the game when it's done. Open TVs and phones say the same in their
+reconnect badge, and `GET /api/ready` answers `503` with the step (`200 {"ready":true}` once ready). `/healthz`
+answers `ok` throughout, so a health check doesn't restart a server that is still starting.
+
 Built-in limits (in `room.go` / `main.go`): 500 rooms, 16 connections per room, 20 new rooms per hour per IP,
 10 code lookups per minute per IP, plus a global budget for code lookups and *Show on TV*. Idle rooms are removed after
 3 days, or 7 days with an unfinished or analysed game.
