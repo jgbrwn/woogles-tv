@@ -29,7 +29,7 @@ Choose one of these:
 The TV lobby shows a **QR code** and a 6-letter **TV code**. The TV code is always the code of the game currently on
 screen. During a game it sits in the bottom-right corner, labelled *TV code*.
 
-![TV lobby](screenshots/tv-lobby-v4.png)
+![TV lobby](screenshots/tv-lobby-v5.png)
 
 The first click or key press on a browser TV turns on sound; browsers block audio until then. The Android TV app plays
 sound straight away.

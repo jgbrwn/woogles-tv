@@ -68,7 +68,7 @@ Then either scan the TV's QR code with your phones (*TV-first*), or start a game
 under **Show on TV** (*phone-first*).
 
 <p align="center">
-  <img src="docs/screenshots/tv-lobby-v4.png" width="49%" alt="The TV lobby with its QR code and TV code">
+  <img src="docs/screenshots/tv-lobby-v5.png" width="49%" alt="The TV lobby with its QR code and TV code">
   <img src="docs/screenshots/tv-bingo-v3.png" width="49%" alt="A bingo celebration on the TV">
   <img src="docs/screenshots/tv-game-midnight-v3.png" width="49%" alt="The Midnight theme">
   <img src="docs/screenshots/tv-review-v3.png" width="49%" alt="Game review on the TV: a missed bingo, with the best move in green">
